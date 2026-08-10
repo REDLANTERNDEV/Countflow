@@ -45,6 +45,14 @@ public static class OpenApiExporter
 
     private static async Task<int> WriteAsync(Microsoft.OpenApi.OpenApiDocument document, string path)
     {
+        // Drop the servers list. ASP.NET populates it from the address the host
+        // actually bound to — which is an ephemeral loopback port here, so the
+        // document would differ on every export and the CI drift check could
+        // never pass. It is also simply wrong in a published contract: where the
+        // API lives is a deployment fact, not a property of the schema. Omitting
+        // it means "relative to wherever you fetched this", which is correct.
+        document.Servers?.Clear();
+
 
         await using var buffer = new MemoryStream();
         await document.SerializeAsJsonAsync(buffer, OpenApiSpecVersion.OpenApi3_1);

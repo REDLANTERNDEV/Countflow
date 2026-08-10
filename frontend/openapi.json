@@ -4,11 +4,6 @@
     "title": "Countflow.Api | v1",
     "version": "1.0.0"
   },
-  "servers": [
-    {
-      "url": "http://127.0.0.1:53449"
-    }
-  ],
   "paths": {
     "/api/warehouses": {
       "get": {

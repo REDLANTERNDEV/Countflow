@@ -102,8 +102,17 @@ jobs:
       # integration story depends on.
       # Absolute path: ASP.NET resolves relative paths against the project's
       # content root, not the working directory.
+      #
+      # The signing key is supplied explicitly rather than inherited from the
+      # Development profile. Exporting the document starts the host, which runs
+      # JwtOptions' ValidateOnStart — so the export would otherwise depend on
+      # which launch profile happened to resolve, and fail obscurely when one
+      # did not.
       - name: Export OpenAPI document
         working-directory: backend
+        env:
+          ASPNETCORE_ENVIRONMENT: Development
+          Jwt__SigningKey: ci-openapi-export-key-not-used-to-sign-anything
         run: dotnet run --project src/Countflow.Api -- --export-openapi "$GITHUB_WORKSPACE/frontend/openapi.json"
 
       - name: Regenerate client and check for drift

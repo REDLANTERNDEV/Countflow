@@ -1,0 +1,249 @@
+/* Countflow design tokens.
+ *
+ * Reference point is Apple's *pro* apps — Final Cut, Logic, Xcode — not its
+ * consumer ones. Dense, keyboard-driven, unglamorous, and crafted in alignment
+ * and type rather than colour and shadow. The goal is density made calm.
+ *
+ * Nothing here comes from a component-kit default. shadcn supplies Radix
+ * behaviour and accessibility; the entire visual layer is ours.
+ */
+
+@import 'tailwindcss';
+
+/* Tailwind v4 scans only the importing package by default, so shared components
+ * would render completely unstyled with no obvious cause. This is not optional. */
+@source '../../ui/src/**/*.{ts,tsx}';
+
+@theme {
+  /* ---- Neutrals -------------------------------------------------------
+   * Twelve steps with a faint cool cast. Deliberately not zinc or slate:
+   * their exact values are a large part of what makes a stock component kit
+   * recognisable on sight.
+   * Steps are named by role, so a component never reaches for a raw ramp
+   * value and light/dark stay in step. */
+  --color-surface-base: #0c0e12;
+  --color-surface-sunken: #090b0e;
+  --color-surface-raised: #12151b;
+  --color-surface-overlay: #171b22;
+  --color-surface-hover: #1b2028;
+  --color-surface-active: #222834;
+
+  --color-border-subtle: #1e232b;
+  --color-border-default: #272d37;
+  --color-border-strong: #3a424f;
+
+  --color-text-primary: #e8ebef;
+  --color-text-secondary: #a4adba;
+  --color-text-tertiary: #6e7887;
+  --color-text-disabled: #4a525e;
+
+  /* ---- Accent ---------------------------------------------------------
+   * Exactly one, and it is restrained: focus rings, links, the single primary
+   * action. A near-monochrome shell is what lets status colour actually mean
+   * something. */
+  --color-accent: #3b82f6;
+  --color-accent-hover: #5b9bf8;
+  --color-accent-muted: #1d3a6b;
+  --color-accent-text: #ffffff;
+
+  /* ---- Status ---------------------------------------------------------
+   * Reserved for state and nothing else. In a WMS colour carries meaning —
+   * expired, blocked, quarantined, short-picked. Spend it on chrome and the
+   * signal drowns. */
+  --color-success: #3fb950;
+  --color-success-muted: #133620;
+  --color-warning: #d29922;
+  --color-warning-muted: #3a2d10;
+  --color-danger: #f85149;
+  --color-danger-muted: #3d1618;
+  --color-info: #58a6ff;
+  --color-info-muted: #102c50;
+
+  /* ---- Radii ----------------------------------------------------------
+   * Tighter than most kits ship. Large radii read as consumer software; a
+   * tool that shows 2,245 rows should look precise, not friendly. */
+  --radius-control: 4px;
+  --radius-surface: 8px;
+  --radius-pill: 999px;
+
+  /* ---- Type -----------------------------------------------------------
+   * Platform font first — it already carries optical sizing and legibility
+   * tuning, and resolves to SF on Apple hardware. Monospace for identifiers,
+   * which must align down a column and never be mistaken for prose. */
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+
+  /* Tracking is size-specific. A single letter-spacing value is wrong
+   * somewhere: large text reads too loose, small text too tight. */
+  --tracking-display: -0.021em;
+  --tracking-heading: -0.013em;
+  --tracking-body: 0em;
+  --tracking-caption: 0.006em;
+
+  /* ---- Motion ---------------------------------------------------------
+   * Critically damped by default: no overshoot on anything that merely
+   * appears. Bounce is reserved for motion that followed a real gesture. */
+  --ease-standard: cubic-bezier(0.32, 0.72, 0, 1);
+  --duration-instant: 80ms;
+  --duration-fast: 140ms;
+  --duration-standard: 220ms;
+}
+
+/* ---- Density --------------------------------------------------------------
+ * Apple's compact/regular size classes, applied literally. Same semantic
+ * tokens, two scales. The handheld's larger targets are a hard requirement —
+ * gloved thumbs, arm's length, warehouse lighting — so they belong in the
+ * system rather than in a one-off stylesheet. */
+
+:root,
+[data-density='console'] {
+  --space-1: 2px;
+  --space-2: 4px;
+  --space-3: 8px;
+  --space-4: 12px;
+  --space-5: 16px;
+  --space-6: 24px;
+  --space-7: 32px;
+
+  --control-height: 30px;
+  --control-height-sm: 24px;
+  --row-height: 34px;
+
+  --text-xs: 0.6875rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.875rem;
+  --text-lg: 1rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.625rem;
+}
+
+[data-density='handheld'] {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 28px;
+  --space-7: 40px;
+
+  /* 48px is the practical floor for a reliable gloved tap. */
+  --control-height: 52px;
+  --control-height-sm: 44px;
+  --row-height: 60px;
+
+  --text-xs: 0.8125rem;
+  --text-sm: 0.9375rem;
+  --text-base: 1.0625rem;
+  --text-lg: 1.1875rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 1.875rem;
+}
+
+/* ---- Light theme ----------------------------------------------------------
+ * Not an afterthought. Warehouses are bright and often fluorescent, and a dark
+ * handheld screen glares badly under them — while the supervisor's office
+ * prefers dark. Both are real working conditions. */
+
+[data-theme='light'] {
+  --color-surface-base: #ffffff;
+  --color-surface-sunken: #f6f7f9;
+  --color-surface-raised: #ffffff;
+  --color-surface-overlay: #ffffff;
+  --color-surface-hover: #f1f3f6;
+  --color-surface-active: #e6e9ee;
+
+  --color-border-subtle: #ebedf1;
+  --color-border-default: #d8dce3;
+  --color-border-strong: #b4bcc8;
+
+  --color-text-primary: #14181f;
+  --color-text-secondary: #59616e;
+  --color-text-tertiary: #838c99;
+  --color-text-disabled: #aab2bd;
+
+  --color-accent: #1f6feb;
+  --color-accent-hover: #1a5fd0;
+  --color-accent-muted: #ddeafc;
+
+  --color-success: #1a7f37;
+  --color-success-muted: #dcf5e3;
+  --color-warning: #9a6700;
+  --color-warning-muted: #fbf0d0;
+  --color-danger: #cf222e;
+  --color-danger-muted: #fbdfe1;
+  --color-info: #0969da;
+  --color-info-muted: #ddeafc;
+}
+
+/* ---- Base ---------------------------------------------------------------- */
+
+@layer base {
+  * {
+    box-sizing: border-box;
+    border-color: var(--color-border-default);
+  }
+
+  html {
+    /* Easing the theme flip rather than snapping it: an abrupt brightness
+     * jump is unpleasant generally, and worse in a dim aisle. Colour only —
+     * animating layout on a theme change would be gratuitous. */
+    transition:
+      background-color var(--duration-standard) var(--ease-standard),
+      color var(--duration-standard) var(--ease-standard);
+  }
+
+  body {
+    margin: 0;
+    background: var(--color-surface-base);
+    color: var(--color-text-primary);
+    font-family: var(--font-sans);
+    font-size: var(--text-base);
+    line-height: 1.5;
+    letter-spacing: var(--tracking-body);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1, h2, h3 {
+    letter-spacing: var(--tracking-heading);
+    line-height: 1.2;
+    font-weight: 600;
+  }
+
+  /* Every number in this product is compared against another number down a
+   * column — quantities, capacities, pick sequences, GTINs. Proportional
+   * digits make that comparison harder for no benefit. */
+  table, .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  code, kbd, samp, pre {
+    font-family: var(--font-mono);
+  }
+
+  /* One visible focus treatment everywhere. The console is keyboard-first, so
+   * losing focus position is losing your place. */
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 1px;
+    border-radius: var(--radius-control);
+  }
+
+  ::selection {
+    background: var(--color-accent-muted);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    transition: none;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
