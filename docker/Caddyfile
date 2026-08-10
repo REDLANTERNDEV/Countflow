@@ -1,0 +1,52 @@
+# Countflow edge.
+#
+# One origin serves both SPAs and proxies the API, so the browser makes
+# same-origin calls and CORS stays out of the production path entirely.
+#
+# CADDY_SITE_ADDRESS is :80 locally and a real hostname in the hosted demo,
+# where Caddy provisions and renews TLS on its own.
+
+{$CADDY_SITE_ADDRESS::80} {
+	encode zstd gzip
+
+	handle /api/* {
+		reverse_proxy {$API_UPSTREAM:api:8080}
+	}
+
+	handle /health/* {
+		reverse_proxy {$API_UPSTREAM:api:8080}
+	}
+
+	# The handheld PWA.
+	handle /handheld/* {
+		uri strip_prefix /handheld
+		root * /srv/handheld
+		try_files {path} /index.html
+		file_server
+
+		# The service worker must never be served stale, or a device can be
+		# pinned to an old build until its cache happens to expire.
+		@sw path /sw.js /service-worker.js /manifest.webmanifest
+		header @sw Cache-Control "no-cache, no-store, must-revalidate"
+
+		@assets path /assets/*
+		header @assets Cache-Control "public, max-age=31536000, immutable"
+	}
+
+	# The admin and supervisor console.
+	handle {
+		root * /srv/console
+		try_files {path} /index.html
+		file_server
+
+		@assets path /assets/*
+		header @assets Cache-Control "public, max-age=31536000, immutable"
+	}
+
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+}

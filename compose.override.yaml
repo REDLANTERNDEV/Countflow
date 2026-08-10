@@ -1,0 +1,37 @@
+# Development overrides — applied automatically by plain `docker compose up`.
+#
+# This publishes the backing services to the host and turns on demo seeding, so
+# the stack is both immediately usable and open to inspection.
+#
+# For a fast frontend inner loop, run `pnpm dev` on the host: it talks to the
+# API on localhost:8080, which is exposed below, and gets real HMR instead of
+# file-watching through a bind mount. The containerised `web` keeps serving the
+# production-shaped build on :8000 alongside it.
+
+services:
+  postgres:
+    ports:
+      - "5432:5432"
+
+  seq:
+    ports:
+      - "5341:80"
+
+  migrator:
+    environment:
+      Seed__DemoUsers: "true"
+      Seed__DemoData: "true"
+
+  web:
+    ports:
+      - "${WEB_PORT:-8000}:80"
+
+  api:
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      # Vite dev servers run on the host and are cross-origin against the API.
+      # In production Caddy serves both from one origin, so CORS is unused there.
+      Cors__AllowedOrigins__0: http://localhost:5173
+      Cors__AllowedOrigins__1: http://localhost:5174
+    ports:
+      - "8080:8080"

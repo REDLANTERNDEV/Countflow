@@ -1,0 +1,100 @@
+# Countflow — full stack.
+#
+#   docker compose up
+#
+# is the only command needed to get a working, seeded warehouse. compose.override.yaml
+# is applied automatically on top of this and adds development conveniences;
+# production uses `-f compose.yaml -f compose.prod.yaml` to skip it.
+
+name: countflow
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: countflow
+      POSTGRES_USER: countflow
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-countflow}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      # Nothing downstream starts until Postgres is genuinely accepting
+      # connections, rather than merely having a running process.
+      test: ["CMD-SHELL", "pg_isready -U countflow -d countflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  seq:
+    image: datalust/seq:latest
+    environment:
+      ACCEPT_EULA: "Y"
+      # Seq refuses to start without an explicit auth decision. This is the
+      # local log viewer on a private compose network, not a public service, so
+      # it runs open rather than inventing a password nobody would remember.
+      SEQ_FIRSTRUN_NOAUTHENTICATION: "true"
+    volumes:
+      - seq-data:/data
+
+  migrator:
+    build:
+      context: .
+      dockerfile: docker/migrator.Dockerfile
+    environment:
+      # GSS Encryption Mode=Disable: Npgsql defaults to Prefer and probes for
+      # Kerberos, which the chiseled image deliberately does not ship — producing
+      # a scary "Cannot load libgssapi_krb5" line on every start. We authenticate
+      # with SCRAM over the private compose network, so GSS never applies.
+      ConnectionStrings__Countflow: "Host=postgres;Port=5432;Database=countflow;Username=countflow;Password=${POSTGRES_PASSWORD:-countflow};GSS Encryption Mode=Disable"
+      # No Jwt__SigningKey: the migrator never issues a token, so it has no
+      # business holding one.
+      Seed__DemoUsers: ${SEED_DEMO_USERS:-false}
+      Seed__DemoData: ${SEED_DEMO_DATA:-false}
+      Seed__DemoPassword: ${SEED_DEMO_PASSWORD:-Countflow#2026}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
+      # GSS Encryption Mode=Disable: Npgsql defaults to Prefer and probes for
+      # Kerberos, which the chiseled image deliberately does not ship — producing
+      # a scary "Cannot load libgssapi_krb5" line on every start. We authenticate
+      # with SCRAM over the private compose network, so GSS never applies.
+      ConnectionStrings__Countflow: "Host=postgres;Port=5432;Database=countflow;Username=countflow;Password=${POSTGRES_PASSWORD:-countflow};GSS Encryption Mode=Disable"
+      Jwt__SigningKey: ${JWT_SIGNING_KEY:-countflow-development-signing-key-do-not-use-in-production}
+      Jwt__Issuer: countflow
+      Jwt__Audience: countflow-clients
+      Observability__SeqUrl: http://seq:5341
+    depends_on:
+      postgres:
+        condition: service_healthy
+      # The API never races the schema: it starts only once the migrator has
+      # exited successfully.
+      migrator:
+        condition: service_completed_successfully
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/frontend.Dockerfile
+    environment:
+      CADDY_SITE_ADDRESS: ${CADDY_SITE_ADDRESS:-:80}
+      API_UPSTREAM: api:8080
+    # No published port here on purpose. Compose *merges* port lists across
+    # overlay files rather than replacing them, so a mapping declared in the
+    # base would leak into production alongside 80/443. Each overlay publishes
+    # its own: dev on WEB_PORT, prod on 80/443.
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  postgres-data:
+  seq-data:

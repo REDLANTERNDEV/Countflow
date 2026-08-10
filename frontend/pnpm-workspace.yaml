@@ -1,0 +1,31 @@
+packages:
+  - apps/*
+  - packages/*
+
+# A single catalog keeps the console and the handheld on identical versions of
+# everything shared. Two React copies across two apps is a class of bug worth
+# designing out rather than debugging.
+catalog:
+  react: ^19.2.8
+  react-dom: ^19.2.8
+  '@types/react': ^19.2.18
+  '@types/react-dom': ^19.2.4
+  '@types/node': ^26.2.0
+  '@tanstack/react-query': ^5.101.4
+  '@tanstack/react-router': ^1.170.25
+  '@vitejs/plugin-react': ^6.0.5
+  vite: ^8.2.1
+  # TypeScript 6, not 7. The 7.x native port does not expose the JavaScript
+  # compiler API (`ts.factory`), and openapi-typescript builds its output
+  # through it — so the generated API client, and the contract guarantee that
+  # depends on it, simply cannot be produced under 7.x today. Revisit once the
+  # codegen ecosystem ships TS 7 support.
+  typescript: ^6.0.3
+  openapi-fetch: ^0.17.0
+  openapi-typescript: ^7.13.0
+  vite-plugin-pwa: ^1.3.0
+  dexie: ^4.4.4
+
+minimumReleaseAgeExclude:
+  - '@tanstack/react-router@1.170.25'
+  - '@tanstack/router-core@1.171.21'

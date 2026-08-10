@@ -1,0 +1,16 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Countflow.Api/Countflow.Api.csproj" />
+    <Project Path="src/Countflow.Bootstrap/Countflow.Bootstrap.csproj" />
+    <Project Path="src/Countflow.Migrator/Countflow.Migrator.csproj" />
+    <Project Path="src/Countflow.SharedKernel/Countflow.SharedKernel.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/">
+    <Project Path="src/Modules/Countflow.Modules.Identity/Countflow.Modules.Identity.csproj" />
+    <Project Path="src/Modules/Countflow.Modules.MasterData/Countflow.Modules.MasterData.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Countflow.IntegrationTests/Countflow.IntegrationTests.csproj" />
+    <Project Path="tests/Countflow.SharedKernel.Tests/Countflow.SharedKernel.Tests.csproj" />
+  </Folder>
+</Solution>

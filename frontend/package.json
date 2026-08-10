@@ -1,0 +1,20 @@
+{
+  "name": "countflow-frontend",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.21.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter \"./apps/*\" dev",
+    "build": "pnpm --recursive build",
+    "typecheck": "pnpm --recursive typecheck",
+    "export:openapi": "dotnet run --project ../backend/src/Countflow.Api -- --export-openapi \"$PWD/openapi.json\"",
+    "generate:api": "pnpm --filter @countflow/api-client generate",
+    "verify:api-client": "pnpm generate:api && git diff --exit-code -- packages/api-client/src/schema.d.ts openapi.json"
+  },
+  "devDependencies": {
+    "typescript": "catalog:"
+  }
+}

@@ -1,0 +1,56 @@
+# Production overlay.
+#
+#   docker compose -f compose.yaml -f compose.prod.yaml up -d
+#
+# Naming both files explicitly is what skips compose.override.yaml, so none of
+# the development conveniences (published database port, demo seeding, dev
+# signing key) can reach a deployed environment by accident.
+#
+# Required in the environment or a .env file:
+#   POSTGRES_PASSWORD, JWT_SIGNING_KEY, CADDY_SITE_ADDRESS
+
+services:
+  postgres:
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+    restart: unless-stopped
+    # No published port: only the compose network reaches the database.
+
+  seq:
+    environment:
+      # Logs contain operational detail; in production Seq gets a real password
+      # instead of the open-access default the dev stack uses. It stays
+      # unpublished either way, reachable only from the compose network.
+      SEQ_FIRSTRUN_NOAUTHENTICATION: "false"
+      SEQ_FIRSTRUN_ADMINPASSWORD: ${SEQ_ADMIN_PASSWORD:?SEQ_ADMIN_PASSWORD must be set}
+    restart: unless-stopped
+
+  migrator:
+    environment:
+      Seed__DemoUsers: ${SEED_DEMO_USERS:-false}
+      Seed__DemoData: ${SEED_DEMO_DATA:-false}
+      Jwt__SigningKey: ${JWT_SIGNING_KEY:?JWT_SIGNING_KEY must be set}
+
+  api:
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      Jwt__SigningKey: ${JWT_SIGNING_KEY:?JWT_SIGNING_KEY must be set}
+    restart: unless-stopped
+    # Not published: Caddy is the only way in.
+
+  web:
+    environment:
+      # A real hostname here makes Caddy provision and renew TLS automatically.
+      CADDY_SITE_ADDRESS: ${CADDY_SITE_ADDRESS:?CADDY_SITE_ADDRESS must be set}
+      API_UPSTREAM: api:8080
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - caddy-data:/data
+      - caddy-config:/config
+    restart: unless-stopped
+
+volumes:
+  caddy-data:
+  caddy-config:

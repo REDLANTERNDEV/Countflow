@@ -1,0 +1,29 @@
+# Keeping the build context small matters: without this it ships hundreds of MB
+# of bin/obj and node_modules to the daemon on every build.
+
+**/bin/
+**/obj/
+**/out/
+**/node_modules/
+**/dist/
+**/.vite/
+**/.turbo/
+
+.git/
+.github/
+.vscode/
+.idea/
+**/.DS_Store
+
+**/*.user
+**/*.suo
+**/TestResults/
+**/coverage/
+
+docs/
+*.md
+!README.md
+
+**/.env
+**/.env.*
+!**/.env.example

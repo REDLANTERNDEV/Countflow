@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="../Countflow.SharedKernel/Countflow.SharedKernel.csproj" />
+    <ProjectReference Include="../Modules/Countflow.Modules.Identity/Countflow.Modules.Identity.csproj" />
+    <ProjectReference Include="../Modules/Countflow.Modules.MasterData/Countflow.Modules.MasterData.csproj" />
+  </ItemGroup>
+
+</Project>

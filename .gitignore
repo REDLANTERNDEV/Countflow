@@ -1,0 +1,45 @@
+# .NET
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+*.user
+*.suo
+.vs/
+TestResults/
+*.trx
+*.coverage
+coverage/
+
+# Node
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+# vite-plugin-pwa's dev-mode service worker output
+dev-dist/
+
+# Environment — never commit real secrets
+.env
+.env.*
+!.env.example
+
+# Editors
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local scratch
+/scratch/
+*.log
+
+# NOT ignored, deliberately:
+#   frontend/openapi.json                     — the published contract
+#   frontend/packages/api-client/src/schema.d.ts — generated, but committed so CI
+#     can regenerate and fail on a diff. That drift check is the whole guarantee
+#     that the published spec matches what the server serves.

@@ -1,0 +1,1252 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "Countflow.Api | v1",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://127.0.0.1:53449"
+    }
+  ],
+  "paths": {
+    "/api/warehouses": {
+      "get": {
+        "tags": [
+          "Master data"
+        ],
+        "summary": "List all warehouses.",
+        "operationId": "GetWarehouses",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WarehouseResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/locations": {
+      "get": {
+        "tags": [
+          "Master data"
+        ],
+        "summary": "List locations, filtered and paged.",
+        "operationId": "GetLocations",
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/LocationType"
+            }
+          },
+          {
+            "name": "zone",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pickable",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResponseOfLocationResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/items": {
+      "get": {
+        "tags": [
+          "Master data"
+        ],
+        "summary": "List items, filtered and paged.",
+        "operationId": "GetItems",
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "abcClass",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/AbcClass"
+            }
+          },
+          {
+            "name": "temperature",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/TemperatureClass"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResponseOfItemResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/items/{sku}": {
+      "get": {
+        "tags": [
+          "Master data"
+        ],
+        "summary": "Fetch a single item with its full packaging hierarchy.",
+        "operationId": "GetItemBySku",
+        "parameters": [
+          {
+            "name": "sku",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/scan/resolve": {
+      "post": {
+        "tags": [
+          "Scanning"
+        ],
+        "summary": "Decode a GS1 barcode and resolve it against the item catalogue.",
+        "operationId": "ResolveScan",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveScanRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanResolutionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/import/items": {
+      "post": {
+        "tags": [
+          "Import"
+        ],
+        "summary": "Import items from CSV. Validates the whole file first; dry run by default.",
+        "operationId": "ImportItems",
+        "parameters": [
+          {
+            "name": "dryRun",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": true
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "text/csv": {
+              "schema": {
+                "type": "string"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/import/locations": {
+      "post": {
+        "tags": [
+          "Import"
+        ],
+        "summary": "Import locations from CSV. Validates the whole file first; dry run by default.",
+        "operationId": "ImportLocations",
+        "parameters": [
+          {
+            "name": "warehouse",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "default": "WH1"
+            }
+          },
+          {
+            "name": "dryRun",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": true
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "text/csv": {
+              "schema": {
+                "type": "string"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Exchange credentials for an access token and a refresh token.",
+        "operationId": "Login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/refresh": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Rotate a refresh token for a new access token.",
+        "operationId": "Refresh",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Revoke a refresh token.",
+        "operationId": "Logout",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LogoutRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Return the authenticated user and their roles.",
+        "operationId": "GetCurrentUser",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserInfo"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AbcClass": {
+        "enum": [
+          "A",
+          "B",
+          "C"
+        ],
+        "type": "string"
+      },
+      "AuthResponse": {
+        "required": [
+          "accessToken",
+          "accessTokenExpiresAt",
+          "refreshToken",
+          "user"
+        ],
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string"
+          },
+          "accessTokenExpiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "refreshToken": {
+            "type": "string"
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserInfo"
+          }
+        }
+      },
+      "ImportIssue": {
+        "required": [
+          "row",
+          "field",
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "row": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "field": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "ImportResult": {
+        "required": [
+          "dryRun",
+          "committed",
+          "rowsRead",
+          "wouldCreate",
+          "wouldUpdate",
+          "unchanged",
+          "issues"
+        ],
+        "type": "object",
+        "properties": {
+          "dryRun": {
+            "type": "boolean"
+          },
+          "committed": {
+            "type": "boolean"
+          },
+          "rowsRead": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "wouldCreate": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "wouldUpdate": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "unchanged": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "issues": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportIssue"
+            }
+          },
+          "hasIssues": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ItemResponse": {
+        "required": [
+          "id",
+          "sku",
+          "description",
+          "baseUom",
+          "abcClass",
+          "temperatureClass",
+          "isLotTracked",
+          "isSerialTracked",
+          "isExpiryTracked",
+          "shelfLifeDays",
+          "isHazardous",
+          "isActive",
+          "packConfigurations"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sku": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "baseUom": {
+            "type": "string"
+          },
+          "abcClass": {
+            "type": "string"
+          },
+          "temperatureClass": {
+            "type": "string"
+          },
+          "isLotTracked": {
+            "type": "boolean"
+          },
+          "isSerialTracked": {
+            "type": "boolean"
+          },
+          "isExpiryTracked": {
+            "type": "boolean"
+          },
+          "shelfLifeDays": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "isHazardous": {
+            "type": "boolean"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "packConfigurations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PackConfigurationResponse"
+            }
+          }
+        }
+      },
+      "LocationResponse": {
+        "required": [
+          "id",
+          "code",
+          "type",
+          "zoneCode",
+          "areaCode",
+          "aisle",
+          "bay",
+          "level",
+          "position",
+          "pickSequence",
+          "maxVolumeM3",
+          "maxWeightKg",
+          "isPickable",
+          "isReplenishable",
+          "isActive"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "zoneCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "areaCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "aisle": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "bay": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "level": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "position": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "pickSequence": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "maxVolumeM3": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "maxWeightKg": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "isPickable": {
+            "type": "boolean"
+          },
+          "isReplenishable": {
+            "type": "boolean"
+          },
+          "isActive": {
+            "type": "boolean"
+          }
+        }
+      },
+      "LocationType": {
+        "enum": [
+          "ReceivingDock",
+          "Staging",
+          "Bulk",
+          "PickFace",
+          "Packing",
+          "ShippingDock",
+          "Quarantine",
+          "Supplier",
+          "Customer",
+          "Adjustment",
+          "Scrap",
+          "InTransit"
+        ],
+        "type": "string"
+      },
+      "LoginRequest": {
+        "required": [
+          "identifier",
+          "password"
+        ],
+        "type": "object",
+        "properties": {
+          "identifier": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          }
+        }
+      },
+      "LogoutRequest": {
+        "required": [
+          "refreshToken"
+        ],
+        "type": "object",
+        "properties": {
+          "refreshToken": {
+            "type": "string"
+          }
+        }
+      },
+      "PackConfigurationResponse": {
+        "required": [
+          "level",
+          "baseUnitQuantity",
+          "gtin",
+          "lengthMm",
+          "widthMm",
+          "heightMm",
+          "grossWeightKg",
+          "volumeM3",
+          "isReceivingUnit",
+          "isPickUnit"
+        ],
+        "type": "object",
+        "properties": {
+          "level": {
+            "type": "string"
+          },
+          "baseUnitQuantity": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "gtin": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "lengthMm": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "widthMm": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "heightMm": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "grossWeightKg": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "volumeM3": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "isReceivingUnit": {
+            "type": "boolean"
+          },
+          "isPickUnit": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PagedResponseOfItemResponse": {
+        "required": [
+          "items",
+          "total",
+          "page",
+          "pageSize"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ItemResponse"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "PagedResponseOfLocationResponse": {
+        "required": [
+          "items",
+          "total",
+          "page",
+          "pageSize"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LocationResponse"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "ProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "detail": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "instance": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "RefreshRequest": {
+        "required": [
+          "refreshToken"
+        ],
+        "type": "object",
+        "properties": {
+          "refreshToken": {
+            "type": "string"
+          }
+        }
+      },
+      "ResolveScanRequest": {
+        "required": [
+          "barcode"
+        ],
+        "type": "object",
+        "properties": {
+          "barcode": {
+            "type": "string"
+          }
+        }
+      },
+      "ScanElementResponse": {
+        "required": [
+          "ai",
+          "title",
+          "value"
+        ],
+        "type": "object",
+        "properties": {
+          "ai": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        }
+      },
+      "ScanResolutionResponse": {
+        "required": [
+          "itemRecognised",
+          "item",
+          "gtin",
+          "sscc",
+          "ssccCheckDigitValid",
+          "lotNumber",
+          "expiryDate",
+          "productionDate",
+          "serialNumber",
+          "scannedQuantity",
+          "baseUnitQuantity",
+          "elements",
+          "warnings"
+        ],
+        "type": "object",
+        "properties": {
+          "itemRecognised": {
+            "type": "boolean"
+          },
+          "item": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ScannedItemResponse"
+              }
+            ]
+          },
+          "gtin": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "sscc": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "ssccCheckDigitValid": {
+            "type": "boolean"
+          },
+          "lotNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "expiryDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "productionDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "serialNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "scannedQuantity": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "baseUnitQuantity": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "elements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScanElementResponse"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "ScannedItemResponse": {
+        "required": [
+          "itemId",
+          "sku",
+          "description",
+          "packagingLevel",
+          "baseUnitQuantity",
+          "isLotTracked",
+          "isExpiryTracked",
+          "isSerialTracked"
+        ],
+        "type": "object",
+        "properties": {
+          "itemId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sku": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "packagingLevel": {
+            "type": "string"
+          },
+          "baseUnitQuantity": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "isLotTracked": {
+            "type": "boolean"
+          },
+          "isExpiryTracked": {
+            "type": "boolean"
+          },
+          "isSerialTracked": {
+            "type": "boolean"
+          }
+        }
+      },
+      "TemperatureClass": {
+        "enum": [
+          "Ambient",
+          "Chilled",
+          "Frozen"
+        ],
+        "type": "string"
+      },
+      "UserInfo": {
+        "required": [
+          "id",
+          "userName",
+          "displayName",
+          "operatorCode",
+          "roles"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userName": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "operatorCode": {
+            "type": "string"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "WarehouseResponse": {
+        "required": [
+          "id",
+          "code",
+          "name",
+          "city",
+          "countryCode",
+          "isActive"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "city": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "countryCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "isActive": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Master data"
+    },
+    {
+      "name": "Scanning"
+    },
+    {
+      "name": "Import"
+    },
+    {
+      "name": "Authentication"
+    }
+  ]
+}

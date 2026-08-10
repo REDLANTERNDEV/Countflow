@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The Web SDK includes appsettings*.json in publish output automatically;
+         a plain console project does not. Without this the file is simply absent
+         from the image, so every default in it silently does nothing and the
+         migrator runs on environment variables alone — which looks fine until
+         someone adds a setting here and cannot work out why it is ignored. -->
+    <Content Include="appsettings*.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Countflow.Bootstrap/Countflow.Bootstrap.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Serilog.AspNetCore" />
+    <PackageReference Include="Serilog.Sinks.Seq" />
+    <!-- Design-time only. This project is the startup project for
+         `dotnet ef migrations add`, so it needs the EF tooling assemblies at
+         design time but must not ship them in the runtime image. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+</Project>
