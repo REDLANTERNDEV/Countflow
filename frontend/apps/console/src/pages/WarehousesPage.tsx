@@ -1,54 +1,79 @@
+import { useTranslation } from '@countflow/i18n';
+import {
+  Badge,
+  Code,
+  EmptyState,
+  Spinner,
+  Table,
+  TableContainer,
+  TBody,
+  TD,
+  TH,
+  THead,
+  TR,
+} from '@countflow/ui';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../api.js';
+import { PageHead } from '../components/PageHead.js';
 
 export function WarehousesPage() {
+  const { t } = useTranslation();
+
   const { data, isPending, error } = useQuery({
     queryKey: ['warehouses'],
     queryFn: async () => {
       const { data, error } = await api.GET('/api/warehouses');
-      if (error) throw new Error('Could not load warehouses.');
+      if (error) throw new Error('warehouses');
       return data;
     },
   });
 
   return (
     <>
-      <div className="page-head">
-        <h2>Warehouses</h2>
-      </div>
+      <PageHead title={t('nav.warehouses')} count={data?.length} />
 
-      {isPending ? <p className="cf-muted">Loading…</p> : null}
-      {error ? <p className="cf-error">{(error as Error).message}</p> : null}
+      {isPending ? <Spinner label={t('common.loading')} /> : null}
+      {error ? <p className="text-[var(--color-danger)]">{t('errors.unknown')}</p> : null}
 
-      {data && data.length === 0 ? (
-        <p className="cf-muted">
-          No warehouses yet. Run the migrator with <code>Seed__DemoData=true</code>.
-        </p>
-      ) : null}
-
-      {data && data.length > 0 ? (
-        <table className="cf-table">
-          <thead>
-            <tr>
-              <th>Code</th>
-              <th>Name</th>
-              <th>City</th>
-              <th>Country</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.map((warehouse) => (
-              <tr key={warehouse.id}>
-                <td className="cf-mono">{warehouse.code}</td>
-                <td>{warehouse.name}</td>
-                <td>{warehouse.city ?? '—'}</td>
-                <td>{warehouse.countryCode ?? '—'}</td>
-                <td>{warehouse.isActive ? 'Active' : 'Inactive'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {data ? (
+        <TableContainer>
+          <Table>
+            <THead>
+              <TR>
+                <TH>{t('locations.code')}</TH>
+                <TH>{t('items.description')}</TH>
+                <TH>City</TH>
+                <TH>Country</TH>
+                <TH>Status</TH>
+              </TR>
+            </THead>
+            <TBody>
+              {data.length === 0 ? (
+                <TR>
+                  <TD colSpan={5}>
+                    <EmptyState title={t('locations.empty')} />
+                  </TD>
+                </TR>
+              ) : (
+                data.map((warehouse) => (
+                  <TR key={warehouse.id}>
+                    <TD>
+                      <Code>{warehouse.code}</Code>
+                    </TD>
+                    <TD>{warehouse.name}</TD>
+                    <TD>{warehouse.city ?? t('common.none')}</TD>
+                    <TD>{warehouse.countryCode ?? t('common.none')}</TD>
+                    <TD>
+                      <Badge tone={warehouse.isActive ? 'success' : 'neutral'}>
+                        {warehouse.isActive ? 'Active' : 'Inactive'}
+                      </Badge>
+                    </TD>
+                  </TR>
+                ))
+              )}
+            </TBody>
+          </Table>
+        </TableContainer>
       ) : null}
     </>
   );

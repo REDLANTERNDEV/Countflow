@@ -1105,6 +1105,24 @@
           "warnings": {
             "type": "array",
             "items": {
+              "$ref": "#/components/schemas/ScanWarning"
+            }
+          }
+        }
+      },
+      "ScanWarning": {
+        "required": [
+          "code",
+          "args"
+        ],
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "args": {
+            "type": "object",
+            "additionalProperties": {
               "type": "string"
             }
           }

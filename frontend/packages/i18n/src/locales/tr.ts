@@ -1,0 +1,171 @@
+import type { Catalogue } from './en.js';
+
+/**
+ * Turkish catalogue.
+ *
+ * Typed against the English one, so a missing or misspelled key is a compile
+ * error rather than an English string surfacing on a Turkish operator's screen.
+ *
+ * Warehouse terminology follows what Turkish logistics operations actually say:
+ * "koli" for case, "palet" for pallet, "parti" for batch/lot, "raf" for the
+ * racking location. Translating these literally from English would be
+ * technically correct and unrecognisable on the floor.
+ */
+export const tr: Catalogue = {
+  common: {
+    signIn: 'Giriş yap',
+    signOut: 'Çıkış yap',
+    signingIn: 'Giriş yapılıyor…',
+    loading: 'Yükleniyor…',
+    search: 'Ara',
+    cancel: 'İptal',
+    save: 'Kaydet',
+    previous: 'Önceki',
+    next: 'Sonraki',
+    page: 'Sayfa {{page}} / {{total}}',
+    total: 'toplam {{count}}',
+    none: '—',
+    yes: 'Evet',
+    no: 'Hayır',
+    all: 'Tümü',
+    theme: 'Tema',
+    themeSystem: 'Sistem',
+    themeLight: 'Açık',
+    themeDark: 'Koyu',
+    language: 'Dil',
+    online: 'Çevrimiçi',
+    offline: 'Çevrimdışı — işler kuyrukta',
+  },
+
+  nav: {
+    warehouses: 'Depolar',
+    locations: 'Lokasyonlar',
+    items: 'Ürünler',
+    scanTest: 'Okutma testi',
+  },
+
+  auth: {
+    title: 'Countflow',
+    subtitle: 'Depo konsolu',
+    identifier: 'Kullanıcı adı veya operatör kodu',
+    operatorCode: 'Operatör kodu',
+    password: 'Parola',
+    scanBadge: 'Kartınızı okutun veya operatör kodunuzu girin',
+    failed: 'Giriş başarısız.',
+  },
+
+  locations: {
+    title: 'Lokasyonlar',
+    searchPlaceholder: 'Koda göre ara, örn. A07-03',
+    allTypes: 'Tüm tipler',
+    pickableOnly: 'Yalnızca toplanabilir',
+    code: 'Kod',
+    type: 'Tip',
+    zone: 'Bölge',
+    aisle: 'Koridor',
+    bay: 'Göz',
+    level: 'Seviye',
+    sequence: 'Sıra',
+    maxVolume: 'Maks m³',
+    maxWeight: 'Maks kg',
+    flags: 'Bayraklar',
+    virtual: 'sanal',
+    pick: 'toplama',
+    replen: 'ikmal',
+    blocked: 'bloke',
+    empty: 'Bu filtrelere uyan lokasyon yok.',
+  },
+
+  items: {
+    title: 'Ürünler',
+    searchPlaceholder: 'Stok kodu, açıklama veya GTIN ile ara',
+    allAbc: 'Tüm ABC sınıfları',
+    allTemperatures: 'Tüm sıcaklıklar',
+    sku: 'Stok kodu',
+    description: 'Açıklama',
+    abcClass: 'ABC',
+    temperature: 'Sıcaklık',
+    tracking: 'Takip',
+    packLevels: 'Paket seviyeleri',
+    caseGtin: 'Koli GTIN',
+    lot: 'parti',
+    expiry: 'skt',
+    serial: 'seri',
+    hazard: 'tehlikeli',
+    baseUnit: 'Temel birim',
+    shelfLife: 'Raf ömrü',
+    shelfLifeDays: '{{count}} gün',
+    hazardous: 'Tehlikeli madde',
+    lotTracked: 'Parti takipli',
+    expiryTracked: 'SKT takipli',
+    serialTracked: 'Seri takipli',
+    packaging: 'Paketleme hiyerarşisi',
+    packagingNote:
+      'GTIN ürünü değil, paketleme seviyesini tanımlar. Koli barkodunun okutulması, mal kabulün bir adet değil on iki adet aldığını bilmesini sağlar.',
+    baseUnits: 'Temel birim',
+    dimensions: 'U×G×Y (mm)',
+    volume: 'Hacim m³',
+    grossWeight: 'Brüt kg',
+    role: 'Rol',
+    receiving: 'mal kabul',
+    empty: 'Bu filtrelere uyan ürün yok.',
+  },
+
+  scan: {
+    title: 'Okutma testi',
+    intro:
+      'GS1-128 veya GS1 DataMatrix veri dizisini çözümler ve ürün kataloğuyla eşleştirir. Bir lojistik etiketinin tek okutması ürünü, paketleme seviyesini, partiyi, son kullanma tarihini ve miktarı taşır — mal kabulün elle girilen bir sayıya güvenmek yerine sevkiyatı doğrulamasını sağlayan şey budur.',
+    placeholder: 'GS1 barkodu yapıştırın veya okutun',
+    decode: 'Çözümle',
+    decoding: 'Çözümleniyor…',
+    tryOne: 'Birini deneyin:',
+    resolution: 'Sonuç',
+    elements: 'Çözümlenen alanlar',
+    ai: 'AI',
+    meaning: 'Anlamı',
+    value: 'Değer',
+    packagingLevel: 'Paketleme seviyesi',
+    unitsPerPack: 'Paket başına adet',
+    scannedQuantity: 'Okutulan miktar',
+    totalBaseUnits: 'Toplam temel birim',
+    batch: 'Parti',
+    expiry: 'Son kullanma',
+    serial: 'Seri no',
+    sscc: 'SSCC',
+    notRecognised: 'Bu barkodla eşleşen ürün bulunamadı.',
+    exampleCase: 'Koli etiketi — GTIN, parti, SKT, adet',
+    exampleBracketed: 'Tedarikçi dokümanındaki parantezli biçim',
+    exampleMissingLot: 'Parti takipli üründe parti numarası yok',
+    exampleExpired: 'Süresi geçmiş stok',
+    exampleUnknown: 'Katalogda olmayan GTIN',
+
+    warning: {
+      missing_lot: '{{sku}} parti takipli ancak okutmada parti numarası yok (AI 10).',
+      missing_expiry: '{{sku}} SKT takipli ancak okutmada son kullanma tarihi yok (AI 17).',
+      missing_serial: '{{sku}} seri takipli ancak okutmada seri numarası yok (AI 21).',
+      expired:
+        'Stokun süresi geçmiş ({{date}}). Yerleştirilmemeli, karantinaya alınmalı.',
+      gtin_not_found: '{{gtin}} GTIN kodu ürün kataloğunda yok.',
+      gtin_check_digit: '{{gtin}} GTIN kontrol hanesi hatalı, arama için kullanılmadı.',
+      sscc_check_digit: '{{sscc}} SSCC kontrol hanesi hatalı.',
+    },
+  },
+
+  errors: {
+    'auth.invalid_credentials': 'Girilen bilgiler geçerli değil.',
+    'auth.invalid_refresh_token': 'Oturumunuz sona erdi. Lütfen tekrar giriş yapın.',
+    'auth.user_not_found': 'Bu kullanıcı artık mevcut değil.',
+    'item.not_found': 'Bu stok koduna sahip ürün yok.',
+    'warehouse.not_found': 'Bu koda sahip depo yok.',
+    'gs1.empty': 'Hiçbir şey okutulmadı.',
+    'gs1.invalid_ai': 'Geçerli bir GS1 uygulama tanımlayıcısı değil.',
+    'gs1.truncated_ai': 'Barkod tanımlayıcının ortasında bitiyor.',
+    'gs1.truncated_value': 'Barkod değerin ortasında bitiyor.',
+    'gs1.empty_value': 'Bir uygulama tanımlayıcısı veri taşımıyor.',
+    'gs1.non_numeric': 'Sayısal bir alan rakam dışı karakter içeriyor.',
+    'gs1.invalid_date': 'Tarih alanı geçerli bir YYAAGG tarihi değil.',
+    'gs1.value_too_long': 'Bir alan, tanımlayıcısının izin verdiğinden uzun.',
+    'import.malformed_csv': 'Dosya CSV olarak okunamadı.',
+    unknown: 'Bir şeyler ters gitti.',
+  },
+};

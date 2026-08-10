@@ -1,1 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="#0e1116"/><rect x="14" y="14" width="36" height="36" rx="6" fill="#2f81f7"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="152" height="152" viewBox="0 0 152 152" role="img" aria-label="Countflow">
+
+<path d="M 71.89 24.13 A 43.00 43.00 0 1 1 71.89 103.87" fill="none" stroke="#241C1A" stroke-width="13.00" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M 80.11 48.13 A 43.00 43.00 0 1 0 80.11 127.87" fill="none" stroke="#C2542F" stroke-width="13.00" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

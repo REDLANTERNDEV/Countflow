@@ -7,6 +7,13 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <!-- Kept ON, deliberately, and it is not a limitation.
+         The API never formats for a human: it emits ISO dates, raw numbers and
+         message *codes*, and the client owns all wording and formatting. So the
+         server needs no culture data at all — and running invariant removes the
+         Turkish dotted/dotless-i casing hazard at the platform level rather than
+         relying on every future call site remembering ToUpperInvariant.
+         Ships a smaller container as a side effect. See TurkishLocaleTests. -->
     <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
 

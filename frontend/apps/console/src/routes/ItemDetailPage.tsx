@@ -1,9 +1,24 @@
+import { currentLocale, formatNumber, useTranslation } from '@countflow/i18n';
+import {
+  Badge,
+  Code,
+  Spinner,
+  Table,
+  TableContainer,
+  TBody,
+  TD,
+  TH,
+  THead,
+  TR,
+} from '@countflow/ui';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useParams } from '@tanstack/react-router';
 import { api } from '../api.js';
 
 export function ItemDetailPage() {
   const { sku } = useParams({ from: '/items/$sku' });
+  const { t } = useTranslation();
+  const locale = currentLocale();
 
   const { data, isPending, error } = useQuery({
     queryKey: ['item', sku],
@@ -12,89 +27,112 @@ export function ItemDetailPage() {
         params: { path: { sku } },
       });
 
-      if (error) throw new Error(`No item with SKU ${sku}.`);
+      if (error) throw new Error('item.not_found');
       return data;
     },
   });
 
-  if (isPending) return <p className="cf-muted">Loading…</p>;
-  if (error) return <p className="cf-error">{(error as Error).message}</p>;
+  if (isPending) return <Spinner label={t('common.loading')} />;
+  if (error) {
+    return (
+      <p className="text-[var(--color-danger)]">
+        {t([`errors.${(error as Error).message}`, 'errors.unknown'])}
+      </p>
+    );
+  }
   if (!data) return null;
 
   return (
     <>
-      <div className="page-head">
-        <div>
-          <Link to="/items" className="cf-muted">
-            ← Items
-          </Link>
-          <h2 className="detail-title">
-            <span className="cf-mono">{data.sku}</span> {data.description}
-          </h2>
-        </div>
+      <div className="mb-[var(--space-5)]">
+        <Link
+          to="/items"
+          className="text-[length:var(--text-sm)] text-[var(--color-text-tertiary)] no-underline hover:underline"
+        >
+          ← {t('items.title')}
+        </Link>
+        <h2 className="m-0 mt-[var(--space-2)] text-[length:var(--text-xl)]">
+          <Code className="text-[length:var(--text-xl)]">{data.sku}</Code>{' '}
+          <span className="font-normal">{data.description}</span>
+        </h2>
       </div>
 
-      <div className="detail-grid">
-        <Fact label="ABC class" value={data.abcClass} />
-        <Fact label="Temperature" value={data.temperatureClass} />
-        <Fact label="Base unit" value={data.baseUom} />
-        <Fact label="Lot tracked" value={data.isLotTracked ? 'Yes' : 'No'} />
-        <Fact label="Expiry tracked" value={data.isExpiryTracked ? 'Yes' : 'No'} />
-        <Fact label="Serial tracked" value={data.isSerialTracked ? 'Yes' : 'No'} />
-        <Fact label="Shelf life" value={data.shelfLifeDays ? `${data.shelfLifeDays} days` : '—'} />
-        <Fact label="Hazardous" value={data.isHazardous ? 'Yes' : 'No'} />
-      </div>
+      <dl className="mb-[var(--space-6)] grid grid-cols-[repeat(auto-fill,minmax(170px,1fr))] gap-[var(--space-4)]">
+        <Fact label={t('items.abcClass')} value={data.abcClass} />
+        <Fact label={t('items.temperature')} value={data.temperatureClass} />
+        <Fact label={t('items.baseUnit')} value={data.baseUom} />
+        <Fact label={t('items.lotTracked')} value={data.isLotTracked ? t('common.yes') : t('common.no')} />
+        <Fact label={t('items.expiryTracked')} value={data.isExpiryTracked ? t('common.yes') : t('common.no')} />
+        <Fact label={t('items.serialTracked')} value={data.isSerialTracked ? t('common.yes') : t('common.no')} />
+        <Fact
+          label={t('items.shelfLife')}
+          value={
+            data.shelfLifeDays
+              ? t('items.shelfLifeDays', { count: data.shelfLifeDays })
+              : t('common.none')
+          }
+        />
+        <Fact label={t('items.hazardous')} value={data.isHazardous ? t('common.yes') : t('common.no')} />
+      </dl>
 
-      <h3>Packaging hierarchy</h3>
-      <p className="cf-muted detail-note">
-        A GTIN identifies a packaging level, not the item. Scanning the case
-        barcode is what tells receiving it is holding twelve units rather than one.
+      <h3 className="mb-[var(--space-2)] text-[length:var(--text-lg)]">{t('items.packaging')}</h3>
+      <p className="mb-[var(--space-4)] mt-0 max-w-[78ch] text-[var(--color-text-secondary)]">
+        {t('items.packagingNote')}
       </p>
 
-      <table className="cf-table">
-        <thead>
-          <tr>
-            <th>Level</th>
-            <th className="numeric">Base units</th>
-            <th>GTIN</th>
-            <th className="numeric">L×W×H (mm)</th>
-            <th className="numeric">Volume m³</th>
-            <th className="numeric">Gross kg</th>
-            <th>Role</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.packConfigurations.map((pack) => (
-            <tr key={pack.level}>
-              <td>{pack.level}</td>
-              <td className="numeric cf-mono">{pack.baseUnitQuantity}</td>
-              <td className="cf-mono">{pack.gtin ?? <span className="cf-muted">none</span>}</td>
-              <td className="numeric cf-mono">
-                {pack.lengthMm && pack.widthMm && pack.heightMm
-                  ? `${pack.lengthMm}×${pack.widthMm}×${pack.heightMm}`
-                  : '—'}
-              </td>
-              <td className="numeric cf-mono">
-                {pack.volumeM3 ? pack.volumeM3.toFixed(5) : '—'}
-              </td>
-              <td className="numeric cf-mono">{pack.grossWeightKg ?? '—'}</td>
-              <td>
-                {pack.isReceivingUnit ? <span className="pill pill-ok">receiving</span> : null}
-                {pack.isPickUnit ? <span className="pill">pick</span> : null}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <TableContainer>
+        <Table>
+          <THead>
+            <TR>
+              <TH>{t('locations.level')}</TH>
+              <TH numeric>{t('items.baseUnits')}</TH>
+              <TH>GTIN</TH>
+              <TH numeric>{t('items.dimensions')}</TH>
+              <TH numeric>{t('items.volume')}</TH>
+              <TH numeric>{t('items.grossWeight')}</TH>
+              <TH>{t('items.role')}</TH>
+            </TR>
+          </THead>
+          <TBody>
+            {data.packConfigurations.map((pack) => (
+              <TR key={pack.level}>
+                <TD>{pack.level}</TD>
+                <TD numeric>{formatNumber(pack.baseUnitQuantity, locale)}</TD>
+                <TD>
+                  {/* Never number-formatted: a grouped GTIN is not a barcode. */}
+                  <Code>{pack.gtin ?? t('common.none')}</Code>
+                </TD>
+                <TD numeric>
+                  {pack.lengthMm && pack.widthMm && pack.heightMm ? (
+                    <Code>{`${pack.lengthMm}×${pack.widthMm}×${pack.heightMm}`}</Code>
+                  ) : (
+                    t('common.none')
+                  )}
+                </TD>
+                <TD numeric>{formatNumber(pack.volumeM3, locale, { maximumFractionDigits: 5 })}</TD>
+                <TD numeric>{formatNumber(pack.grossWeightKg, locale, { maximumFractionDigits: 3 })}</TD>
+                <TD>
+                  <div className="flex gap-[var(--space-1)]">
+                    {pack.isReceivingUnit ? (
+                      <Badge tone="success">{t('items.receiving')}</Badge>
+                    ) : null}
+                    {pack.isPickUnit ? <Badge>{t('locations.pick')}</Badge> : null}
+                  </div>
+                </TD>
+              </TR>
+            ))}
+          </TBody>
+        </Table>
+      </TableContainer>
     </>
   );
 }
 
 function Fact({ label, value }: { label: string; value: string }) {
   return (
-    <div className="fact">
-      <span className="cf-label">{label}</span>
-      <span>{value}</span>
+    <div className="flex flex-col gap-[2px]">
+      <dt className="text-[length:var(--text-xs)] text-[var(--color-text-tertiary)]">{label}</dt>
+      <dd className="m-0">{value}</dd>
     </div>
   );
 }

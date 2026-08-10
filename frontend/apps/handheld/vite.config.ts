@@ -1,3 +1,4 @@
+import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
@@ -7,6 +8,7 @@ export default defineConfig({
   base: '/handheld/',
   plugins: [
     react(),
+    tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg'],
@@ -19,8 +21,8 @@ export default defineConfig({
         display: 'standalone',
         // Scanners are held in portrait and the UI is a vertical task list.
         orientation: 'portrait',
-        background_color: '#0e1116',
-        theme_color: '#0e1116',
+        background_color: '#241C1A',
+        theme_color: '#241C1A',
         icons: [
           { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'icon-512.png', sizes: '512x512', type: 'image/png' },

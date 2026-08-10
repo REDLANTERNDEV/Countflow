@@ -1,6 +1,24 @@
+import { currentLocale, formatNumber, useTranslation } from '@countflow/i18n';
+import {
+  Badge,
+  Button,
+  Code,
+  EmptyState,
+  Input,
+  Select,
+  Spinner,
+  Table,
+  TableContainer,
+  TBody,
+  TD,
+  TH,
+  THead,
+  TR,
+} from '@countflow/ui';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { api } from '../api.js';
+import { PageHead } from '../components/PageHead.js';
 
 const LOCATION_TYPES = [
   'ReceivingDock',
@@ -18,6 +36,9 @@ const LOCATION_TYPES = [
 ] as const;
 
 export function LocationsPage() {
+  const { t } = useTranslation();
+  const locale = currentLocale();
+
   const [search, setSearch] = useState('');
   const [type, setType] = useState('');
   const [pickableOnly, setPickableOnly] = useState(false);
@@ -27,8 +48,8 @@ export function LocationsPage() {
 
   const { data, isPending, error } = useQuery({
     queryKey: ['locations', search, type, pickableOnly, page],
-    // Without this the table blanks out on every keystroke; the warehouse has
-    // thousands of bins and the flicker makes it feel broken.
+    // Without this the table blanks on every keystroke; with thousands of bins
+    // the flicker reads as breakage.
     placeholderData: keepPreviousData,
     queryFn: async () => {
       const { data, error } = await api.GET('/api/locations', {
@@ -43,7 +64,7 @@ export function LocationsPage() {
         },
       });
 
-      if (error) throw new Error('Could not load locations.');
+      if (error) throw new Error('locations');
       return data;
     },
   });
@@ -51,113 +72,134 @@ export function LocationsPage() {
   const total = data?.total ?? 0;
   const lastPage = Math.max(1, Math.ceil(total / pageSize));
 
-  function update<T>(setter: (value: T) => void) {
-    return (value: T) => {
-      setter(value);
-      setPage(1);
-    };
-  }
-
   return (
     <>
-      <div className="page-head">
-        <h2>Locations</h2>
-        <span className="cf-muted">{total.toLocaleString()} total</span>
-      </div>
+      <PageHead title={t('locations.title')} count={total} />
 
-      <div className="filter-bar">
-        <input
-          className="cf-input"
-          placeholder="Search by code, e.g. A07-03"
+      <div className="mb-[var(--space-4)] flex flex-wrap items-center gap-[var(--space-3)]">
+        <Input
+          className="w-[280px]"
+          placeholder={t('locations.searchPlaceholder')}
           value={search}
-          onChange={(event) => update(setSearch)(event.target.value)}
+          onChange={(event) => {
+            setSearch(event.target.value);
+            setPage(1);
+          }}
         />
 
-        <select
-          className="cf-input"
+        <Select
           value={type}
-          onChange={(event) => update(setType)(event.target.value)}
+          onChange={(event) => {
+            setType(event.target.value);
+            setPage(1);
+          }}
         >
-          <option value="">All types</option>
+          <option value="">{t('locations.allTypes')}</option>
           {LOCATION_TYPES.map((option) => (
             <option key={option} value={option}>
               {option}
             </option>
           ))}
-        </select>
+        </Select>
 
-        <label className="filter-check">
+        <label className="flex items-center gap-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--color-text-secondary)]">
           <input
             type="checkbox"
             checked={pickableOnly}
-            onChange={(event) => update(setPickableOnly)(event.target.checked)}
+            onChange={(event) => {
+              setPickableOnly(event.target.checked);
+              setPage(1);
+            }}
+            className="accent-[var(--color-accent)]"
           />
-          Pickable only
+          {t('locations.pickableOnly')}
         </label>
       </div>
 
-      {error ? <p className="cf-error">{(error as Error).message}</p> : null}
-      {isPending ? <p className="cf-muted">Loading…</p> : null}
+      {error ? <p className="text-[var(--color-danger)]">{t('errors.unknown')}</p> : null}
+      {isPending ? <Spinner label={t('common.loading')} /> : null}
 
       {data ? (
         <>
-          <table className="cf-table">
-            <thead>
-              <tr>
-                <th>Code</th>
-                <th>Type</th>
-                <th>Zone</th>
-                <th>Aisle</th>
-                <th>Bay</th>
-                <th>Level</th>
-                <th className="numeric">Seq</th>
-                <th className="numeric">Max m³</th>
-                <th className="numeric">Max kg</th>
-                <th>Flags</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.items.map((location) => (
-                <tr key={location.id}>
-                  <td className="cf-mono">{location.code}</td>
-                  <td>{location.type}</td>
-                  <td>{location.zoneCode ?? <span className="cf-muted">virtual</span>}</td>
-                  <td className="cf-mono">{location.aisle ?? '—'}</td>
-                  <td className="cf-mono">{location.bay ?? '—'}</td>
-                  <td className="cf-mono">{location.level ?? '—'}</td>
-                  <td className="numeric cf-mono">{location.pickSequence}</td>
-                  <td className="numeric cf-mono">{location.maxVolumeM3 ?? '—'}</td>
-                  <td className="numeric cf-mono">{location.maxWeightKg ?? '—'}</td>
-                  <td>
-                    {location.isPickable ? <span className="pill pill-ok">pick</span> : null}
-                    {location.isReplenishable ? <span className="pill">replen</span> : null}
-                    {!location.isActive ? <span className="pill pill-warn">blocked</span> : null}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <TableContainer className="max-h-[calc(100vh-260px)]">
+            <Table>
+              <THead>
+                <TR>
+                  <TH>{t('locations.code')}</TH>
+                  <TH>{t('locations.type')}</TH>
+                  <TH>{t('locations.zone')}</TH>
+                  <TH>{t('locations.aisle')}</TH>
+                  <TH>{t('locations.bay')}</TH>
+                  <TH>{t('locations.level')}</TH>
+                  <TH numeric>{t('locations.sequence')}</TH>
+                  <TH numeric>{t('locations.maxVolume')}</TH>
+                  <TH numeric>{t('locations.maxWeight')}</TH>
+                  <TH>{t('locations.flags')}</TH>
+                </TR>
+              </THead>
+              <TBody>
+                {data.items.length === 0 ? (
+                  <TR>
+                    <TD colSpan={10}>
+                      <EmptyState title={t('locations.empty')} />
+                    </TD>
+                  </TR>
+                ) : (
+                  data.items.map((location) => (
+                    <TR key={location.id}>
+                      {/* Identifiers: monospace, never locale-formatted. */}
+                      <TD>
+                        <Code>{location.code}</Code>
+                      </TD>
+                      <TD className="text-[var(--color-text-secondary)]">{location.type}</TD>
+                      <TD>
+                        {location.zoneCode ?? (
+                          <span className="text-[var(--color-text-tertiary)]">
+                            {t('locations.virtual')}
+                          </span>
+                        )}
+                      </TD>
+                      <TD>
+                        <Code>{location.aisle ?? t('common.none')}</Code>
+                      </TD>
+                      <TD>
+                        <Code>{location.bay ?? t('common.none')}</Code>
+                      </TD>
+                      <TD>
+                        <Code>{location.level ?? t('common.none')}</Code>
+                      </TD>
+                      {/* Values: grouped for the reader's locale. */}
+                      <TD numeric>{formatNumber(location.pickSequence, locale)}</TD>
+                      <TD numeric>{formatNumber(location.maxVolumeM3, locale, { maximumFractionDigits: 2 })}</TD>
+                      <TD numeric>{formatNumber(location.maxWeightKg, locale)}</TD>
+                      <TD>
+                        <div className="flex gap-[var(--space-1)]">
+                          {location.isPickable ? (
+                            <Badge tone="success">{t('locations.pick')}</Badge>
+                          ) : null}
+                          {location.isReplenishable ? <Badge>{t('locations.replen')}</Badge> : null}
+                          {!location.isActive ? (
+                            <Badge tone="danger">{t('locations.blocked')}</Badge>
+                          ) : null}
+                        </div>
+                      </TD>
+                    </TR>
+                  ))
+                )}
+              </TBody>
+            </Table>
+          </TableContainer>
 
-          <div className="pager">
-            <button
-              className="cf-button"
-              type="button"
-              disabled={page <= 1}
-              onClick={() => setPage((current) => current - 1)}
-            >
-              Previous
-            </button>
-            <span className="cf-muted">
-              Page {page} of {lastPage}
+          <div className="mt-[var(--space-4)] flex items-center gap-[var(--space-4)]">
+            <Button size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+              {t('common.previous')}
+            </Button>
+            <span className="text-[length:var(--text-sm)] text-[var(--color-text-tertiary)] tabular-nums">
+              {t('common.page', { page, total: lastPage })}
             </span>
-            <button
-              className="cf-button"
-              type="button"
-              disabled={page >= lastPage}
-              onClick={() => setPage((current) => current + 1)}
-            >
-              Next
-            </button>
+            <Button size="sm" disabled={page >= lastPage} onClick={() => setPage((p) => p + 1)}>
+              {t('common.next')}
+            </Button>
           </div>
         </>
       ) : null}

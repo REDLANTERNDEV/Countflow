@@ -1,63 +1,86 @@
+import { useTranslation } from '@countflow/i18n';
+import { Button, Field, Input, LogoSymbol } from '@countflow/ui';
 import { useState, type FormEvent } from 'react';
 import { useAuth } from '../auth.js';
+import { LanguageSwitcher } from '../components/LanguageSwitcher.js';
+import { ThemeSwitcher } from '../components/ThemeSwitcher.js';
 
 export function LoginPage() {
   const { signIn } = useAuth();
+  const { t } = useTranslation();
+
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [errorCode, setErrorCode] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setSubmitting(true);
-    setError(null);
+    setErrorCode(null);
 
     const failure = await signIn(identifier, password);
-    setError(failure);
+    setErrorCode(failure);
     setSubmitting(false);
   }
 
   return (
-    <main className="login-shell">
-      <form className="cf-card login-card" onSubmit={handleSubmit}>
-        <h1 className="login-title">Countflow</h1>
-        <p className="cf-muted login-subtitle">Warehouse console</p>
+    <main className="grid min-h-screen place-items-center p-[var(--space-5)]">
+      {/* Language and theme are reachable before signing in — an operator who
+          cannot read English needs to switch before they can find anything. */}
+      <div className="absolute right-[var(--space-5)] top-[var(--space-5)] flex gap-[var(--space-3)]">
+        <LanguageSwitcher />
+        <ThemeSwitcher />
+      </div>
 
-        <div className="cf-field">
-          <label className="cf-label" htmlFor="identifier">
-            Username or operator code
-          </label>
-          <input
-            id="identifier"
-            className="cf-input"
-            value={identifier}
-            onChange={(event) => setIdentifier(event.target.value)}
-            autoComplete="username"
-            required
-          />
+      <form
+        onSubmit={handleSubmit}
+        className="w-[min(360px,100%)] rounded-[var(--radius-surface)]
+                   border border-[var(--color-border-subtle)]
+                   bg-[var(--color-surface-raised)] p-[var(--space-6)]"
+      >
+        <LogoSymbol size={40} className="mb-[var(--space-4)]" />
+        <h1 className="m-0 text-[length:var(--text-2xl)] tracking-[var(--tracking-display)]">
+          {t('auth.title')}
+        </h1>
+        <p className="mb-[var(--space-6)] mt-[var(--space-1)] text-[var(--color-text-tertiary)]">
+          {t('auth.subtitle')}
+        </p>
+
+        <div className="flex flex-col gap-[var(--space-4)]">
+          <Field label={t('auth.identifier')} htmlFor="identifier">
+            <Input
+              id="identifier"
+              value={identifier}
+              onChange={(event) => setIdentifier(event.target.value)}
+              autoComplete="username"
+              required
+            />
+          </Field>
+
+          <Field label={t('auth.password')} htmlFor="password">
+            <Input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              autoComplete="current-password"
+              required
+            />
+          </Field>
+
+          {errorCode ? (
+            <p className="text-[length:var(--text-sm)] text-[var(--color-danger)]">
+              {/* The server sent a code; the wording is ours, in the reader's
+                  language. */}
+              {t([`errors.${errorCode}`, 'errors.unknown'])}
+            </p>
+          ) : null}
+
+          <Button type="submit" variant="primary" disabled={submitting} className="w-full">
+            {submitting ? t('common.signingIn') : t('common.signIn')}
+          </Button>
         </div>
-
-        <div className="cf-field">
-          <label className="cf-label" htmlFor="password">
-            Password
-          </label>
-          <input
-            id="password"
-            type="password"
-            className="cf-input"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            autoComplete="current-password"
-            required
-          />
-        </div>
-
-        {error ? <p className="cf-error">{error}</p> : null}
-
-        <button className="cf-button login-submit" type="submit" disabled={submitting}>
-          {submitting ? 'Signing in…' : 'Sign in'}
-        </button>
       </form>
     </main>
   );

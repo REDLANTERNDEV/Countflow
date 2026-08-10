@@ -202,7 +202,12 @@ public sealed class MasterDataTests(CountflowApiFixture fixture)
 
         Assert.NotNull(scan);
         Assert.False(scan.ItemRecognised);
-        Assert.Contains(scan.Warnings, w => w.Contains("not in the item catalogue"));
+        // Asserting the code rather than the wording: the API returns codes so
+        // the client can render Turkish, and a test tied to English prose would
+        // break the moment the catalogue is reworded.
+        var warning = Assert.Single(scan.Warnings);
+        Assert.Equal("gtin_not_found", warning.Code);
+        Assert.Equal("09501101530003", warning.Args["gtin"]);
     }
 
     [Fact]
@@ -306,7 +311,9 @@ public sealed class MasterDataTests(CountflowApiFixture fixture)
         string? LotNumber,
         DateOnly? ExpiryDate,
         int? BaseUnitQuantity,
-        List<string> Warnings);
+        List<ScanWarningBody> Warnings);
+
+    private sealed record ScanWarningBody(string Code, Dictionary<string, string> Args);
 
     private sealed record ScanItemBody(string Sku, string PackagingLevel, int BaseUnitQuantity);
 

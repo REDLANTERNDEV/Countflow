@@ -22,6 +22,17 @@ public sealed record ScannedItemResponse(
     bool IsExpiryTracked,
     bool IsSerialTracked);
 
+/// <summary>
+/// A scan warning as a code plus its arguments, never as prose.
+/// <para>
+/// The API deliberately does not decide wording. An operator on a Turkish
+/// handheld must see Turkish, and a server that returns English sentences makes
+/// that impossible without shipping translations into the backend. The client
+/// owns language; the server owns meaning.
+/// </para>
+/// </summary>
+public sealed record ScanWarning(string Code, IReadOnlyDictionary<string, string> Args);
+
 public sealed record ScanResolutionResponse(
     bool ItemRecognised,
     ScannedItemResponse? Item,
@@ -35,7 +46,19 @@ public sealed record ScanResolutionResponse(
     int? ScannedQuantity,
     int? BaseUnitQuantity,
     IReadOnlyList<ScanElementResponse> Elements,
-    IReadOnlyList<string> Warnings);
+    IReadOnlyList<ScanWarning> Warnings);
+
+/// <summary>Stable warning codes. Clients translate these; never reword them casually.</summary>
+public static class ScanWarningCodes
+{
+    public const string MissingLot = "missing_lot";
+    public const string MissingExpiry = "missing_expiry";
+    public const string MissingSerial = "missing_serial";
+    public const string Expired = "expired";
+    public const string GtinNotFound = "gtin_not_found";
+    public const string GtinCheckDigit = "gtin_check_digit";
+    public const string SsccCheckDigit = "sscc_check_digit";
+}
 
 /// <summary>
 /// Turns a raw scan into everything the warehouse knows about it.
@@ -62,7 +85,12 @@ public static class ResolveScan
                 }
 
                 var scan = parsed.Value;
-                var warnings = new List<string>();
+                var warnings = new List<ScanWarning>();
+
+                void Warn(string code, params (string Key, string Value)[] args) =>
+                    warnings.Add(new ScanWarning(
+                        code,
+                        args.ToDictionary(a => a.Key, a => a.Value)));
 
                 var elements = scan.Elements
                     .Select(e => new ScanElementResponse(e.Ai, e.Title, e.Value))
@@ -99,38 +127,41 @@ public static class ResolveScan
 
                         if (matched.IsLotTracked && string.IsNullOrWhiteSpace(scan.LotNumber))
                         {
-                            warnings.Add($"{matched.Sku} is lot-tracked but the scan carries no batch number (AI 10).");
+                            Warn(ScanWarningCodes.MissingLot, ("sku", matched.Sku));
                         }
 
                         if (matched.IsExpiryTracked && scan.ExpiryDate is null)
                         {
-                            warnings.Add($"{matched.Sku} is expiry-tracked but the scan carries no expiry date (AI 17).");
+                            Warn(ScanWarningCodes.MissingExpiry, ("sku", matched.Sku));
                         }
 
                         if (matched.IsSerialTracked && string.IsNullOrWhiteSpace(scan.SerialNumber))
                         {
-                            warnings.Add($"{matched.Sku} is serial-tracked but the scan carries no serial (AI 21).");
+                            Warn(ScanWarningCodes.MissingSerial, ("sku", matched.Sku));
                         }
 
                         if (matched.IsExpiryTracked && scan.ExpiryDate is { } expiry
                             && expiry < DateOnly.FromDateTime(DateTime.UtcNow))
                         {
-                            warnings.Add($"Stock is already expired ({expiry:yyyy-MM-dd}). It must be quarantined, not put away.");
+                            // ISO date as the argument: the client formats it for the
+                            // reader's locale, so the server never guesses at dd.MM.yyyy
+                            // versus MM/dd/yyyy.
+                            Warn(ScanWarningCodes.Expired, ("date", expiry.ToString("yyyy-MM-dd")));
                         }
                     }
                     else
                     {
-                        warnings.Add($"GTIN {gtin.Value} is not in the item catalogue.");
+                        Warn(ScanWarningCodes.GtinNotFound, ("gtin", gtin.Value));
                     }
                 }
                 else if (scan.Find("01") is { } malformed)
                 {
-                    warnings.Add($"GTIN '{malformed}' failed its check digit and was not used for lookup.");
+                    Warn(ScanWarningCodes.GtinCheckDigit, ("gtin", malformed));
                 }
 
                 if (scan.Sscc is not null && !scan.HasValidSscc)
                 {
-                    warnings.Add($"SSCC {scan.Sscc} failed its check digit.");
+                    Warn(ScanWarningCodes.SsccCheckDigit, ("sscc", scan.Sscc));
                 }
 
                 var response = new ScanResolutionResponse(

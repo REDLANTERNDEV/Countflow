@@ -1,10 +1,14 @@
+import { initI18n } from '@countflow/i18n';
+import { ThemeProvider } from '@countflow/ui';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import '@countflow/ui/styles.css';
 import './styles.css';
 import { App } from './App.js';
 import { AuthProvider } from './auth.js';
+
+// The console uses the whole catalogue; the handheld narrows it.
+initI18n();
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -24,10 +28,12 @@ if (!container) {
 
 createRoot(container).render(
   <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <App />
-      </AuthProvider>
-    </QueryClientProvider>
+    <ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <App />
+        </AuthProvider>
+      </QueryClientProvider>
+    </ThemeProvider>
   </StrictMode>,
 );

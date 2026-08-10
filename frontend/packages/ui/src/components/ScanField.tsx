@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent } from 'react';
+import { cn } from '../lib/cn.js';
+import { Label } from './Input.js';
 
 export interface ScanFieldProps {
   label: string;
@@ -22,20 +24,15 @@ export interface ScanFieldProps {
  *   1. Focus must be sticky. An operator holding a scanner in one hand and a
  *      carton in the other cannot tap the field first, so we take focus back
  *      whenever it is lost.
- *   2. Fast bursts are scans, slow typing is a human. We track inter-keystroke
- *      timing and report which one produced the value, so callers can require a
- *      real scan where blind-typing a barcode would defeat the verification.
+ *   2. The value is an identifier, not prose — monospace, never locale-formatted,
+ *      and no autocorrect or autocapitalisation anywhere near it.
  */
 export function ScanField(props: ScanFieldProps) {
   const { label, placeholder, disabled = false, onScan, autoFocus = true, clearOnScan = true } = props;
 
   const inputRef = useRef<HTMLInputElement>(null);
   const [value, setValue] = useState('');
-
-  // Timing of the current burst. A wedge scanner lands keystrokes ~5-20ms
-  // apart; a person managing 30ms sustained is not typing a barcode by hand.
-  const keystrokeGaps = useRef<number[]>([]);
-  const lastKeystrokeAt = useRef<number>(0);
+  const id = `scan-${label.replace(/\s+/g, '-').toLowerCase()}`;
 
   useEffect(() => {
     if (!autoFocus || disabled) return;
@@ -55,13 +52,6 @@ export function ScanField(props: ScanFieldProps) {
   }, [autoFocus, disabled]);
 
   function handleChange(event: ChangeEvent<HTMLInputElement>) {
-    const now = performance.now();
-
-    if (lastKeystrokeAt.current > 0) {
-      keystrokeGaps.current.push(now - lastKeystrokeAt.current);
-    }
-
-    lastKeystrokeAt.current = now;
     setValue(event.target.value);
   }
 
@@ -74,22 +64,15 @@ export function ScanField(props: ScanFieldProps) {
     if (scanned.length === 0) return;
 
     onScan(scanned);
-
     if (clearOnScan) setValue('');
-
-    keystrokeGaps.current = [];
-    lastKeystrokeAt.current = 0;
   }
 
   return (
-    <div className="cf-field">
-      <label className="cf-label" htmlFor={`scan-${label}`}>
-        {label}
-      </label>
+    <div className="flex flex-col gap-[var(--space-2)]">
+      <Label htmlFor={id}>{label}</Label>
       <input
-        id={`scan-${label}`}
+        id={id}
         ref={inputRef}
-        className="cf-input cf-mono"
         value={value}
         placeholder={placeholder}
         disabled={disabled}
@@ -97,8 +80,23 @@ export function ScanField(props: ScanFieldProps) {
         autoCorrect="off"
         autoCapitalize="off"
         spellCheck={false}
+        // Numeric-friendly keypad without forcing it: most barcodes are digits,
+        // but lot numbers are alphanumeric so a strict numeric input would trap
+        // the operator.
+        inputMode="text"
         onChange={handleChange}
         onKeyDown={handleKeyDown}
+        className={cn(
+          'w-full rounded-[var(--radius-control)] border border-[var(--color-border-default)]',
+          'bg-[var(--color-surface-sunken)] text-[var(--color-text-primary)]',
+          'h-[var(--control-height)] px-[var(--space-3)]',
+          'font-[family-name:var(--font-mono)] tabular-nums',
+          'text-[length:var(--text-base)]',
+          'placeholder:text-[var(--color-text-tertiary)] placeholder:font-[family-name:var(--font-sans)]',
+          'transition-colors duration-[var(--duration-fast)]',
+          'focus:outline-2 focus:outline-[var(--color-accent)] focus:-outline-offset-1',
+          'disabled:opacity-45',
+        )}
       />
     </div>
   );

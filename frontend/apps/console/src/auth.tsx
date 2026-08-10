@@ -46,14 +46,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  /** Returns null on success, or the server's error *code* for the caller to translate. */
   const signIn = useCallback(async (identifier: string, password: string) => {
     const { data, error } = await api.POST('/api/auth/login', {
       body: { identifier, password },
     });
 
     if (error || !data) {
-      const problem = error as { detail?: string } | undefined;
-      return problem?.detail ?? 'Sign in failed.';
+      // The problem document carries a stable `code` extension alongside its
+      // English `detail`. We use the code so the wording can be Turkish.
+      const problem = error as { code?: string } | undefined;
+      return problem?.code ?? 'unknown';
     }
 
     tokenStore.write({

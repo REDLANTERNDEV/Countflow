@@ -1,0 +1,22 @@
+{
+  "name": "@countflow/i18n",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "node --test test/*.mjs"
+  },
+  "dependencies": {
+    "i18next": "catalog:",
+    "i18next-browser-languagedetector": "catalog:",
+    "react-i18next": "catalog:"
+  },
+  "devDependencies": {
+    "react": "catalog:",
+    "typescript": "catalog:"
+  }
+}

@@ -343,7 +343,13 @@ export interface components {
             /** Format: int32 */
             baseUnitQuantity: null | number;
             elements: components["schemas"]["ScanElementResponse"][];
-            warnings: string[];
+            warnings: components["schemas"]["ScanWarning"][];
+        };
+        ScanWarning: {
+            code: string;
+            args: {
+                [key: string]: string;
+            };
         };
         ScannedItemResponse: {
             /** Format: uuid */

@@ -1,9 +1,26 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-density="console">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <title>Countflow Console</title>
+    <!--
+      Resolve the theme before first paint. Doing this from React is one frame
+      too late: the page paints with the default first, so a dark-themed session
+      flashes white on every load. Kept in sync with THEME_STORAGE_KEY.
+    -->
+    <script>
+      (function () {
+        try {
+          var p = localStorage.getItem('countflow.theme');
+          var d = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          document.documentElement.dataset.theme = p === 'light' || p === 'dark' ? p : d;
+        } catch (e) {
+          document.documentElement.dataset.theme = 'light';
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
