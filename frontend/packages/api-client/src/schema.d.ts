@@ -174,6 +174,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/inventory/scrap": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Write stock off to the Scrap counterparty. */
+        post: operations["ScrapStock"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/inventory/status-changes": {
         parameters: {
             query?: never;
@@ -259,6 +276,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/inventory/reconciliation/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Recent reconciliation passes, newest first. */
+        get: operations["GetReconciliationHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/inventory/accuracy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Count accuracy by zone and velocity band over a window. */
+        get: operations["GetCountAccuracy"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/inventory/reservations/stranded": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Open commitments standing against holdings that can no longer meet them. */
+        get: operations["GetStrandedReservations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/rules/sets": {
         parameters: {
             query?: never;
@@ -321,6 +389,23 @@ export interface paths {
         put?: never;
         /** Run the allocation rules without reserving anything. */
         post: operations["PreviewAllocation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/rules/cycle-count/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Run the cycle-count policy without raising any work. */
+        post: operations["PreviewCountPolicy"];
         delete?: never;
         options?: never;
         head?: never;
@@ -423,6 +508,23 @@ export interface paths {
         put?: never;
         /** Confirm a task at the location the operator actually scanned. */
         post: operations["CompleteWorkTask"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/work/statistics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Completion and override rates by task kind over a window. */
+        get: operations["GetWorkStatistics"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -619,6 +721,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/counting/plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List count plans, newest first. */
+        get: operations["GetCountPlans"];
+        put?: never;
+        /** Raise a batch of cycle counts chosen by the counting policy. */
+        post: operations["CreateCountPlan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/counting/plans/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One count plan and its holdings. */
+        get: operations["GetCountPlan"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/counting/plans/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Withdraw a plan's outstanding counts. */
+        post: operations["CancelCountPlan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/login": {
         parameters: {
             query?: never;
@@ -693,6 +847,19 @@ export interface components {
     schemas: {
         /** @enum {string} */
         AbcClass: "A" | "B" | "C";
+        AccuracySlice: {
+            key: string;
+            /** Format: int32 */
+            counted: number;
+            /** Format: int32 */
+            accurate: number;
+            /** Format: double */
+            netVariance: number;
+            /** Format: double */
+            absoluteVariance: number;
+            /** Format: double */
+            accuracyRate?: null | number;
+        };
         AdjustStockRequest: {
             sku: string;
             /** Format: double */
@@ -780,6 +947,16 @@ export interface components {
             /** Format: int64 */
             lastMovementSequence: number;
         };
+        CancelCountPlanRequest: {
+            reason?: null | string;
+        };
+        CancelCountPlanResponse: {
+            /** Format: uuid */
+            id: string;
+            reference: string;
+            /** Format: int32 */
+            withdrawnCount: number;
+        };
         CancelOrderRequest: {
             reason: string;
         };
@@ -810,10 +987,112 @@ export interface components {
         CompleteWorkTaskRequest: {
             toLocationCode: string;
             overrideReason?: null | string;
+            /** Format: double */
+            countedQuantity?: null | number;
         };
         CompleteWorkTaskResponse: {
             task: components["schemas"]["WorkTaskResponse"];
             movements: components["schemas"]["PostedMovement"][];
+            count?: null | components["schemas"]["CountOutcome"];
+        };
+        CountAccuracyResponse: {
+            /** Format: date-time */
+            from: string;
+            /** Format: date-time */
+            to: string;
+            overall: components["schemas"]["AccuracySlice"];
+            byZone: components["schemas"]["AccuracySlice"][];
+            byClass: components["schemas"]["AccuracySlice"][];
+        };
+        CountOutcome: {
+            /** Format: uuid */
+            countId: string;
+            /** Format: double */
+            expectedQuantity: number;
+            /** Format: double */
+            countedQuantity: number;
+            /** Format: double */
+            variance: number;
+            adjustment: null | components["schemas"]["PostedMovement"];
+            wasAlreadyCounted: boolean;
+        };
+        CountPlanLineResponse: {
+            /** Format: uuid */
+            id: string;
+            sku: string;
+            lotNumber: null | string;
+            locationCode: string;
+            condition: components["schemas"]["StockCondition"];
+            /** Format: double */
+            expectedQuantity: number;
+            /** Format: int32 */
+            rank: number;
+            /** Format: double */
+            score: number;
+            /** Format: uuid */
+            workTaskId: null | string;
+            state: null | components["schemas"]["WorkTaskState"];
+            /** Format: double */
+            countedQuantity: null | number;
+            /** Format: double */
+            variance: null | number;
+            /** Format: date-time */
+            countedAt: null | string;
+            countedByUserName: null | string;
+        };
+        CountPlanPage: {
+            items: components["schemas"]["CountPlanSummaryResponse"][];
+            /** Format: int32 */
+            total: number;
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            pageSize: number;
+        };
+        CountPlanResponse: {
+            /** Format: uuid */
+            id: string;
+            reference: string;
+            status: components["schemas"]["CountPlanStatus"];
+            warehouseCode: string;
+            /** Format: int32 */
+            requestedTasks: number;
+            /** Format: int32 */
+            raisedCount: number;
+            /** Format: int32 */
+            completedCount: number;
+            /** Format: int32 */
+            varianceCount: number;
+            /** Format: uuid */
+            decisionTraceId: string;
+            /** Format: date-time */
+            createdAt: string;
+            createdByUserName: string;
+            /** Format: date-time */
+            completedAt: null | string;
+            notes: null | string;
+            lines: components["schemas"]["CountPlanLineResponse"][];
+        };
+        /** @enum {string} */
+        CountPlanStatus: "Open" | "Completed" | "Cancelled";
+        CountPlanSummaryResponse: {
+            /** Format: uuid */
+            id: string;
+            reference: string;
+            status: components["schemas"]["CountPlanStatus"];
+            /** Format: int32 */
+            requestedTasks: number;
+            /** Format: int32 */
+            raisedCount: number;
+            /** Format: int32 */
+            completedCount: number;
+            /** Format: int32 */
+            varianceCount: number;
+            /** Format: uuid */
+            decisionTraceId: string;
+            /** Format: date-time */
+            createdAt: string;
+            createdByUserName: string;
         };
         CreateAsnLineRequest: {
             sku: string;
@@ -831,6 +1110,15 @@ export interface components {
             /** Format: date-time */
             expectedAt?: null | string;
             carrierReference?: null | string;
+            notes?: null | string;
+        };
+        CreateCountPlanRequest: {
+            warehouseCode: string;
+            /**
+             * Format: int32
+             * @default 20
+             */
+            maxTasks: number;
             notes?: null | string;
         };
         CreateOrderLineRequest: {
@@ -858,7 +1146,7 @@ export interface components {
             notes?: null | string;
         };
         /** @enum {string} */
-        DecisionKind: "Putaway" | "Allocation" | "Waving" | "TaskAssignment";
+        DecisionKind: "Putaway" | "Allocation" | "Waving" | "TaskAssignment" | "CycleCount";
         DecisionTraceView: {
             /** Format: uuid */
             id: string;
@@ -1148,6 +1436,34 @@ export interface components {
             admissibleCount: number;
             trace: components["schemas"]["DecisionTraceView"];
         };
+        PreviewCountLine: {
+            locationCode: string;
+            lotNumber: null | string;
+            /** Format: double */
+            expectedQuantity: number;
+            /** Format: int32 */
+            rank: number;
+            /** Format: double */
+            score: number;
+        };
+        PreviewCountPolicyRequest: {
+            warehouseCode: string;
+            /**
+             * Format: int32
+             * @default 20
+             */
+            maxTasks: number;
+        };
+        PreviewCountPolicyResponse: {
+            /** Format: uuid */
+            decisionTraceId: string;
+            lines: components["schemas"]["PreviewCountLine"][];
+            /** Format: int32 */
+            consideredCount: number;
+            /** Format: int32 */
+            admissibleCount: number;
+            trace: components["schemas"]["DecisionTraceView"];
+        };
         PreviewPutawayRequest: {
             sku: string;
             /** Format: double */
@@ -1203,6 +1519,28 @@ export interface components {
             isClean: boolean;
             drift: components["schemas"]["BalanceDriftResponse"][];
         };
+        ReconciliationRunResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            runAt: string;
+            trigger: components["schemas"]["ReconciliationTrigger"];
+            /** Format: int64 */
+            movementsReplayed: number;
+            /** Format: int32 */
+            holdingsChecked: number;
+            /** Format: double */
+            ledgerSum: number;
+            /** Format: int32 */
+            driftCount: number;
+            /** Format: double */
+            worstDrift: number;
+            /** Format: int64 */
+            elapsedMilliseconds: number;
+            isClean: boolean;
+        };
+        /** @enum {string} */
+        ReconciliationTrigger: "Periodic" | "Manual";
         RefreshRequest: {
             refreshToken: string;
         };
@@ -1369,6 +1707,19 @@ export interface components {
             contribution: number;
             reason: components["schemas"]["RuleNote"];
         };
+        /** @enum {string} */
+        ScrapCause: "Damaged" | "Expired" | "Destroyed";
+        ScrapStockRequest: {
+            sku: string;
+            /** Format: double */
+            quantity: number;
+            locationCode: string;
+            cause: components["schemas"]["ScrapCause"];
+            notes: string;
+            lotNumber?: null | string;
+            sscc?: null | string;
+            status?: null | components["schemas"]["InventoryStatus"];
+        };
         StockBalanceResponse: {
             sku: string;
             description: string;
@@ -1431,6 +1782,27 @@ export interface components {
             decisionTraceId: null | string;
             notes: null | string;
         };
+        StrandedReservationResponse: {
+            /** Format: uuid */
+            reservationId: string;
+            ownerReference: string;
+            sku: string;
+            lotNumber: null | string;
+            locationCode: string;
+            status: components["schemas"]["InventoryStatus"];
+            /** Format: double */
+            reservedQuantity: number;
+            /** Format: double */
+            onHandQuantity: number;
+            /** Format: double */
+            totalReserved: number;
+            /** Format: double */
+            shortfall: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: int32 */
+            ageDays: number;
+        };
         /** @enum {string} */
         TemperatureClass: "Ambient" | "Chilled" | "Frozen";
         TracedCandidate: {
@@ -1491,6 +1863,26 @@ export interface components {
         };
         /** @enum {string} */
         WaveStatus: "Planned" | "Released" | "Cancelled";
+        WorkKindStatistics: {
+            kind: components["schemas"]["WorkTaskKind"];
+            /** Format: int32 */
+            completed: number;
+            /** Format: int32 */
+            overridden: number;
+            /** Format: int32 */
+            cancelled: number;
+            /** Format: int32 */
+            open: number;
+            /** Format: double */
+            overrideRate?: null | number;
+        };
+        WorkStatisticsResponse: {
+            /** Format: date-time */
+            from: string;
+            /** Format: date-time */
+            to: string;
+            byKind: components["schemas"]["WorkKindStatistics"][];
+        };
         WorkTaskDetailResponse: {
             task: components["schemas"]["WorkTaskResponse"];
             decision: null | components["schemas"]["DecisionTraceView"];
@@ -1536,6 +1928,8 @@ export interface components {
             completedAtLocationCode: null | string;
             wasOverridden: boolean;
             overrideReason: null | string;
+            /** Format: double */
+            countedQuantity: null | number;
         };
         /** @enum {string} */
         WorkTaskState: "Ready" | "Assigned" | "Completed" | "Cancelled";
@@ -1935,6 +2329,68 @@ export interface operations {
             };
         };
     };
+    ScrapStock: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScrapStockRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MovementReceiptResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     ChangeStockStatus: {
         parameters: {
             query?: never;
@@ -2169,6 +2625,99 @@ export interface operations {
             };
         };
     };
+    GetReconciliationHistory: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReconciliationRunResponse"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetCountAccuracy: {
+        parameters: {
+            query: {
+                warehouseId: string;
+                from?: string;
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountAccuracyResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetStrandedReservations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StrandedReservationResponse"][];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     GetRuleSets: {
         parameters: {
             query?: {
@@ -2284,6 +2833,48 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PreviewAllocationResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    PreviewCountPolicy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PreviewCountPolicyRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreviewCountPolicyResponse"];
                 };
             };
             /** @description Bad Request */
@@ -2522,6 +3113,39 @@ export interface operations {
             };
             /** @description Conflict */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetWorkStatistics: {
+        parameters: {
+            query: {
+                warehouseId: string;
+                from?: string;
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkStatisticsResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3093,6 +3717,177 @@ export interface operations {
             };
             /** @description Bad Request */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetCountPlans: {
+        parameters: {
+            query?: {
+                warehouseId?: string;
+                status?: components["schemas"]["CountPlanStatus"];
+                page?: number;
+                pageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountPlanPage"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CreateCountPlan: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCountPlanRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountPlanResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetCountPlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountPlanResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CancelCountPlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": null | components["schemas"]["CancelCountPlanRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CancelCountPlanResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

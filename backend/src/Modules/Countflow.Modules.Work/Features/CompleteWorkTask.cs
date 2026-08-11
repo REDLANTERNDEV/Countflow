@@ -116,12 +116,32 @@ public static class CompleteWorkTask
         var destination = await locations.FindByCodeAsync(request.ToLocationCode.Trim(), cancellationToken);
         if (destination is null) return Result.Failure<CompleteWorkTaskResponse>(WorkErrors.LocationNotFound);
 
+        var isCount = task.Kind == WorkTaskKind.CycleCount;
+
+        if (isCount)
+        {
+            // A count names one holding, so scanning a different bay is a mis-scan
+            // and not the judgement an override records. See WorkErrors.
+            if (destination.Id != task.FromLocationId)
+            {
+                return Result.Failure<CompleteWorkTaskResponse>(WorkErrors.CountLocationMismatch);
+            }
+
+            if (request.CountedQuantity is null)
+            {
+                return Result.Failure<CompleteWorkTaskResponse>(WorkErrors.CountQuantityRequired);
+            }
+        }
+
         var posted = await PostAsync(
-            posting, task, destination.Id, decisionTraceId, idempotencyKey, actor.Value, cancellationToken);
+            posting, task, request, destination.Id, decisionTraceId, idempotencyKey, actor.Value, cancellationToken);
 
         if (posted.IsFailure) return Result.Failure<CompleteWorkTaskResponse>(posted.Error);
 
-        var overridden = task.SuggestedLocationId != destination.Id;
+        // A count has nothing to override: the operator is reporting a number rather
+        // than choosing a destination, and their disagreement with the system is
+        // recorded as the variance, which says far more than a boolean could.
+        var overridden = !isCount && task.SuggestedLocationId != destination.Id;
 
         task.Status = WorkTaskStatus.Completed;
         task.CompletedAt = clock.GetUtcNow();
@@ -129,6 +149,7 @@ public static class CompleteWorkTask
         task.CompletedByUserId = actor.Value.UserId;
         task.CompletedByUserName = actor.Value.UserName;
         task.CompletionIdempotencyKey = idempotencyKey;
+        task.CountedQuantity = isCount ? request.CountedQuantity : null;
         task.WasOverridden = overridden;
         task.OverrideReason = overridden ? request.OverrideReason : null;
 
@@ -156,19 +177,40 @@ public static class CompleteWorkTask
                 request.OverrideReason ?? "no reason given");
         }
 
+        if (posted.Value.Count is { Variance: not 0m } variance)
+        {
+            // At warning for the same reason an override is: a variance is the
+            // measurable disagreement between the record and the building, and the
+            // whole of Phase 5's claim is that a warehouse should not have to run a
+            // report to find out its numbers were wrong.
+            logger.LogWarning(
+                "Count variance on task {TaskId} at {Location}: book said {Expected}, {User} found {Counted} ({Variance})",
+                task.Id,
+                destination.Code,
+                variance.ExpectedQuantity,
+                actor.Value.UserName,
+                variance.CountedQuantity,
+                variance.Variance);
+        }
+
         return new CompleteWorkTaskResponse(
-            await describe.DescribeAsync(task, cancellationToken), posted.Value);
+            await describe.DescribeAsync(task, cancellationToken),
+            posted.Value.Movements,
+            posted.Value.Count);
     }
+
+    /// <summary>What a confirmation produced: nought, one or several ledger lines, and a finding if it was a count.</summary>
+    private sealed record Confirmation(IReadOnlyList<PostedMovement> Movements, CountOutcome? Count = null);
 
     /// <summary>
     /// What confirming a job means, by kind.
     /// <para>
-    /// The one place in the module that knows the difference, and it is four
-    /// lines. Everything else — the queue, the claim, the override recording, the
-    /// handheld screen — is written against "take stock from here, confirm it at
-    /// there", which is what a putaway and a pick both are. A second screen or a
-    /// second endpoint per kind would have been a sign the task model was drawn
-    /// wrong; a switch over which published operation to call is not.
+    /// The one place in the module that knows the difference, and it is still a
+    /// switch over which published operation to call. Everything else — the queue,
+    /// the claim, the override recording, the handheld screen — is written against
+    /// "go here, tell me what happened", which is what a putaway, a pick and a count
+    /// all are. A second screen or a second endpoint per kind would have been a sign
+    /// the task model was drawn wrong.
     /// </para>
     /// <para>
     /// A pallet moves whole; loose stock moves by the line. A putaway task
@@ -177,16 +219,61 @@ public static class CompleteWorkTask
     /// key family. A pick is the opposite motion: it names the commitment it
     /// discharges and takes exactly what was promised off the plate.
     /// </para>
+    /// <para>
+    /// <b>And a count moves nothing.</b> Phase 5's addition is the branch that
+    /// returns an empty list of movements as a success, which is why this method
+    /// hands back a <see cref="Confirmation"/> rather than the bare list it used to:
+    /// a count that agreed with the book has no ledger line to report and still has
+    /// everything to say. Whether there is anything to post is Inventory's decision
+    /// and not this module's — Work reports what the operator found and is told what
+    /// became of it.
+    /// </para>
     /// </summary>
-    private static async Task<Result<IReadOnlyList<PostedMovement>>> PostAsync(
+    private static async Task<Result<Confirmation>> PostAsync(
         IStockPosting posting,
         WorkTask task,
+        CompleteWorkTaskRequest request,
         Guid destinationId,
         Guid decisionTraceId,
         string idempotencyKey,
         PostingActor actor,
         CancellationToken cancellationToken)
     {
+        if (task.Kind == WorkTaskKind.CycleCount)
+        {
+            // Guarded by the caller, which has already refused a count with no
+            // number. Repeated as a pattern rather than a bang so a future caller
+            // cannot quietly post a null as a zero — "found nothing" and "did not
+            // answer" are the two things this whole feature must never confuse.
+            if (request.CountedQuantity is not { } found)
+            {
+                return Result.Failure<Confirmation>(WorkErrors.CountQuantityRequired);
+            }
+
+            var counted = await posting.CountAsync(
+                new CountInstruction
+                {
+                    ItemId = task.ItemId,
+                    LotId = task.LotId,
+                    LocationId = task.FromLocationId,
+                    LicensePlateId = task.LicensePlateId,
+                    Condition = task.Condition,
+                    CountedQuantity = found,
+                    IdempotencyKey = idempotencyKey,
+                    Actor = actor,
+                    TaskId = task.Id,
+                    DecisionTraceId = decisionTraceId,
+                    Notes = task.SourceReference
+                },
+                cancellationToken);
+
+            if (counted.IsFailure) return Result.Failure<Confirmation>(counted.Error);
+
+            return new Confirmation(
+                counted.Value.Adjustment is { } adjustment ? [adjustment] : [],
+                counted.Value);
+        }
+
         if (task.Kind == WorkTaskKind.Pick)
         {
             // Refused rather than posted with a null, exactly as a directed
@@ -194,7 +281,7 @@ public static class CompleteWorkTask
             // an order being filled from inventory nobody promised it.
             if (task.StockReservationId is not { } reservationId)
             {
-                return Result.Failure<IReadOnlyList<PostedMovement>>(WorkErrors.TaskHasNoReservation);
+                return Result.Failure<Confirmation>(WorkErrors.TaskHasNoReservation);
             }
 
             var picked = await posting.PickAsync(
@@ -211,13 +298,13 @@ public static class CompleteWorkTask
                 cancellationToken);
 
             return picked.IsFailure
-                ? Result.Failure<IReadOnlyList<PostedMovement>>(picked.Error)
-                : Result.Success<IReadOnlyList<PostedMovement>>([picked.Value]);
+                ? Result.Failure<Confirmation>(picked.Error)
+                : new Confirmation([picked.Value]);
         }
 
         if (task.LicensePlateId is { } plateId)
         {
-            return await posting.PutawayLicensePlateAsync(
+            var plate = await posting.PutawayLicensePlateAsync(
                 new PlatePutawayInstruction
                 {
                     LicensePlateId = plateId,
@@ -229,6 +316,10 @@ public static class CompleteWorkTask
                     DecisionTraceId = decisionTraceId
                 },
                 cancellationToken);
+
+            return plate.IsFailure
+                ? Result.Failure<Confirmation>(plate.Error)
+                : new Confirmation(plate.Value);
         }
 
         var single = await posting.PutawayAsync(
@@ -248,7 +339,7 @@ public static class CompleteWorkTask
             cancellationToken);
 
         return single.IsFailure
-            ? Result.Failure<IReadOnlyList<PostedMovement>>(single.Error)
-            : Result.Success<IReadOnlyList<PostedMovement>>([single.Value]);
+            ? Result.Failure<Confirmation>(single.Error)
+            : new Confirmation([single.Value]);
     }
 }

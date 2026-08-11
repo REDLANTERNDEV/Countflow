@@ -189,7 +189,8 @@ public sealed class WorkQueue(
             .Where(t => ids.Contains(t.Id))
             .Select(t => new Row(
                 t.Id, t.Kind, t.Status, t.Quantity,
-                t.CompletedAtLocationId, t.CompletedAt, t.CompletedByUserName, t.WasOverridden))
+                t.CompletedAtLocationId, t.CompletedAt, t.CompletedByUserName, t.WasOverridden,
+                t.CountedQuantity))
             .ToListAsync(cancellationToken);
 
         return rows.ToDictionary(
@@ -202,7 +203,8 @@ public sealed class WorkQueue(
                 row.CompletedAtLocationId,
                 row.CompletedAt,
                 row.CompletedByUserName,
-                row.WasOverridden));
+                row.WasOverridden,
+                row.CountedQuantity));
     }
 
     /// <summary>
@@ -253,7 +255,8 @@ public sealed class WorkQueue(
         Guid? CompletedAtLocationId,
         DateTimeOffset? CompletedAt,
         string? CompletedByUserName,
-        bool WasOverridden);
+        bool WasOverridden,
+        decimal? CountedQuantity);
 
     /// <summary>
     /// The internal status and the published state are separate enums with

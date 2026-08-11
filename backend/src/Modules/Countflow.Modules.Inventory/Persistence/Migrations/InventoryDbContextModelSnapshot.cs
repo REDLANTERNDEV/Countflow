@@ -91,6 +91,45 @@ namespace Countflow.Modules.Inventory.Persistence.Migrations
                     b.ToTable("Lots", "inventory");
                 });
 
+            modelBuilder.Entity("Countflow.Modules.Inventory.Domain.ReconciliationRun", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("DriftCount")
+                        .HasColumnType("integer");
+
+                    b.Property<long>("ElapsedMilliseconds")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("HoldingsChecked")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("LedgerSum")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<long>("MovementsReplayed")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset>("RunAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Trigger")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("WorstDrift")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RunAt");
+
+                    b.ToTable("ReconciliationRuns", "inventory");
+                });
+
             modelBuilder.Entity("Countflow.Modules.Inventory.Domain.StockBalance", b =>
                 {
                     b.Property<Guid>("Id")
@@ -141,6 +180,99 @@ namespace Countflow.Modules.Inventory.Persistence.Migrations
                     b.ToTable("StockBalances", "inventory", t =>
                         {
                             t.HasCheckConstraint("CK_StockBalances_NonNegativeUnlessCounterparty", "\"Quantity\" >= 0 OR \"AllowsNegative\"");
+                        });
+                });
+
+            modelBuilder.Entity("Countflow.Modules.Inventory.Domain.StockCount", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("AdjustmentMovementId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("AtMovementSequence")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset>("CountedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CountedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CountedByUserName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<decimal>("CountedQuantity")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<Guid?>("DecisionTraceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("ExpectedQuantity")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<string>("IdempotencyKey")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<Guid>("ItemId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("LicensePlateId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("LocationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("LotId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("Variance")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<Guid>("WarehouseId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("WorkTaskId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AdjustmentMovementId");
+
+                    b.HasIndex("IdempotencyKey")
+                        .IsUnique();
+
+                    b.HasIndex("WorkTaskId");
+
+                    b.HasIndex("WarehouseId", "CountedAt");
+
+                    b.HasIndex("ItemId", "LotId", "LocationId", "LicensePlateId", "Status", "CountedAt");
+
+                    NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex("ItemId", "LotId", "LocationId", "LicensePlateId", "Status", "CountedAt"), false);
+
+                    b.ToTable("StockCounts", "inventory", t =>
+                        {
+                            t.HasCheckConstraint("CK_StockCounts_NonNegativeCounted", "\"CountedQuantity\" >= 0");
+
+                            t.HasCheckConstraint("CK_StockCounts_VarianceHasMovement", "(\"Variance\" = 0) = (\"AdjustmentMovementId\" IS NULL)");
+
+                            t.HasCheckConstraint("CK_StockCounts_VarianceIsDifference", "\"Variance\" = \"CountedQuantity\" - \"ExpectedQuantity\"");
                         });
                 });
 

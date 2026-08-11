@@ -26,6 +26,7 @@ public sealed class WorkDbContext(DbContextOptions<WorkDbContext> options)
             task.HasKey(t => t.Id);
 
             task.Property(t => t.Quantity).HasPrecision(18, 4);
+            task.Property(t => t.CountedQuantity).HasPrecision(18, 4);
             task.Property(t => t.CompletionIdempotencyKey).HasMaxLength(128);
             task.Property(t => t.SourceReference).HasMaxLength(128);
             task.Property(t => t.AssignedToUserName).HasMaxLength(256);
@@ -85,6 +86,22 @@ public sealed class WorkDbContext(DbContextOptions<WorkDbContext> options)
                     $"""
                      "Status" <> {(int)WorkTaskStatus.Completed}
                      OR ("CompletedAtLocationId" IS NOT NULL AND "CompletedAt" IS NOT NULL)
+                     """);
+
+                // A completed count has to carry the number it found, and nothing
+                // else may carry one. The first half is the count's equivalent of
+                // the rule above — a count with no finding is a bay marked verified
+                // against nothing — and the second is what stops the column
+                // quietly becoming a general-purpose extra quantity that some
+                // future kind writes to and some future report reads.
+                t.HasCheckConstraint(
+                    "CK_WorkTasks_CountedQuantityBelongsToCounts",
+                    $"""
+                     ("Kind" = {(int)WorkTaskKind.CycleCount}
+                      OR "CountedQuantity" IS NULL)
+                     AND ("Kind" <> {(int)WorkTaskKind.CycleCount}
+                          OR "Status" <> {(int)WorkTaskStatus.Completed}
+                          OR "CountedQuantity" IS NOT NULL)
                      """);
             });
         });

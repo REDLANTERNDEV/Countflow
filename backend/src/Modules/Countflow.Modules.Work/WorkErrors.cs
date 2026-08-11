@@ -66,6 +66,32 @@ public static class WorkErrors
     public static readonly Error EnqueueRaceLost =
         Error.Conflict("work.enqueue_race_lost", "The task could not be raised. Retry the scan.");
 
+    /// <summary>
+    /// A count confirmed with no number. The counting twin of
+    /// <see cref="TaskHasNoDecision"/> and <see cref="TaskHasNoReservation"/>: the
+    /// one thing the job exists to collect is missing, and closing it without one
+    /// would mark a bay verified on the strength of nothing.
+    /// </summary>
+    public static readonly Error CountQuantityRequired =
+        Error.Validation(
+            "work.count_quantity_required",
+            "A cycle count is confirmed with the quantity found, and zero is a valid answer.");
+
+    /// <summary>
+    /// The operator scanned a different bay from the one the count names.
+    /// <para>
+    /// Refused rather than recorded as an override, which is the difference between
+    /// a count and every other kind of job. Confirming a putaway somewhere else is a
+    /// judgement about where stock should live and is worth capturing; confirming a
+    /// count somewhere else is an answer to a question nobody asked, and posting it
+    /// would adjust one holding on the strength of a look at another.
+    /// </para>
+    /// </summary>
+    public static readonly Error CountLocationMismatch =
+        Error.Validation(
+            "work.count_location_mismatch",
+            "A cycle count is confirmed at the location it names. Scan that bay, or reject the task.");
+
     public static readonly Error WarehouseRequired =
         Error.Validation("work.warehouse_required", "A warehouse is needed to know which queue to read.");
 }

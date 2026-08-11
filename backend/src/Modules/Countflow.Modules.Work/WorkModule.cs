@@ -55,5 +55,10 @@ public sealed class WorkModule : ICountflowModule
         ClaimTask.Map(endpoints);
         ReleaseTask.Map(endpoints);
         CompleteWorkTask.Map(endpoints);
+
+        // Work's slice of the accuracy screen. Override rates are this module's own
+        // fact and nobody else can compute them, which is why the dashboard is
+        // three fetches rather than one endpoint reaching across three schemas.
+        GetWorkStatistics.Map(endpoints);
     }
 }

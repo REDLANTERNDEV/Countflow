@@ -1,4 +1,6 @@
 import { createRootRoute, createRoute, createRouter } from '@tanstack/react-router';
+import { AccuracyPage } from './routes/AccuracyPage.js';
+import { CountingPage } from './routes/CountingPage.js';
 import { InboundPage } from './routes/InboundPage.js';
 import { ItemDetailPage } from './routes/ItemDetailPage.js';
 import { ItemsPage } from './routes/ItemsPage.js';
@@ -64,6 +66,18 @@ const outboundRoute = createRoute({
   component: OutboundPage,
 });
 
+const countingRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/counting',
+  component: CountingPage,
+});
+
+const accuracyRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/accuracy',
+  component: AccuracyPage,
+});
+
 const workRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/work',
@@ -91,6 +105,8 @@ const routeTree = rootRoute.addChildren([
   ledgerRoute,
   inboundRoute,
   outboundRoute,
+  countingRoute,
+  accuracyRoute,
   workRoute,
   rulesRoute,
   scanRoute,

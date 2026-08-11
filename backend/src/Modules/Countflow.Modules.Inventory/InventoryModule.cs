@@ -1,8 +1,11 @@
+using Countflow.Modules.Inventory.Counting;
+using Countflow.Modules.Inventory.Features.Accuracy;
 using Countflow.Modules.Inventory.Features.Adjustments;
 using Countflow.Modules.Inventory.Features.Enquiry;
 using Countflow.Modules.Inventory.Features.Receipts;
 using Countflow.Modules.Inventory.Features.Reconciliation;
 using Countflow.Modules.Inventory.Features.Reversals;
+using Countflow.Modules.Inventory.Features.Scrap;
 using Countflow.Modules.Inventory.Features.StatusChanges;
 using Countflow.Modules.Inventory.Features.Transfers;
 using Countflow.Modules.Inventory.Integration;
@@ -45,6 +48,18 @@ public sealed class InventoryModule : ICountflowModule
         // it (see StockReservation).
         services.AddScoped<ReservationLedger>();
 
+        // Phase 5's, and a sibling for the same reason: a count is an observation
+        // about the record rather than a change to it, and most counts post nothing
+        // at all (see StockCount). It sits beside the ledger because the counts that
+        // do find something have to write the finding and the correction together.
+        services.AddScoped<StockCounting>();
+
+        // Kept apart from LedgerReconciler deliberately. The reconciler stays a pure
+        // read of the ledger it audits; the journal is what writes down what it
+        // found, so the accuracy screen can read the reconciler's answer rather than
+        // computing a second one.
+        services.AddScoped<ReconciliationJournal>();
+
         // The published boundary (ADR 0002). Inbound, Work and Outbound move stock
         // through these and cannot name StockLedger, so the single posting path
         // stays single no matter how many modules come to depend on it.
@@ -52,6 +67,7 @@ public sealed class InventoryModule : ICountflowModule
         services.AddScoped<IStockQuery, StockQuery>();
         services.AddScoped<IStockAvailability, StockAvailability>();
         services.AddScoped<IStockReservations, StockReservations>();
+        services.AddScoped<IStockCounts, StockCounts>();
 
         // TryAdd, because a clock is host-wide and every module that posts
         // timestamps will want the same one — including a test host that has
@@ -77,10 +93,19 @@ public sealed class InventoryModule : ICountflowModule
         ReceiveStock.Map(endpoints);
         TransferStock.Map(endpoints);
         AdjustStock.Map(endpoints);
+        ScrapStock.Map(endpoints);
         ChangeStockStatus.Map(endpoints);
         ReverseMovement.Map(endpoints);
         GetStockBalances.Map(endpoints);
         GetStockMovements.Map(endpoints);
         RunReconciliation.Map(endpoints);
+        GetReconciliationHistory.Map(endpoints);
+
+        // The accuracy reads. Both are Inventory's because the data is — counts and
+        // commitments both live in this schema — and the console composes them with
+        // Work's override rates into one screen rather than any module growing a
+        // cross-boundary query to build the dashboard server-side.
+        GetCountAccuracy.Map(endpoints);
+        GetStrandedReservations.Map(endpoints);
     }
 }

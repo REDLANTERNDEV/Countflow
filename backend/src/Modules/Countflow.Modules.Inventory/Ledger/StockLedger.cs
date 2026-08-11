@@ -263,6 +263,18 @@ public sealed class StockLedger(
 
             dbContext.StockMovements.AddRange(movements);
 
+            // Added inside the delegate, after the change tracker was cleared, so
+            // a retried attempt re-adds it rather than losing it. The movement it
+            // belongs to is stamped on below, once the database has assigned one.
+            for (var index = 0; index < pending.Count; index++)
+            {
+                if (pending[index].RecordsCount is { } count)
+                {
+                    count.AdjustmentMovementId = movements[index].Id;
+                    dbContext.StockCounts.Add(count);
+                }
+            }
+
             // Written before the balances so each movement's database-assigned
             // sequence can be stamped onto the rows it touched — that is what lets
             // the reconciler say when a divergence started rather than only that

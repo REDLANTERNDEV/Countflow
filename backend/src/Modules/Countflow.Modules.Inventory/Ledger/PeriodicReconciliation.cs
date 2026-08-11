@@ -87,7 +87,13 @@ public sealed class PeriodicReconciliation(
             await using var scope = scopeFactory.CreateAsyncScope();
 
             var reconciler = scope.ServiceProvider.GetRequiredService<LedgerReconciler>();
-            await reconciler.RunAsync(cancellationToken);
+            var journal = scope.ServiceProvider.GetRequiredService<ReconciliationJournal>();
+
+            var report = await reconciler.RunAsync(cancellationToken);
+
+            // Recorded by the caller rather than by the reconciler, which stays a
+            // pure read of the ledger it is auditing. See ReconciliationJournal.
+            await journal.RecordAsync(report, Domain.ReconciliationTrigger.Periodic, cancellationToken);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {

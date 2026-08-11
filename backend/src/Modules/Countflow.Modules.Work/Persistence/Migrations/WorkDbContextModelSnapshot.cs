@@ -63,6 +63,10 @@ namespace Countflow.Modules.Work.Persistence.Migrations
                     b.Property<int>("Condition")
                         .HasColumnType("integer");
 
+                    b.Property<decimal?>("CountedQuantity")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -135,6 +139,8 @@ namespace Countflow.Modules.Work.Persistence.Migrations
                     b.ToTable("WorkTasks", "work", t =>
                         {
                             t.HasCheckConstraint("CK_WorkTasks_CompletedHasLocation", "\"Status\" <> 3\nOR (\"CompletedAtLocationId\" IS NOT NULL AND \"CompletedAt\" IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_WorkTasks_CountedQuantityBelongsToCounts", "(\"Kind\" = 4\n OR \"CountedQuantity\" IS NULL)\nAND (\"Kind\" <> 4\n     OR \"Status\" <> 3\n     OR \"CountedQuantity\" IS NOT NULL)");
 
                             t.HasCheckConstraint("CK_WorkTasks_PositiveQuantity", "\"Quantity\" > 0");
                         });

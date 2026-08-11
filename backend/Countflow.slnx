@@ -6,6 +6,7 @@
     <Project Path="src/Countflow.SharedKernel/Countflow.SharedKernel.csproj" />
   </Folder>
   <Folder Name="/src/Modules/">
+    <Project Path="src/Modules/Countflow.Modules.Counting/Countflow.Modules.Counting.csproj" />
     <Project Path="src/Modules/Countflow.Modules.Identity/Countflow.Modules.Identity.csproj" />
     <Project Path="src/Modules/Countflow.Modules.Inbound/Countflow.Modules.Inbound.csproj" />
     <Project Path="src/Modules/Countflow.Modules.Inventory/Countflow.Modules.Inventory.csproj" />

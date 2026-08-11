@@ -28,14 +28,25 @@ public sealed record BalanceDrift(
 /// only ever moved, never created or destroyed, so anything else means an entry
 /// was written with sides that do not balance — a far deeper problem than drift.
 /// </param>
+/// <param name="Elapsed">
+/// How long the pass took. Worth keeping rather than merely logging: replaying the
+/// whole ledger is the one operation whose cost grows with history rather than with
+/// the size of the warehouse, so this is the series that will say when incremental
+/// reconciliation stops being premature.
+/// </param>
 public sealed record ReconciliationReport(
     DateTimeOffset RunAt,
     long MovementsReplayed,
     int HoldingsChecked,
     decimal LedgerSum,
+    TimeSpan Elapsed,
     IReadOnlyList<BalanceDrift> Drift)
 {
     public bool IsClean => Drift.Count == 0 && LedgerSum == 0m;
+
+    /// <summary>Largest absolute disagreement found, in base units. Zero on a clean pass.</summary>
+    public decimal WorstDrift =>
+        Drift.Count == 0 ? 0m : Drift.Max(d => Math.Abs(d.Difference));
 }
 
 /// <summary>
@@ -74,6 +85,8 @@ public sealed class LedgerReconciler(
 
     private async Task<ReconciliationReport> ReadAndCompareAsync(CancellationToken cancellationToken)
     {
+        var started = System.Diagnostics.Stopwatch.GetTimestamp();
+
         // One snapshot for all three reads, and the only reason this method needs a
         // transaction at all. Read committed would let a movement commit between the
         // replay and the projection read, so the ledger would be summed one
@@ -139,6 +152,7 @@ public sealed class LedgerReconciler(
             movementCount,
             replayed.Count,
             replayed.Sum(r => r.Quantity),
+            System.Diagnostics.Stopwatch.GetElapsedTime(started),
             drift);
 
         Report(report);

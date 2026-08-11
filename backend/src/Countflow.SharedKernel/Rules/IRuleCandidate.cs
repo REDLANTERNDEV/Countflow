@@ -16,7 +16,20 @@ public enum DecisionKind
     Waving = 3,
 
     /// <summary>Which operator gets the next task. Phase 3 assigns by hand; the rule set comes later.</summary>
-    TaskAssignment = 4
+    TaskAssignment = 4,
+
+    /// <summary>
+    /// Which stock to count, and when. Phase 5, and the third vocabulary.
+    /// <para>
+    /// The first decision kind whose subject is the record rather than the goods.
+    /// Putaway and allocation both answer "where do these units go or come from";
+    /// this one answers "which of the numbers we are publishing do we least
+    /// believe", which is a question about the system's own confidence — and the
+    /// reason it is a rule set rather than a nightly job is that the answer is
+    /// entirely a matter of policy and every warehouse's policy is different.
+    /// </para>
+    /// </summary>
+    CycleCount = 5
 }
 
 /// <summary>

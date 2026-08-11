@@ -75,7 +75,8 @@ public sealed class WorkTaskDescriber(
                     task.CompletedAt,
                     Code(locationsById, task.CompletedAtLocationId),
                     task.WasOverridden,
-                    task.OverrideReason);
+                    task.OverrideReason,
+                    task.CountedQuantity);
             })
         ];
     }

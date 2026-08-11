@@ -22,6 +22,20 @@ public sealed class InventoryDbContext(DbContextOptions<InventoryDbContext> opti
     /// </summary>
     public DbSet<StockReservation> StockReservations => Set<StockReservation>();
 
+    /// <summary>
+    /// Observations about the projection rather than changes to it — see
+    /// <see cref="StockCount"/> for why a count is not a movement, and why it lives
+    /// in this schema regardless.
+    /// </summary>
+    public DbSet<StockCount> StockCounts => Set<StockCount>();
+
+    /// <summary>
+    /// What the reconciler found, each time it ran. Kept so the accuracy screen can
+    /// read what the reconciler produced instead of working the same question out a
+    /// second way.
+    /// </summary>
+    public DbSet<ReconciliationRun> ReconciliationRuns => Set<ReconciliationRun>();
+
     public DbSet<Lot> Lots => Set<Lot>();
 
     public DbSet<LicensePlate> LicensePlates => Set<LicensePlate>();
@@ -222,6 +236,84 @@ public sealed class InventoryDbContext(DbContextOptions<InventoryDbContext> opti
                     "CK_StockReservations_ClosedHasTimestamp",
                     $"\"State\" = {(int)ReservationState.Open} OR \"ClosedAt\" IS NOT NULL");
             });
+        });
+
+        builder.Entity<StockCount>(count =>
+        {
+            count.HasKey(c => c.Id);
+
+            count.Property(c => c.ExpectedQuantity).HasPrecision(18, 4);
+            count.Property(c => c.CountedQuantity).HasPrecision(18, 4);
+            count.Property(c => c.Variance).HasPrecision(18, 4);
+
+            // 256, matching the reservation beside it: a count's key descends from
+            // a plan's, which descends from the run that raised it.
+            count.Property(c => c.IdempotencyKey).HasMaxLength(256).IsRequired();
+            count.Property(c => c.CountedByUserName).HasMaxLength(256).IsRequired();
+            count.Property(c => c.Notes).HasMaxLength(1000);
+
+            // Exactly-once counting. A retried confirmation collides here rather
+            // than recording the bay as counted twice — which would not corrupt any
+            // stock figure, and would quietly double the denominator of every
+            // accuracy number on the dashboard.
+            count.HasIndex(c => c.IdempotencyKey).IsUnique();
+
+            // "When was this holding last counted?" — the policy input, read once
+            // per candidate on every planning run. NULLS NOT DISTINCT for the same
+            // reason the balance key needs it: a shelf holding a non-lot-tracked
+            // item has a null lot and a null plate, and Postgres would otherwise
+            // treat every such row as a distinct holding.
+            count.HasIndex(c => new
+                {
+                    c.ItemId,
+                    c.LotId,
+                    c.LocationId,
+                    c.LicensePlateId,
+                    c.Status,
+                    c.CountedAt
+                })
+                .AreNullsDistinct(false);
+
+            // The accuracy report: every count in a warehouse over a window.
+            count.HasIndex(c => new { c.WarehouseId, c.CountedAt });
+            count.HasIndex(c => c.WorkTaskId);
+            count.HasIndex(c => c.AdjustmentMovementId);
+
+            count.ToTable(table =>
+            {
+                // A count is a reading of a shelf. Negative is not a low number, it
+                // is a mistyped one.
+                table.HasCheckConstraint("CK_StockCounts_NonNegativeCounted", "\"CountedQuantity\" >= 0");
+
+                // The finding has to be the arithmetic. Storing the variance is what
+                // makes it a fact about a moment rather than a subtraction anybody
+                // can redo later against a number that has since changed — but a
+                // stored figure that disagreed with its own operands would be worse
+                // than no figure at all.
+                table.HasCheckConstraint(
+                    "CK_StockCounts_VarianceIsDifference",
+                    "\"Variance\" = \"CountedQuantity\" - \"ExpectedQuantity\"");
+
+                // A count that found a difference and posted nothing is a bay
+                // recorded as verified against a correction that never landed. The
+                // two are written in one transaction precisely so this cannot
+                // happen; the constraint is what makes that a guarantee rather than
+                // a property of the current code.
+                table.HasCheckConstraint(
+                    "CK_StockCounts_VarianceHasMovement",
+                    "(\"Variance\" = 0) = (\"AdjustmentMovementId\" IS NULL)");
+            });
+        });
+
+        builder.Entity<ReconciliationRun>(run =>
+        {
+            run.HasKey(r => r.Id);
+
+            run.Property(r => r.LedgerSum).HasPrecision(18, 4);
+            run.Property(r => r.WorstDrift).HasPrecision(18, 4);
+
+            // The only way this is ever read: most recent first.
+            run.HasIndex(r => r.RunAt);
         });
 
         builder.Entity<Lot>(lot =>

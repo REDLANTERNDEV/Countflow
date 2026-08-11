@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../Countflow.SharedKernel/Countflow.SharedKernel.csproj" />
+    <ProjectReference Include="../Modules/Countflow.Modules.Counting/Countflow.Modules.Counting.csproj" />
     <ProjectReference Include="../Modules/Countflow.Modules.Identity/Countflow.Modules.Identity.csproj" />
     <ProjectReference Include="../Modules/Countflow.Modules.Inbound/Countflow.Modules.Inbound.csproj" />
     <ProjectReference Include="../Modules/Countflow.Modules.Inventory/Countflow.Modules.Inventory.csproj" />

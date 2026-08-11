@@ -136,4 +136,25 @@ public static class InventoryErrors
 
     public static readonly Error NothingToDespatch =
         Error.Validation("inventory.nothing_to_despatch", "A despatch must carry at least one line.");
+
+    // ---- Counting ----
+
+    /// <summary>
+    /// Deliberately not <see cref="QuantityNotPositive"/>. Zero is a perfectly good
+    /// count — the operator found an empty shelf, which is often the whole point of
+    /// sending them — so only a negative reading is refused, and it is refused as
+    /// the typing slip it is rather than as a business rule.
+    /// </summary>
+    public static readonly Error CountedQuantityNegative =
+        Error.Validation("inventory.counted_quantity_negative", "A count cannot find less than nothing.");
+
+    public static Error CannotCountCounterparty(string code) =>
+        Error.Validation(
+            "inventory.cannot_count_counterparty",
+            $"{code} is a counterparty account rather than a place, so nobody can stand in front of it and count it.");
+
+    public static readonly Error ScrapNotesRequired =
+        Error.Validation(
+            "inventory.scrap_notes_required",
+            "A write-off must say why. Every other movement is explained by its document; this one is not.");
 }

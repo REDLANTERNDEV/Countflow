@@ -582,6 +582,86 @@
         }
       }
     },
+    "/api/inventory/scrap": {
+      "post": {
+        "tags": [
+          "Inventory"
+        ],
+        "summary": "Write stock off to the Scrap counterparty.",
+        "operationId": "ScrapStock",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScrapStockRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MovementReceiptResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/inventory/status-changes": {
       "post": {
         "tags": [
@@ -999,6 +1079,142 @@
         }
       }
     },
+    "/api/inventory/reconciliation/history": {
+      "get": {
+        "tags": [
+          "Inventory"
+        ],
+        "summary": "Recent reconciliation passes, newest first.",
+        "operationId": "GetReconciliationHistory",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ReconciliationRunResponse"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/inventory/accuracy": {
+      "get": {
+        "tags": [
+          "Inventory"
+        ],
+        "summary": "Count accuracy by zone and velocity band over a window.",
+        "operationId": "GetCountAccuracy",
+        "parameters": [
+          {
+            "name": "warehouseId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CountAccuracyResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/inventory/reservations/stranded": {
+      "get": {
+        "tags": [
+          "Inventory"
+        ],
+        "summary": "Open commitments standing against holdings that can no longer meet them.",
+        "operationId": "GetStrandedReservations",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StrandedReservationResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/rules/sets": {
       "get": {
         "tags": [
@@ -1146,6 +1362,57 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PreviewAllocationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rules/cycle-count/preview": {
+      "post": {
+        "tags": [
+          "Rules"
+        ],
+        "summary": "Run the cycle-count policy without raising any work.",
+        "operationId": "PreviewCountPolicy",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreviewCountPolicyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreviewCountPolicyResponse"
                 }
               }
             }
@@ -1497,6 +1764,64 @@
           },
           "409": {
             "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/work/statistics": {
+      "get": {
+        "tags": [
+          "Work"
+        ],
+        "summary": "Completion and override rates by task kind over a window.",
+        "operationId": "GetWorkStatistics",
+        "parameters": [
+          {
+            "name": "warehouseId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkStatisticsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
             "content": {
               "application/problem\u002Bjson": {
                 "schema": {
@@ -2351,6 +2676,258 @@
         }
       }
     },
+    "/api/counting/plans": {
+      "post": {
+        "tags": [
+          "Counting"
+        ],
+        "summary": "Raise a batch of cycle counts chosen by the counting policy.",
+        "operationId": "CreateCountPlan",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCountPlanRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CountPlanResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Counting"
+        ],
+        "summary": "List count plans, newest first.",
+        "operationId": "GetCountPlans",
+        "parameters": [
+          {
+            "name": "warehouseId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/CountPlanStatus"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CountPlanPage"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/counting/plans/{id}": {
+      "get": {
+        "tags": [
+          "Counting"
+        ],
+        "summary": "One count plan and its holdings.",
+        "operationId": "GetCountPlan",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CountPlanResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/counting/plans/{id}/cancel": {
+      "post": {
+        "tags": [
+          "Counting"
+        ],
+        "summary": "Withdraw a plan\u0027s outstanding counts.",
+        "operationId": "CancelCountPlan",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/CancelCountPlanRequest"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CancelCountPlanResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/auth/login": {
       "post": {
         "tags": [
@@ -2498,6 +3075,44 @@
           "C"
         ],
         "type": "string"
+      },
+      "AccuracySlice": {
+        "required": [
+          "key",
+          "counted",
+          "accurate",
+          "netVariance",
+          "absoluteVariance"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "counted": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "accurate": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "netVariance": {
+            "type": "number",
+            "format": "double"
+          },
+          "absoluteVariance": {
+            "type": "number",
+            "format": "double"
+          },
+          "accuracyRate": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          }
+        }
       },
       "AdjustStockRequest": {
         "required": [
@@ -2818,6 +3433,38 @@
           }
         }
       },
+      "CancelCountPlanRequest": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "CancelCountPlanResponse": {
+        "required": [
+          "id",
+          "reference",
+          "withdrawnCount"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "withdrawnCount": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
       "CancelOrderRequest": {
         "required": [
           "reason"
@@ -2936,6 +3583,13 @@
               "null",
               "string"
             ]
+          },
+          "countedQuantity": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
           }
         }
       },
@@ -2954,6 +3608,360 @@
             "items": {
               "$ref": "#/components/schemas/PostedMovement"
             }
+          },
+          "count": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/CountOutcome"
+              }
+            ]
+          }
+        }
+      },
+      "CountAccuracyResponse": {
+        "required": [
+          "from",
+          "to",
+          "overall",
+          "byZone",
+          "byClass"
+        ],
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "overall": {
+            "$ref": "#/components/schemas/AccuracySlice"
+          },
+          "byZone": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AccuracySlice"
+            }
+          },
+          "byClass": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AccuracySlice"
+            }
+          }
+        }
+      },
+      "CountOutcome": {
+        "required": [
+          "countId",
+          "expectedQuantity",
+          "countedQuantity",
+          "variance",
+          "adjustment",
+          "wasAlreadyCounted"
+        ],
+        "type": "object",
+        "properties": {
+          "countId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "expectedQuantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "countedQuantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "variance": {
+            "type": "number",
+            "format": "double"
+          },
+          "adjustment": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PostedMovement"
+              }
+            ]
+          },
+          "wasAlreadyCounted": {
+            "type": "boolean"
+          }
+        }
+      },
+      "CountPlanLineResponse": {
+        "required": [
+          "id",
+          "sku",
+          "lotNumber",
+          "locationCode",
+          "condition",
+          "expectedQuantity",
+          "rank",
+          "score",
+          "workTaskId",
+          "state",
+          "countedQuantity",
+          "variance",
+          "countedAt",
+          "countedByUserName"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sku": {
+            "type": "string"
+          },
+          "lotNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "locationCode": {
+            "type": "string"
+          },
+          "condition": {
+            "$ref": "#/components/schemas/StockCondition"
+          },
+          "expectedQuantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "rank": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "score": {
+            "type": "number",
+            "format": "double"
+          },
+          "workTaskId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "state": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/WorkTaskState"
+              }
+            ]
+          },
+          "countedQuantity": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "variance": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "countedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "countedByUserName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "CountPlanPage": {
+        "required": [
+          "items",
+          "total",
+          "page",
+          "pageSize"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CountPlanSummaryResponse"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "CountPlanResponse": {
+        "required": [
+          "id",
+          "reference",
+          "status",
+          "warehouseCode",
+          "requestedTasks",
+          "raisedCount",
+          "completedCount",
+          "varianceCount",
+          "decisionTraceId",
+          "createdAt",
+          "createdByUserName",
+          "completedAt",
+          "notes",
+          "lines"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CountPlanStatus"
+          },
+          "warehouseCode": {
+            "type": "string"
+          },
+          "requestedTasks": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "raisedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "completedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "varianceCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "decisionTraceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdByUserName": {
+            "type": "string"
+          },
+          "completedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CountPlanLineResponse"
+            }
+          }
+        }
+      },
+      "CountPlanStatus": {
+        "enum": [
+          "Open",
+          "Completed",
+          "Cancelled"
+        ],
+        "type": "string"
+      },
+      "CountPlanSummaryResponse": {
+        "required": [
+          "id",
+          "reference",
+          "status",
+          "requestedTasks",
+          "raisedCount",
+          "completedCount",
+          "varianceCount",
+          "decisionTraceId",
+          "createdAt",
+          "createdByUserName"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CountPlanStatus"
+          },
+          "requestedTasks": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "raisedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "completedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "varianceCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "decisionTraceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdByUserName": {
+            "type": "string"
           }
         }
       },
@@ -3024,6 +4032,28 @@
               "null",
               "string"
             ]
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "CreateCountPlanRequest": {
+        "required": [
+          "warehouseCode"
+        ],
+        "type": "object",
+        "properties": {
+          "warehouseCode": {
+            "type": "string"
+          },
+          "maxTasks": {
+            "type": "integer",
+            "format": "int32",
+            "default": 20
           },
           "notes": {
             "type": [
@@ -3143,7 +4173,8 @@
           "Putaway",
           "Allocation",
           "Waving",
-          "TaskAssignment"
+          "TaskAssignment",
+          "CycleCount"
         ],
         "type": "string"
       },
@@ -4253,6 +5284,88 @@
           }
         }
       },
+      "PreviewCountLine": {
+        "required": [
+          "locationCode",
+          "lotNumber",
+          "expectedQuantity",
+          "rank",
+          "score"
+        ],
+        "type": "object",
+        "properties": {
+          "locationCode": {
+            "type": "string"
+          },
+          "lotNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "expectedQuantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "rank": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "score": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "PreviewCountPolicyRequest": {
+        "required": [
+          "warehouseCode"
+        ],
+        "type": "object",
+        "properties": {
+          "warehouseCode": {
+            "type": "string"
+          },
+          "maxTasks": {
+            "type": "integer",
+            "format": "int32",
+            "default": 20
+          }
+        }
+      },
+      "PreviewCountPolicyResponse": {
+        "required": [
+          "decisionTraceId",
+          "lines",
+          "consideredCount",
+          "admissibleCount",
+          "trace"
+        ],
+        "type": "object",
+        "properties": {
+          "decisionTraceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PreviewCountLine"
+            }
+          },
+          "consideredCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "admissibleCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "trace": {
+            "$ref": "#/components/schemas/DecisionTraceView"
+          }
+        }
+      },
       "PreviewPutawayRequest": {
         "required": [
           "sku",
@@ -4472,6 +5585,68 @@
             }
           }
         }
+      },
+      "ReconciliationRunResponse": {
+        "required": [
+          "id",
+          "runAt",
+          "trigger",
+          "movementsReplayed",
+          "holdingsChecked",
+          "ledgerSum",
+          "driftCount",
+          "worstDrift",
+          "elapsedMilliseconds",
+          "isClean"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "runAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "trigger": {
+            "$ref": "#/components/schemas/ReconciliationTrigger"
+          },
+          "movementsReplayed": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "holdingsChecked": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "ledgerSum": {
+            "type": "number",
+            "format": "double"
+          },
+          "driftCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "worstDrift": {
+            "type": "number",
+            "format": "double"
+          },
+          "elapsedMilliseconds": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "isClean": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ReconciliationTrigger": {
+        "enum": [
+          "Periodic",
+          "Manual"
+        ],
+        "type": "string"
       },
       "RefreshRequest": {
         "required": [
@@ -5104,6 +6279,64 @@
           }
         }
       },
+      "ScrapCause": {
+        "enum": [
+          "Damaged",
+          "Expired",
+          "Destroyed"
+        ],
+        "type": "string"
+      },
+      "ScrapStockRequest": {
+        "required": [
+          "sku",
+          "quantity",
+          "locationCode",
+          "cause",
+          "notes"
+        ],
+        "type": "object",
+        "properties": {
+          "sku": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "locationCode": {
+            "type": "string"
+          },
+          "cause": {
+            "$ref": "#/components/schemas/ScrapCause"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "lotNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "sscc": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/InventoryStatus"
+              }
+            ]
+          }
+        }
+      },
       "StockBalanceResponse": {
         "required": [
           "sku",
@@ -5345,6 +6578,71 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "StrandedReservationResponse": {
+        "required": [
+          "reservationId",
+          "ownerReference",
+          "sku",
+          "lotNumber",
+          "locationCode",
+          "status",
+          "reservedQuantity",
+          "onHandQuantity",
+          "totalReserved",
+          "shortfall",
+          "createdAt",
+          "ageDays"
+        ],
+        "type": "object",
+        "properties": {
+          "reservationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ownerReference": {
+            "type": "string"
+          },
+          "sku": {
+            "type": "string"
+          },
+          "lotNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "locationCode": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/InventoryStatus"
+          },
+          "reservedQuantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "onHandQuantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "totalReserved": {
+            "type": "number",
+            "format": "double"
+          },
+          "shortfall": {
+            "type": "number",
+            "format": "double"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "ageDays": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },
@@ -5613,6 +6911,68 @@
         ],
         "type": "string"
       },
+      "WorkKindStatistics": {
+        "required": [
+          "kind",
+          "completed",
+          "overridden",
+          "cancelled",
+          "open"
+        ],
+        "type": "object",
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/WorkTaskKind"
+          },
+          "completed": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "overridden": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "cancelled": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "open": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "overrideRate": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          }
+        }
+      },
+      "WorkStatisticsResponse": {
+        "required": [
+          "from",
+          "to",
+          "byKind"
+        ],
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "byKind": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkKindStatistics"
+            }
+          }
+        }
+      },
       "WorkTaskDetailResponse": {
         "required": [
           "task",
@@ -5696,7 +7056,8 @@
           "completedAt",
           "completedAtLocationCode",
           "wasOverridden",
-          "overrideReason"
+          "overrideReason",
+          "countedQuantity"
         ],
         "type": "object",
         "properties": {
@@ -5802,6 +7163,13 @@
               "null",
               "string"
             ]
+          },
+          "countedQuantity": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
           }
         }
       },
@@ -5849,6 +7217,9 @@
     },
     {
       "name": "Outbound"
+    },
+    {
+      "name": "Counting"
     },
     {
       "name": "Authentication"

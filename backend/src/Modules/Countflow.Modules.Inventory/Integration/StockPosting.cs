@@ -1,3 +1,4 @@
+using Countflow.Modules.Inventory.Counting;
 using Countflow.Modules.Inventory.Domain;
 using Countflow.Modules.Inventory.Ledger;
 using Countflow.Modules.Inventory.Persistence;
@@ -28,6 +29,7 @@ public sealed class StockPosting(
     InventoryDbContext dbContext,
     StockLedger ledger,
     ReservationLedger reservations,
+    StockCounting counting,
     StockReferenceResolver resolve,
     IItemDirectory items,
     ILocationDirectory locations) : IStockPosting
@@ -318,6 +320,76 @@ public sealed class StockPosting(
                 .. posted.Value.Select((receipt, index) =>
                     Describe(receipt, commands[index].LotId, licensePlateId: null))
             ]);
+    }
+
+    /// <summary>
+    /// Passed straight through to <see cref="StockCounting"/>, and the only method
+    /// here that does not build a <see cref="PostingCommand"/>.
+    /// <para>
+    /// That asymmetry is the honest one. Every other operation on this contract is
+    /// a movement wearing a business name, so translating it here is the whole job.
+    /// A count is not a movement — most counts post nothing at all — so the work is
+    /// reading what the book says, writing the observation and deciding whether
+    /// there is anything to post, and none of that is adapter work.
+    /// </para>
+    /// </summary>
+    public Task<Result<CountOutcome>> CountAsync(
+        CountInstruction instruction,
+        CancellationToken cancellationToken) =>
+        counting.CountAsync(instruction, cancellationToken);
+
+    /// <summary>
+    /// Destroys stock against the Scrap counterparty.
+    /// <para>
+    /// The scrap account belongs to the warehouse the goods are leaving, derived
+    /// from the origin exactly as the customer account is on a despatch — a
+    /// write-off is a despatch to nowhere, and it balances the same way.
+    /// </para>
+    /// </summary>
+    public async Task<Result<PostedMovement>> ScrapAsync(
+        ScrapInstruction instruction,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(instruction.Notes))
+        {
+            return Result.Failure<PostedMovement>(InventoryErrors.ScrapNotesRequired);
+        }
+
+        var origin = await locations.FindAsync(instruction.FromLocationId, cancellationToken);
+        if (origin is null) return Result.Failure<PostedMovement>(InventoryErrors.LocationNotFound);
+
+        var scrap = await resolve.CounterpartyAsync(
+            origin.WarehouseId, CounterpartyKind.Scrap, cancellationToken);
+        if (scrap.IsFailure) return Result.Failure<PostedMovement>(scrap.Error);
+
+        var status = ToStatus(instruction.Condition);
+
+        var posted = await ledger.PostAsync(
+            new PostingCommand
+            {
+                ItemId = instruction.ItemId,
+                LotId = instruction.LotId,
+                Quantity = instruction.Quantity,
+                // The plate is dropped, as it is on a pick. Whatever the pallet was,
+                // it is not a pallet any more.
+                From = new Holding(instruction.FromLocationId, instruction.LicensePlateId, status),
+                To = new Holding(scrap.Value.Id, null, status),
+                Type = MovementType.Scrap,
+                Reason = instruction.Cause switch
+                {
+                    ScrapCause.Expired => MovementReason.WriteOffExpired,
+                    ScrapCause.Destroyed => MovementReason.Destroyed,
+                    _ => MovementReason.WriteOffDamaged
+                },
+                IdempotencyKey = instruction.IdempotencyKey,
+                Actor = ToActor(instruction.Actor),
+                Notes = instruction.Notes
+            },
+            cancellationToken);
+
+        return posted.IsFailure
+            ? Result.Failure<PostedMovement>(posted.Error)
+            : Describe(posted.Value, instruction.LotId, licensePlateId: null);
     }
 
     private static PostedMovement Describe(MovementReceipt receipt, Guid? lotId, Guid? licensePlateId) =>

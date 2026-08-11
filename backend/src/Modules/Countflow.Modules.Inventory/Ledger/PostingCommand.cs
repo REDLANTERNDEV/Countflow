@@ -89,6 +89,27 @@ public sealed record PostingCommand
     /// </summary>
     public Guid? ConsumesReservationId { get; init; }
 
+    /// <summary>
+    /// The count this movement is the variance of, written inside the same
+    /// transaction that appends the movement.
+    /// <para>
+    /// Here for exactly the reason <see cref="ConsumesReservationId"/> is, and it
+    /// is the same argument run the other way. A reservation is a claim the
+    /// movement settles; a count is the observation the movement answers. Neither
+    /// is a property of the physical fact being recorded — a movement row says
+    /// nothing about either — but both have to land or not land with it, and the
+    /// only code holding the movement insert inside a transaction is the posting
+    /// path.
+    /// </para>
+    /// <para>
+    /// An entity rather than an id, because unlike a reservation the row does not
+    /// exist yet: a count with no variance never reaches the ledger at all, so
+    /// there is nothing to have written it beforehand. The ledger adds it and
+    /// stamps the movement onto it.
+    /// </para>
+    /// </summary>
+    public StockCount? RecordsCount { get; init; }
+
     public string? Notes { get; init; }
 
     /// <summary>

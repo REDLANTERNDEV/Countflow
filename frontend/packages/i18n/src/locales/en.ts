@@ -39,6 +39,8 @@ export const en = {
     ledger: 'Ledger',
     inbound: 'Inbound',
     outbound: 'Outbound',
+    counting: 'Counting',
+    accuracy: 'Accuracy',
     work: 'Work queue',
     rules: 'Rules',
     scanTest: 'Scan test',
@@ -260,6 +262,20 @@ export const en = {
     scanDrop: 'Scan the bench label',
     whyHere: 'Why here?',
     hideWhy: 'Hide',
+
+    // A count is the same screen again, and the only job that asks for a number
+    // instead of a destination.
+    countAt: 'Count',
+    scanCounted: 'Scan the rack label to confirm you are there',
+    countedQuantity: 'How many are there?',
+    countedHint: 'Count what you can see. Do not look at the figure below first.',
+    bookSays: 'The book says {{quantity}}',
+    revealBook: 'Show what the book says',
+    countAgrees: 'Agreed — {{quantity}} is what the system had.',
+    countOver: 'You found {{variance}} more than the book. Posted as a correction.',
+    countShort: 'You found {{variance}} fewer than the book. Posted as a correction.',
+    countedLabel: 'Found',
+    varianceLabel: 'Difference',
     overriding: 'This is not the suggested location',
     overrideReason: 'Reason',
     wasOverridden: 'Overridden',
@@ -374,6 +390,15 @@ export const en = {
       'allocation.clear_holding': 'Clear part-used locations',
       'allocation.prefer_pick_face': 'Pick from the pick face',
       'allocation.travel_distance': 'Shorter walk',
+
+      'count.countable_location': 'Somewhere a count means something',
+      'count.settled_stock': 'Nothing has moved there recently',
+      'count.not_already_scheduled': 'Not already on somebody’s list',
+      'count.not_recently_counted': 'Not checked in the last few days',
+      'count.overdue': 'Longest since anybody checked',
+      'count.velocity': 'Fast movers drift fastest',
+      'count.stock_at_risk': 'Where being wrong costs most',
+      'count.travel_distance': 'Shorter walk',
     },
 
     // The coded reasons a rule gives about one location. The API sends the code
@@ -415,6 +440,20 @@ export const en = {
       would_leave: 'This would leave {{units}} behind.',
       nothing_free: 'Nothing free here.',
       location_role: 'In a {{role}} location.',
+      travel_distance: 'Zone {{zone}}, {{percent}}% along the route.',
+    },
+
+    // The coded reasons the counting policy gives about one holding.
+    count: {
+      not_countable: 'Counting a {{role}} measures the work going on there.',
+      location_unknown: 'Not a storage location.',
+      recently_moved: 'Worked {{hours}} hours ago; it has to stand for {{required}}.',
+      already_scheduled: 'Already on somebody’s list.',
+      counted_recently: 'Counted {{days}} days ago, and {{required}} has to pass first.',
+      never_counted: 'Never counted.',
+      days_since_count: 'Checked {{days}} days ago, against a {{target}}-day target.',
+      velocity_band: '{{band}}-class item.',
+      share_of_item_stock: '{{units}} here — {{percent}}% of everything we hold of it.',
       travel_distance: 'Zone {{zone}}, {{percent}}% along the route.',
     },
 
@@ -553,6 +592,125 @@ export const en = {
     },
   },
 
+  accuracy: {
+    title: 'Accuracy',
+    subtitle:
+      'How much of what this system says about the stock has been checked, and how much of that turned out to be right.',
+
+    counts: {
+      title: 'Count accuracy',
+      hint: 'Counts taken, not holdings in the building. A bay nobody has looked at is unknown, not accurate.',
+      byZone: 'By zone',
+      byClass: 'By velocity band',
+      overall: 'Everything counted',
+      slice: 'Group',
+      counted: 'Counted',
+      accurate: 'Agreed',
+      rate: 'Accuracy',
+      netVariance: 'Net',
+      absoluteVariance: 'Absolute',
+      netHint:
+        'A net near zero with a large absolute is a warehouse that is not losing stock — it is filing it in the wrong places.',
+      unmeasured: 'Not counted',
+      empty: 'Nothing has been counted in this window yet.',
+      window: 'Last 90 days',
+    },
+
+    overrides: {
+      title: 'Override rates',
+      hint: 'How often the floor disagreed with the rules. A count has no destination to disagree about, so it never shows one.',
+      kind: 'Job',
+      completed: 'Completed',
+      overridden: 'Overridden',
+      rate: 'Override rate',
+      open: 'Open',
+      cancelled: 'Cancelled',
+      empty: 'No work in this window.',
+    },
+
+    drift: {
+      title: 'Ledger reconciliation',
+      hint: 'The reconciler replays every movement against the balances. This is what it found — not a second opinion computed here.',
+      runAt: 'Run',
+      trigger: 'Trigger',
+      movements: 'Movements',
+      holdings: 'Holdings',
+      driftCount: 'Drift',
+      worstDrift: 'Worst',
+      elapsed: 'Took',
+      clean: 'Clean',
+      ledgerImbalance: 'Ledger sums to {{sum}}, not zero',
+      empty: 'No reconciliation has run yet. The first pass runs a few minutes after start-up.',
+      run: 'Run it now',
+      running: 'Replaying the ledger…',
+      allClean: 'Every pass on record found nothing. That is the result we want.',
+      triggerKind: {
+        Periodic: 'Timer',
+        Manual: 'On demand',
+      },
+    },
+
+    stranded: {
+      title: 'Stranded commitments',
+      hint: 'Stock promised to an order that is no longer in the bin it was promised from. The picker finds out otherwise.',
+      order: 'Order',
+      reserved: 'Promised',
+      onHand: 'On hand',
+      shortfall: 'Short by',
+      age: '{{days}} days old',
+      empty: 'Every commitment is backed by stock that is still there.',
+    },
+  },
+
+  counting: {
+    title: 'Counting',
+    subtitle: 'Which of the numbers to go and check, chosen by policy rather than by whoever asks loudest.',
+    reference: 'Plan',
+    createdAt: 'Raised',
+    createdBy: 'By',
+    requested: 'Asked for',
+    raised: 'Jobs',
+    completed: 'Done',
+    variances: 'Variances',
+    empty: 'No count plans yet.',
+    allStatuses: 'All statuses',
+
+    plan: 'Raise counts',
+    planning: 'Choosing what to count…',
+    planHint: 'Runs the counting policy and raises a job for each holding it picks.',
+    maxTasks: 'How many',
+    notes: 'Notes',
+    optional: 'optional',
+    cancel: 'Withdraw the plan',
+    cancelling: 'Withdrawing…',
+    cancelReason: 'Why is it being withdrawn?',
+
+    lines: 'Holdings',
+    rank: 'Rank',
+    location: 'Where',
+    sku: 'Item',
+    lot: 'Batch',
+    expected: 'Book says',
+    found: 'Found',
+    variance: 'Difference',
+    countedBy: 'Counted by',
+    countedAt: 'Counted',
+    state: 'State',
+    score: 'Score',
+    whyThis: 'Why these?',
+    hideWhy: 'Hide',
+    notCountedYet: 'Not counted yet',
+    agrees: 'Agrees',
+    planned: 'Raised {{raised}} counts from {{admissible}} due holdings.',
+    nothingDue: 'Nothing is due. Every holding was either checked recently, or is being worked.',
+
+    status: {
+      Open: 'Open',
+      Completed: 'Completed',
+      Cancelled: 'Cancelled',
+    },
+  },
+
   errors: {
     'auth.invalid_credentials': 'The credentials provided are not valid.',
     'auth.unknown_actor': 'Your session does not identify a user. Please sign in again.',
@@ -688,6 +846,23 @@ export const en = {
     'outbound.nothing_picked': 'Nothing was picked for this order, so there is nothing to despatch.',
     'outbound.wave_not_releasable': 'That wave has already been released or cancelled.',
     'outbound.order_not_waveable': 'That order is already released or in another wave.',
+
+    // Phase 5 — counting, and the two write-offs it leads to.
+    'inventory.counted_quantity_negative': 'A count cannot find less than nothing.',
+    'inventory.cannot_count_counterparty':
+      'That is an accounting counterparty rather than a place, so there is nothing to stand in front of.',
+    'inventory.scrap_notes_required': 'A write-off has to say why. Nothing else records the reason.',
+    'work.count_quantity_required': 'Enter what you found. Zero is a valid answer.',
+    'work.count_location_mismatch':
+      'This count is about a different bay. Scan the one on the job, or release it.',
+    'counting.plan_not_found': 'No count plan with that identifier.',
+    'counting.warehouse_not_found': 'No warehouse with that code.',
+    'counting.idempotency_key_required': 'This request is missing its idempotency key.',
+    'counting.task_count_not_positive': 'A count plan has to ask for at least one job.',
+    'counting.too_many_tasks': 'That is more counts than one plan may raise. Raise another when these are done.',
+    'counting.plan_not_open': 'That plan has already been completed or cancelled.',
+    'counting.counts_in_progress':
+      'An operator is holding a count from this plan. Ask them to release the job, then cancel.',
 
     unknown: 'Something went wrong.',
   },

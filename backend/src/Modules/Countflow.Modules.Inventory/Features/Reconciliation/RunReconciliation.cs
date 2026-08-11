@@ -51,12 +51,17 @@ public static class RunReconciliation
     {
         endpoints.MapPost("/api/inventory/reconciliation", async (
                 LedgerReconciler reconciler,
+                ReconciliationJournal journal,
                 IItemDirectory items,
                 ILocationDirectory locations,
                 InventoryDbContext dbContext,
                 CancellationToken cancellationToken) =>
             {
                 var report = await reconciler.RunAsync(cancellationToken);
+
+                // Kept, so the accuracy screen reads what the reconciler produced
+                // rather than working the same question out a second way.
+                await journal.RecordAsync(report, ReconciliationTrigger.Manual, cancellationToken);
 
                 var drift = await DescribeAsync(dbContext, items, locations, report.Drift, cancellationToken);
 

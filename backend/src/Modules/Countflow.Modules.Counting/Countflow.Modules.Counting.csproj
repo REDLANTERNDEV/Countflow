@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <!-- SharedKernel only, exactly as Inbound and Outbound. Planning a count asks
+         ICountPolicy which holdings are due, raises the jobs through IWorkQueue and
+         learns what they found through the same contract; the variance is posted by
+         Inventory when the operator confirms. There is a project reference to none
+         of them, so the orchestration cannot quietly become a reimplementation
+         (ADR 0002). -->
+    <ProjectReference Include="../../Countflow.SharedKernel/Countflow.SharedKernel.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+  </ItemGroup>
+
+</Project>

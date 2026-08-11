@@ -33,6 +33,15 @@ public enum WorkTaskStatus
 /// three unrelated apps by Phase 5.
 /// </para>
 /// <para>
+/// Phase 5 is where that bet was tested hardest, because a count is the first job
+/// whose completion is not a movement: the operator does not take the stock
+/// anywhere, they look at it and say a number. The model held with one nullable
+/// column (<see cref="CountedQuantity"/>) and four lines in the completion switch.
+/// The queue, claim-next, the assignment rules, the override recording and the
+/// handheld screen are all still written against "go here, tell me what happened",
+/// which turns out to be the general shape rather than the putaway-shaped one.
+/// </para>
+/// <para>
 /// The task is not the movement. It records what was <i>intended</i> and what the
 /// operator actually did; the ledger records what happened. Keeping them separate
 /// is what makes an override visible: <see cref="SuggestedLocationId"/> and
@@ -127,7 +136,35 @@ public sealed class WorkTask
 
     public string? CompletedByUserName { get; set; }
 
-    /// <summary>True when the operator confirmed somewhere other than the suggestion.</summary>
+    /// <summary>
+    /// What the operator reported finding, for a count. Null on every other kind.
+    /// <para>
+    /// The one field Phase 5 had to add, and it is worth being clear about why the
+    /// task model needed nothing else. Every job before this one confirms "I moved
+    /// it to here", which <see cref="CompletedAtLocationId"/> already records; a
+    /// count confirms "I found this much", which is a different sentence with the
+    /// same grammar — it is still the operator telling the system what they did,
+    /// recorded beside the intention so the two can be compared. A second task model
+    /// would have bought a second queue, a second claim-next, a second handheld
+    /// screen and a second set of override statistics, to carry one decimal.
+    /// </para>
+    /// <para>
+    /// Zero is a real answer here and null is not the same as zero, which is why
+    /// this is nullable rather than defaulted: an empty shelf is a finding, and a
+    /// count that has not happened yet is not.
+    /// </para>
+    /// </summary>
+    public decimal? CountedQuantity { get; set; }
+
+    /// <summary>
+    /// True when the operator confirmed somewhere other than the suggestion.
+    /// <para>
+    /// Never set on a count, and that is not an omission. A count has nothing to
+    /// override — the operator is not choosing a destination, they are reporting a
+    /// number — and the disagreement between them and the system is recorded far
+    /// more precisely as the variance than it ever could be as a boolean.
+    /// </para>
+    /// </summary>
     public bool WasOverridden { get; set; }
 
     /// <summary>Why, if they said. Optional on purpose — a mandatory free-text box on a scanner collects the letter x.</summary>

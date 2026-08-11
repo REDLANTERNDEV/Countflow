@@ -103,6 +103,12 @@ public enum WorkTaskState
 /// used, and asking the queue is how outbound learns that without Work having to
 /// know outbound exists.
 /// </param>
+/// <param name="CountedQuantity">
+/// What the operator found, on a count. Null on every other kind, and null on a
+/// count nobody has confirmed yet — the module that raised the counts learns what
+/// they found by asking here, exactly as outbound learns which bench its picks
+/// ended up at.
+/// </param>
 public sealed record WorkTaskSummary(
     Guid Id,
     WorkTaskKind Kind,
@@ -111,7 +117,8 @@ public sealed record WorkTaskSummary(
     Guid? CompletedAtLocationId,
     DateTimeOffset? CompletedAt,
     string? CompletedByUserName,
-    bool WasOverridden);
+    bool WasOverridden,
+    decimal? CountedQuantity = null);
 
 /// <summary>
 /// The Work module's published surface for directed work raised by another

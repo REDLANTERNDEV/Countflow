@@ -1,4 +1,5 @@
 using Countflow.Modules.Rules.Allocation;
+using Countflow.Modules.Rules.CycleCount;
 using Countflow.Modules.Rules.Domain;
 using Countflow.Modules.Rules.Putaway;
 using Countflow.SharedKernel.Modules;
@@ -35,6 +36,7 @@ public sealed class RulesSeeder(RulesDbContext dbContext, ILogger<RulesSeeder> l
         // upgrade seeds only what is missing.
         await SeedPutawayAsync(cancellationToken);
         await SeedAllocationAsync(cancellationToken);
+        await SeedCycleCountAsync(cancellationToken);
     }
 
     private async Task SeedPutawayAsync(CancellationToken cancellationToken)
@@ -125,6 +127,56 @@ public sealed class RulesSeeder(RulesDbContext dbContext, ILogger<RulesSeeder> l
         Preference(ruleSet, AllocationPreferences.PreferPickFace.RuleCode, order: 110, weight: 0.25m);
         Preference(ruleSet, AllocationPreferences.ClearTheHolding.RuleCode, order: 120, weight: 0.20m);
         Preference(ruleSet, AllocationPreferences.TravelDistance.RuleCode, order: 130, weight: 0.10m);
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        logger.LogInformation(
+            "Seeded rule set {Name} v{Version} with {Rules} rules",
+            ruleSet.Name,
+            ruleSet.Version,
+            ruleSet.Rules.Count);
+    }
+
+    private async Task SeedCycleCountAsync(CancellationToken cancellationToken)
+    {
+        if (await dbContext.RuleSets.AnyAsync(r => r.Kind == DecisionKind.CycleCount, cancellationToken))
+        {
+            logger.LogInformation("Cycle count rule set already present; skipping seed");
+            return;
+        }
+
+        var ruleSet = new RuleSet
+        {
+            Kind = DecisionKind.CycleCount,
+            Name = "Standard cycle count",
+            Version = 1,
+            Status = RuleSetStatus.Active,
+            WarehouseId = null,
+            ActivatedAt = DateTimeOffset.UtcNow,
+            Notes = "Shipped default. ABC-paced, and it will not count a bay that is being worked."
+        };
+
+        dbContext.RuleSets.Add(ruleSet);
+
+        // The location first because it is the cheapest and the most complete
+        // answer — "that is a pack bench" ends the conversation, where "it was
+        // counted on Tuesday" invites the next question. The quiet period before the
+        // scheduling check for the same reason: a bay mid-putaway is not a bay
+        // somebody should be asked about at all, whether or not it is already on a
+        // list.
+        Constraint(ruleSet, CountConstraints.CountableLocation.RuleCode, order: 10);
+        Constraint(ruleSet, CountConstraints.SettledStock.RuleCode, order: 20);
+        Constraint(ruleSet, CountConstraints.NotAlreadyScheduled.RuleCode, order: 30);
+        Constraint(ruleSet, CountConstraints.NotRecentlyCounted.RuleCode, order: 40);
+
+        // Staleness carries the most by a distance, for the reason FEFO does in
+        // allocation: the other three are tie-breaks on top of "nobody has checked
+        // this in a very long time", and a policy that let travel outvote it would
+        // count the front of the building forever.
+        Preference(ruleSet, CountPreferences.Overdue.RuleCode, order: 100, weight: 0.40m);
+        Preference(ruleSet, CountPreferences.Velocity.RuleCode, order: 110, weight: 0.25m);
+        Preference(ruleSet, CountPreferences.StockAtRisk.RuleCode, order: 120, weight: 0.20m);
+        Preference(ruleSet, CountPreferences.TravelDistance.RuleCode, order: 130, weight: 0.15m);
 
         await dbContext.SaveChangesAsync(cancellationToken);
 

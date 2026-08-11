@@ -1,3 +1,4 @@
+using Countflow.Modules.Counting;
 using Countflow.Modules.Identity;
 using Countflow.Modules.Inbound;
 using Countflow.Modules.Inventory;
@@ -36,6 +37,10 @@ public static class ModuleCatalog
         // Phase 4. Outbound orchestrates the same three: Rules chooses which stock,
         // Inventory holds and moves it, Work fetches it. It publishes nothing and
         // names no other module's DbContext.
-        new OutboundModule()
+        new OutboundModule(),
+        // Phase 5. The same three again, for the question the other two never ask:
+        // not where stock should go or come from, but which of the numbers already
+        // published are worth doubting.
+        new CountingModule()
     ];
 }

@@ -199,6 +199,104 @@ public sealed record PickInstruction
     public string? Notes { get; init; }
 }
 
+/// <summary>
+/// Tells the ledger what an operator actually found at a holding.
+/// <para>
+/// The first instruction in this contract that does not describe a movement. Every
+/// other one says "these units went from here to there"; this one says "at this
+/// place, at this moment, there were <see cref="CountedQuantity"/> of them" — and
+/// what the ledger does about that is its own business. Often the answer is
+/// nothing, because the shelf agreed with the book.
+/// </para>
+/// <para>
+/// The holding is named by its parts rather than by a balance row id, and that is
+/// load-bearing: <b>a count must be able to find stock where the system believes
+/// there is none.</b> A balance row that has never existed has no id to quote, and
+/// "there are twelve cases in a bay we think is empty" is one of the most valuable
+/// things a count can discover.
+/// </para>
+/// </summary>
+/// <param name="CountedQuantity">
+/// In base units. Zero is legitimate and means the operator found an empty shelf;
+/// it is not "no answer", which is why this is not nullable.
+/// </param>
+public sealed record CountInstruction
+{
+    public required Guid ItemId { get; init; }
+
+    public Guid? LotId { get; init; }
+
+    public required Guid LocationId { get; init; }
+
+    public Guid? LicensePlateId { get; init; }
+
+    public StockCondition Condition { get; init; } = StockCondition.Available;
+
+    public required decimal CountedQuantity { get; init; }
+
+    public required string IdempotencyKey { get; init; }
+
+    public required PostingActor Actor { get; init; }
+
+    public required Guid TaskId { get; init; }
+
+    /// <summary>
+    /// The policy decision that raised this count. Required for the same reason
+    /// <see cref="PutawayInstruction.DecisionTraceId"/> is: a count is directed
+    /// work, somebody was sent to a bin rather than choosing it, and "why was I
+    /// asked to count this?" has to be answerable.
+    /// </summary>
+    public required Guid DecisionTraceId { get; init; }
+
+    public string? Notes { get; init; }
+}
+
+/// <summary>
+/// Writes stock off to the Scrap counterparty.
+/// <para>
+/// The other half of Phase 5, and the reason it is in this phase rather than any
+/// other: a write-off is what a count variance turns into when the missing stock
+/// is found and it is broken. Damaged goods are still on the shelf and still on
+/// the book, so removing them is not a correction to a number — it is a real,
+/// physical loss with a real counterparty, and the ledger says so.
+/// </para>
+/// </summary>
+public sealed record ScrapInstruction
+{
+    public required Guid ItemId { get; init; }
+
+    public Guid? LotId { get; init; }
+
+    public required Guid FromLocationId { get; init; }
+
+    public Guid? LicensePlateId { get; init; }
+
+    public StockCondition Condition { get; init; } = StockCondition.Available;
+
+    public required decimal Quantity { get; init; }
+
+    /// <summary>Why it is being destroyed. Damage, expiry or an ordered destruction.</summary>
+    public required ScrapCause Cause { get; init; }
+
+    public required string IdempotencyKey { get; init; }
+
+    public required PostingActor Actor { get; init; }
+
+    /// <summary>
+    /// Not optional. Every other movement type is explained by the document behind
+    /// it; a write-off is explained only by the person who ordered it.
+    /// </summary>
+    public required string Notes { get; init; }
+}
+
+/// <summary>Why stock is being written off. Maps to the ledger's own reason vocabulary.</summary>
+public enum ScrapCause
+{
+    Damaged = 1,
+    Expired = 2,
+    Destroyed = 3
+}
+
 /// <summary>One item and batch leaving the building.</summary>
 public sealed record DespatchLine(
     Guid ItemId,
@@ -274,5 +372,33 @@ public interface IStockPosting
 
     Task<Result<IReadOnlyList<PostedMovement>>> DespatchAsync(
         DespatchInstruction instruction,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Records what an operator found at a holding, and posts the difference if
+    /// there is one.
+    /// <para>
+    /// The odd one out, and worth being explicit about why it belongs here anyway.
+    /// Every other method on this interface posts a movement; this one records an
+    /// observation and <i>may</i> post a movement. It is on the posting contract
+    /// rather than a read surface because the two halves have to settle together —
+    /// a count row without its adjustment claims the shelf was verified when the
+    /// correction never landed, and an adjustment without its count row is a
+    /// quantity change nobody can account for.
+    /// </para>
+    /// <para>
+    /// Note what is <i>not</i> here, in keeping with the rest of the contract:
+    /// there is no way to ask for a specific variance. The caller supplies what was
+    /// found; Inventory reads what it believed and works out the difference, so a
+    /// caller cannot post an adjustment for a number it made up.
+    /// </para>
+    /// </summary>
+    Task<Result<CountOutcome>> CountAsync(
+        CountInstruction instruction,
+        CancellationToken cancellationToken);
+
+    /// <summary>Destroys stock, against the Scrap counterparty.</summary>
+    Task<Result<PostedMovement>> ScrapAsync(
+        ScrapInstruction instruction,
         CancellationToken cancellationToken);
 }
