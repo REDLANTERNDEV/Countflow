@@ -362,6 +362,643 @@
         }
       }
     },
+    "/api/inventory/receipts": {
+      "post": {
+        "tags": [
+          "Inventory"
+        ],
+        "summary": "Book goods in from the Supplier counterparty.",
+        "operationId": "ReceiveStock",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReceiveStockRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MovementReceiptResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/inventory/transfers": {
+      "post": {
+        "tags": [
+          "Inventory"
+        ],
+        "summary": "Move stock between two locations, licence plates, or both.",
+        "operationId": "TransferStock",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferStockRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MovementReceiptResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/inventory/adjustments": {
+      "post": {
+        "tags": [
+          "Inventory"
+        ],
+        "summary": "Adjust a quantity up or down against the Adjustment counterparty.",
+        "operationId": "AdjustStock",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdjustStockRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MovementReceiptResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/inventory/status-changes": {
+      "post": {
+        "tags": [
+          "Inventory"
+        ],
+        "summary": "Move stock to a different inventory status in place.",
+        "operationId": "ChangeStockStatus",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeStockStatusRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MovementReceiptResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/inventory/movements/{movementId}/reversal": {
+      "post": {
+        "tags": [
+          "Inventory"
+        ],
+        "summary": "Post the compensating entry that undoes a movement.",
+        "operationId": "ReverseMovement",
+        "parameters": [
+          {
+            "name": "movementId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ReverseMovementRequest"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MovementReceiptResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/inventory/balances": {
+      "get": {
+        "tags": [
+          "Inventory"
+        ],
+        "summary": "Stock on hand by item, location, lot or licence plate \u2014 now or as of a past instant.",
+        "operationId": "GetStockBalances",
+        "parameters": [
+          {
+            "name": "sku",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "location",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "lot",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sscc",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/InventoryStatus"
+            }
+          },
+          {
+            "name": "includeEmpty",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "asOf",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StockEnquiryResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/inventory/movements": {
+      "get": {
+        "tags": [
+          "Inventory"
+        ],
+        "summary": "Read the stock ledger, filtered and paged.",
+        "operationId": "GetStockMovements",
+        "parameters": [
+          {
+            "name": "sku",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "location",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "lot",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sscc",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/MovementType"
+            }
+          },
+          {
+            "name": "reason",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/MovementReason"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InventoryPageOfStockMovementResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/inventory/reconciliation": {
+      "post": {
+        "tags": [
+          "Inventory"
+        ],
+        "summary": "Replay the ledger and report any drift in the balance projection.",
+        "operationId": "RunReconciliation",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReconciliationResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/auth/login": {
       "post": {
         "tags": [
@@ -510,6 +1147,58 @@
         ],
         "type": "string"
       },
+      "AdjustStockRequest": {
+        "required": [
+          "sku",
+          "quantity",
+          "locationCode",
+          "reason"
+        ],
+        "type": "object",
+        "properties": {
+          "sku": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "locationCode": {
+            "type": "string"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/MovementReason"
+          },
+          "lotNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "sscc": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/InventoryStatus"
+              }
+            ]
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "AuthResponse": {
         "required": [
           "accessToken",
@@ -531,6 +1220,102 @@
           },
           "user": {
             "$ref": "#/components/schemas/UserInfo"
+          }
+        }
+      },
+      "BalanceDriftResponse": {
+        "required": [
+          "sku",
+          "lotNumber",
+          "locationCode",
+          "status",
+          "projected",
+          "replayed",
+          "difference",
+          "lastMovementSequence"
+        ],
+        "type": "object",
+        "properties": {
+          "sku": {
+            "type": "string"
+          },
+          "lotNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "locationCode": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/InventoryStatus"
+          },
+          "projected": {
+            "type": "number",
+            "format": "double"
+          },
+          "replayed": {
+            "type": "number",
+            "format": "double"
+          },
+          "difference": {
+            "type": "number",
+            "format": "double"
+          },
+          "lastMovementSequence": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "ChangeStockStatusRequest": {
+        "required": [
+          "sku",
+          "quantity",
+          "locationCode",
+          "fromStatus",
+          "toStatus",
+          "reason"
+        ],
+        "type": "object",
+        "properties": {
+          "sku": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "locationCode": {
+            "type": "string"
+          },
+          "fromStatus": {
+            "$ref": "#/components/schemas/InventoryStatus"
+          },
+          "toStatus": {
+            "$ref": "#/components/schemas/InventoryStatus"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/MovementReason"
+          },
+          "lotNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "sscc": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -598,6 +1383,45 @@
             "type": "boolean"
           }
         }
+      },
+      "InventoryPageOfStockMovementResponse": {
+        "required": [
+          "items",
+          "total",
+          "page",
+          "pageSize"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StockMovementResponse"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "InventoryStatus": {
+        "enum": [
+          "Available",
+          "Quarantine",
+          "Damaged",
+          "OnHold",
+          "Expired"
+        ],
+        "type": "string"
       },
       "ItemResponse": {
         "required": [
@@ -804,6 +1628,126 @@
           }
         }
       },
+      "MovementReason": {
+        "enum": [
+          "PurchaseOrderReceipt",
+          "CustomerReturn",
+          "ProductionOutput",
+          "PutawayComplete",
+          "ReplenishmentPull",
+          "ConsolidationMove",
+          "LocationReorganisation",
+          "OrderPick",
+          "CustomerDespatch",
+          "SupplierReturn",
+          "CycleCountVariance",
+          "StocktakeVariance",
+          "DamageFound",
+          "QualityHoldApplied",
+          "QualityHoldReleased",
+          "RecallHold",
+          "ExpiryReached",
+          "WriteOffDamaged",
+          "WriteOffExpired",
+          "Destroyed",
+          "ManualCorrection",
+          "ReversalOfEntry",
+          "TransferOut",
+          "TransferIn"
+        ],
+        "type": "string"
+      },
+      "MovementReceiptResponse": {
+        "required": [
+          "movementId",
+          "sequence",
+          "occurredAt",
+          "sku",
+          "quantity",
+          "fromLocationCode",
+          "toLocationCode",
+          "fromStatus",
+          "toStatus",
+          "lotNumber",
+          "sscc",
+          "fromQuantityAfter",
+          "toQuantityAfter",
+          "wasAlreadyPosted"
+        ],
+        "type": "object",
+        "properties": {
+          "movementId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sequence": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "sku": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "fromLocationCode": {
+            "type": "string"
+          },
+          "toLocationCode": {
+            "type": "string"
+          },
+          "fromStatus": {
+            "$ref": "#/components/schemas/InventoryStatus"
+          },
+          "toStatus": {
+            "$ref": "#/components/schemas/InventoryStatus"
+          },
+          "lotNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "sscc": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "fromQuantityAfter": {
+            "type": "number",
+            "format": "double"
+          },
+          "toQuantityAfter": {
+            "type": "number",
+            "format": "double"
+          },
+          "wasAlreadyPosted": {
+            "type": "boolean"
+          }
+        }
+      },
+      "MovementType": {
+        "enum": [
+          "Receipt",
+          "Putaway",
+          "Transfer",
+          "Replenishment",
+          "Pick",
+          "Despatch",
+          "Adjustment",
+          "CountAdjustment",
+          "StatusChange",
+          "Scrap",
+          "Reversal"
+        ],
+        "type": "string"
+      },
       "PackConfigurationResponse": {
         "required": [
           "level",
@@ -969,6 +1913,116 @@
           }
         }
       },
+      "ReceiveStockRequest": {
+        "required": [
+          "sku",
+          "quantity",
+          "toLocationCode"
+        ],
+        "type": "object",
+        "properties": {
+          "sku": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "toLocationCode": {
+            "type": "string"
+          },
+          "lotNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "expiryDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "productionDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "sscc": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/InventoryStatus"
+              }
+            ]
+          },
+          "reason": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MovementReason"
+              }
+            ]
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ReconciliationResponse": {
+        "required": [
+          "runAt",
+          "movementsReplayed",
+          "holdingsChecked",
+          "ledgerSum",
+          "isClean",
+          "drift"
+        ],
+        "type": "object",
+        "properties": {
+          "runAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "movementsReplayed": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "holdingsChecked": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "ledgerSum": {
+            "type": "number",
+            "format": "double"
+          },
+          "isClean": {
+            "type": "boolean"
+          },
+          "drift": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BalanceDriftResponse"
+            }
+          }
+        }
+      },
       "RefreshRequest": {
         "required": [
           "refreshToken"
@@ -988,6 +2042,17 @@
         "properties": {
           "barcode": {
             "type": "string"
+          }
+        }
+      },
+      "ReverseMovementRequest": {
+        "type": "object",
+        "properties": {
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -1169,6 +2234,208 @@
           }
         }
       },
+      "StockBalanceResponse": {
+        "required": [
+          "sku",
+          "description",
+          "baseUom",
+          "lotNumber",
+          "expiryDate",
+          "locationCode",
+          "sscc",
+          "status",
+          "quantity",
+          "isAllocatable"
+        ],
+        "type": "object",
+        "properties": {
+          "sku": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "baseUom": {
+            "type": "string"
+          },
+          "lotNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "expiryDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "locationCode": {
+            "type": "string"
+          },
+          "sscc": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/InventoryStatus"
+          },
+          "quantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "isAllocatable": {
+            "type": "boolean"
+          }
+        }
+      },
+      "StockEnquiryResponse": {
+        "required": [
+          "items",
+          "total",
+          "page",
+          "pageSize",
+          "asOf",
+          "asOfSequence"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StockBalanceResponse"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "asOf": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "asOfSequence": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int64"
+          }
+        }
+      },
+      "StockMovementResponse": {
+        "required": [
+          "id",
+          "sequence",
+          "occurredAt",
+          "sku",
+          "lotNumber",
+          "quantity",
+          "fromLocationCode",
+          "toLocationCode",
+          "fromSscc",
+          "toSscc",
+          "fromStatus",
+          "toStatus",
+          "type",
+          "reason",
+          "userName",
+          "reversesMovementId",
+          "isReversed",
+          "notes"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sequence": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "sku": {
+            "type": "string"
+          },
+          "lotNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "quantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "fromLocationCode": {
+            "type": "string"
+          },
+          "toLocationCode": {
+            "type": "string"
+          },
+          "fromSscc": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "toSscc": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "fromStatus": {
+            "$ref": "#/components/schemas/InventoryStatus"
+          },
+          "toStatus": {
+            "$ref": "#/components/schemas/InventoryStatus"
+          },
+          "type": {
+            "$ref": "#/components/schemas/MovementType"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/MovementReason"
+          },
+          "userName": {
+            "type": "string"
+          },
+          "reversesMovementId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "isReversed": {
+            "type": "boolean"
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "TemperatureClass": {
         "enum": [
           "Ambient",
@@ -1176,6 +2443,84 @@
           "Frozen"
         ],
         "type": "string"
+      },
+      "TransferStockRequest": {
+        "required": [
+          "sku",
+          "quantity",
+          "fromLocationCode",
+          "toLocationCode"
+        ],
+        "type": "object",
+        "properties": {
+          "sku": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "fromLocationCode": {
+            "type": "string"
+          },
+          "toLocationCode": {
+            "type": "string"
+          },
+          "lotNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "fromSscc": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "toSscc": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/InventoryStatus"
+              }
+            ]
+          },
+          "type": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MovementType"
+              }
+            ]
+          },
+          "reason": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MovementReason"
+              }
+            ]
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
       },
       "UserInfo": {
         "required": [
@@ -1257,6 +2602,9 @@
     },
     {
       "name": "Import"
+    },
+    {
+      "name": "Inventory"
     },
     {
       "name": "Authentication"

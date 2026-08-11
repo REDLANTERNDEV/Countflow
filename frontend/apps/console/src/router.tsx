@@ -1,9 +1,11 @@
 import { createRootRoute, createRoute, createRouter } from '@tanstack/react-router';
 import { ItemDetailPage } from './routes/ItemDetailPage.js';
 import { ItemsPage } from './routes/ItemsPage.js';
+import { LedgerPage } from './routes/LedgerPage.js';
 import { LocationsPage } from './routes/LocationsPage.js';
 import { RootLayout } from './routes/RootLayout.js';
 import { ScanPage } from './routes/ScanPage.js';
+import { StockPage } from './routes/StockPage.js';
 import { WarehousesPage } from './pages/WarehousesPage.js';
 
 // Code-based routes rather than file-based: no codegen step to keep in sync,
@@ -34,6 +36,18 @@ const itemDetailRoute = createRoute({
   component: ItemDetailPage,
 });
 
+const stockRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/stock',
+  component: StockPage,
+});
+
+const ledgerRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/ledger',
+  component: LedgerPage,
+});
+
 const scanRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/scan',
@@ -45,6 +59,8 @@ const routeTree = rootRoute.addChildren([
   locationsRoute,
   itemsRoute,
   itemDetailRoute,
+  stockRoute,
+  ledgerRoute,
   scanRoute,
 ]);
 

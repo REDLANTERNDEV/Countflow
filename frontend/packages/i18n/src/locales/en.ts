@@ -35,6 +35,8 @@ export const en = {
     warehouses: 'Warehouses',
     locations: 'Locations',
     items: 'Items',
+    stock: 'Stock',
+    ledger: 'Ledger',
     scanTest: 'Scan test',
   },
 
@@ -105,6 +107,82 @@ export const en = {
     empty: 'No items match these filters.',
   },
 
+  stock: {
+    title: 'Stock',
+    intro:
+      'Balances are a projection of the stock ledger, not a stored total. Set a date and time to rebuild them from the ledger as they stood at that instant.',
+    skuPlaceholder: 'SKU',
+    locationPlaceholder: 'Location code',
+    lotPlaceholder: 'Batch / lot',
+    ssccPlaceholder: 'SSCC',
+    allStatuses: 'All statuses',
+    includeEmpty: 'Include emptied holdings',
+    asOf: 'As of',
+    asOfClear: 'Now',
+    asOfNotice:
+      'Reconstructed from the ledger up to entry #{{sequence}}. These are historical figures.',
+    sku: 'SKU',
+    description: 'Description',
+    lot: 'Batch',
+    expiry: 'Expiry',
+    location: 'Location',
+    sscc: 'SSCC',
+    status: 'Status',
+    quantity: 'Quantity',
+    uom: 'UoM',
+    allocatable: 'Allocatable',
+    held: 'Held',
+    empty: 'No stock matches these filters.',
+
+    status_Available: 'Available',
+    status_Quarantine: 'Quarantine',
+    status_Damaged: 'Damaged',
+    status_OnHold: 'On hold',
+    status_Expired: 'Expired',
+  },
+
+  ledger: {
+    title: 'Stock ledger',
+    intro:
+      'Every stock change ever posted, in order. Entries are never edited or deleted — a correction is a compensating entry, so the record of the mistake survives alongside its fix.',
+    allTypes: 'All movement types',
+    allReasons: 'All reasons',
+    entry: 'Entry',
+    when: 'When',
+    sku: 'SKU',
+    lot: 'Batch',
+    quantity: 'Qty',
+    from: 'From',
+    to: 'To',
+    type: 'Type',
+    reason: 'Reason',
+    user: 'By',
+    notes: 'Notes',
+    reversed: 'reversed',
+    reversal: 'correction',
+    empty: 'No ledger entries match these filters.',
+    reconcile: 'Verify against the ledger',
+    reconciling: 'Replaying…',
+    reconcileClean:
+      'Clean: {{holdings}} holdings replayed from {{movements}} entries, and the ledger sums to zero.',
+    reconcileDrift:
+      'Drift on {{count}} holdings. The balance projection disagrees with the ledger.',
+    reconcileNote:
+      'Replays the whole ledger and compares the result with the stored balances. It reports drift and never repairs it: the fix is a compensating entry posted by someone who understands the cause.',
+
+    type_Receipt: 'Receipt',
+    type_Putaway: 'Putaway',
+    type_Transfer: 'Transfer',
+    type_Replenishment: 'Replenishment',
+    type_Pick: 'Pick',
+    type_Despatch: 'Despatch',
+    type_Adjustment: 'Adjustment',
+    type_CountAdjustment: 'Count adjustment',
+    type_StatusChange: 'Status change',
+    type_Scrap: 'Write-off',
+    type_Reversal: 'Reversal',
+  },
+
   scan: {
     title: 'Scan test',
     intro:
@@ -162,6 +240,41 @@ export const en = {
     'gs1.invalid_date': 'A date field is not a valid YYMMDD date.',
     'gs1.value_too_long': 'A field is longer than its application identifier allows.',
     'import.malformed_csv': 'The file could not be read as CSV.',
+
+    // Inventory. The ledger returns codes for the same reason the scanner does:
+    // an operator on a Turkish handheld must read Turkish, and a server that
+    // sends English sentences makes that impossible.
+    'inventory.item_not_found': 'No item with that SKU.',
+    'inventory.item_inactive': 'That item is deactivated and cannot be moved.',
+    'inventory.location_not_found': 'No location with that code.',
+    'inventory.location_blocked': 'That location is blocked and cannot receive stock.',
+    'inventory.lot_required': 'This item is batch-tracked, so a batch number is required.',
+    'inventory.lot_not_permitted': 'This item is not batch-tracked, so it cannot carry a batch.',
+    'inventory.lot_not_found': 'No such batch for this item.',
+    'inventory.lot_ambiguous': 'That batch number exists on more than one item. Add a SKU.',
+    'inventory.lot_expiry_conflict':
+      'That batch is already recorded with a different expiry date. The same batch cannot expire twice.',
+    'inventory.expiry_requires_lot': 'An expiry date belongs to a batch, so it needs a batch number.',
+    'inventory.quantity_not_positive': 'Quantity must be greater than zero.',
+    'inventory.holdings_identical': 'A movement must change location, licence plate or status.',
+    'inventory.insufficient_stock': 'There is not that much stock in that location.',
+    'inventory.idempotency_key_required': 'This request is missing its idempotency key.',
+    'inventory.idempotency_key_reused':
+      'That idempotency key was already used for a different movement.',
+    'inventory.invalid_counterparty': 'That movement type cannot use those locations.',
+    'inventory.status_change_needs_new_status': 'A status change must move stock to a different status.',
+    'inventory.movement_not_found': 'No ledger entry with that identifier.',
+    'inventory.already_reversed': 'That entry has already been corrected.',
+    'inventory.cannot_reverse_a_reversal':
+      'Correct the original entry, not the correction that already undid it.',
+    'inventory.invalid_sscc': 'An SSCC is 18 digits and must satisfy its check digit.',
+    'inventory.license_plate_not_found': 'No licence plate with that SSCC.',
+    'inventory.license_plate_cycle': 'A licence plate cannot be nested inside itself.',
+    'inventory.as_of_in_future': 'A point-in-time enquiry cannot be in the future.',
+    'inventory.counterparty_missing':
+      'This warehouse has no virtual counterparty location for that movement. The ledger cannot post without one.',
+    'inventory.unknown_actor': 'Your session does not identify a user. Please sign in again.',
+
     unknown: 'Something went wrong.',
   },
 };

@@ -28,11 +28,10 @@ public sealed class Gs1ParseResult
     public string? Sscc => Find("00");
 
     /// <summary>
-    /// Whether the SSCC's check digit holds. Same modulo-10 scheme as a GTIN.
-    /// Checked at scan time because an LPN created from a mis-read licence plate
-    /// follows that pallet around the warehouse until someone notices.
+    /// Whether the SSCC's check digit holds. Checked at scan time for the reason
+    /// given on <see cref="Gs1.Sscc"/>.
     /// </summary>
-    public bool HasValidSscc => Sscc is { Length: 18 } sscc && Gs1.Gtin.HasValidCheckDigit(sscc);
+    public bool HasValidSscc => Gs1.Sscc.IsValid(Sscc);
 
     /// <summary>Batch or lot number (AI 10).</summary>
     public string? LotNumber => Find("10");

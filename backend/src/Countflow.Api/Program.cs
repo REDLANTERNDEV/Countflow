@@ -3,8 +3,6 @@ using Countflow.Api.Observability;
 using Countflow.Api.OpenApi;
 using Countflow.Bootstrap;
 using Countflow.Modules.Identity;
-using Countflow.Modules.Identity.Persistence;
-using Countflow.Modules.MasterData.Persistence;
 using Countflow.SharedKernel.Modules;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Scalar.AspNetCore;
@@ -54,9 +52,11 @@ builder.Services.AddProblemDetails();
 // Readiness reports whether the API can actually serve: it can only do that
 // once every module's schema is reachable. Liveness stays trivially cheap so a
 // slow database never gets the container killed and restarted in a loop.
+//
+// One check over every module context rather than a line per module, so adding a
+// module really is the single line in ModuleCatalog it is advertised to be.
 builder.Services.AddHealthChecks()
-    .AddDbContextCheck<IdentityModuleDbContext>("identity-db", tags: ["ready"])
-    .AddDbContextCheck<MasterDataDbContext>("masterdata-db", tags: ["ready"]);
+    .AddCheck<ModuleHealthCheck>("module-schemas", tags: ["ready"]);
 
 builder.Services.AddCors(options =>
 {

@@ -1,5 +1,6 @@
 using Countflow.Modules.Identity.Domain;
 using Countflow.SharedKernel.Modules;
+using Countflow.SharedKernel.Security;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;

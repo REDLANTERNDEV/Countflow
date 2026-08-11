@@ -123,6 +123,142 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/inventory/receipts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Book goods in from the Supplier counterparty. */
+        post: operations["ReceiveStock"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/inventory/transfers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Move stock between two locations, licence plates, or both. */
+        post: operations["TransferStock"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/inventory/adjustments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Adjust a quantity up or down against the Adjustment counterparty. */
+        post: operations["AdjustStock"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/inventory/status-changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Move stock to a different inventory status in place. */
+        post: operations["ChangeStockStatus"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/inventory/movements/{movementId}/reversal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post the compensating entry that undoes a movement. */
+        post: operations["ReverseMovement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/inventory/balances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Stock on hand by item, location, lot or licence plate — now or as of a past instant. */
+        get: operations["GetStockBalances"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/inventory/movements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read the stock ledger, filtered and paged. */
+        get: operations["GetStockMovements"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/inventory/reconciliation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Replay the ledger and report any drift in the balance projection. */
+        post: operations["RunReconciliation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/login": {
         parameters: {
             query?: never;
@@ -197,12 +333,49 @@ export interface components {
     schemas: {
         /** @enum {string} */
         AbcClass: "A" | "B" | "C";
+        AdjustStockRequest: {
+            sku: string;
+            /** Format: double */
+            quantity: number;
+            locationCode: string;
+            reason: components["schemas"]["MovementReason"];
+            lotNumber?: null | string;
+            sscc?: null | string;
+            status?: null | components["schemas"]["InventoryStatus"];
+            notes?: null | string;
+        };
         AuthResponse: {
             accessToken: string;
             /** Format: date-time */
             accessTokenExpiresAt: string;
             refreshToken: string;
             user: components["schemas"]["UserInfo"];
+        };
+        BalanceDriftResponse: {
+            sku: string;
+            lotNumber: null | string;
+            locationCode: string;
+            status: components["schemas"]["InventoryStatus"];
+            /** Format: double */
+            projected: number;
+            /** Format: double */
+            replayed: number;
+            /** Format: double */
+            difference: number;
+            /** Format: int64 */
+            lastMovementSequence: number;
+        };
+        ChangeStockStatusRequest: {
+            sku: string;
+            /** Format: double */
+            quantity: number;
+            locationCode: string;
+            fromStatus: components["schemas"]["InventoryStatus"];
+            toStatus: components["schemas"]["InventoryStatus"];
+            reason: components["schemas"]["MovementReason"];
+            lotNumber?: null | string;
+            sscc?: null | string;
+            notes?: null | string;
         };
         ImportIssue: {
             /** Format: int32 */
@@ -224,6 +397,17 @@ export interface components {
             issues: components["schemas"]["ImportIssue"][];
             hasIssues?: boolean;
         };
+        InventoryPageOfStockMovementResponse: {
+            items: components["schemas"]["StockMovementResponse"][];
+            /** Format: int32 */
+            total: number;
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            pageSize: number;
+        };
+        /** @enum {string} */
+        InventoryStatus: "Available" | "Quarantine" | "Damaged" | "OnHold" | "Expired";
         ItemResponse: {
             /** Format: uuid */
             id: string;
@@ -271,6 +455,32 @@ export interface components {
         LogoutRequest: {
             refreshToken: string;
         };
+        /** @enum {string} */
+        MovementReason: "PurchaseOrderReceipt" | "CustomerReturn" | "ProductionOutput" | "PutawayComplete" | "ReplenishmentPull" | "ConsolidationMove" | "LocationReorganisation" | "OrderPick" | "CustomerDespatch" | "SupplierReturn" | "CycleCountVariance" | "StocktakeVariance" | "DamageFound" | "QualityHoldApplied" | "QualityHoldReleased" | "RecallHold" | "ExpiryReached" | "WriteOffDamaged" | "WriteOffExpired" | "Destroyed" | "ManualCorrection" | "ReversalOfEntry" | "TransferOut" | "TransferIn";
+        MovementReceiptResponse: {
+            /** Format: uuid */
+            movementId: string;
+            /** Format: int64 */
+            sequence: number;
+            /** Format: date-time */
+            occurredAt: string;
+            sku: string;
+            /** Format: double */
+            quantity: number;
+            fromLocationCode: string;
+            toLocationCode: string;
+            fromStatus: components["schemas"]["InventoryStatus"];
+            toStatus: components["schemas"]["InventoryStatus"];
+            lotNumber: null | string;
+            sscc: null | string;
+            /** Format: double */
+            fromQuantityAfter: number;
+            /** Format: double */
+            toQuantityAfter: number;
+            wasAlreadyPosted: boolean;
+        };
+        /** @enum {string} */
+        MovementType: "Receipt" | "Putaway" | "Transfer" | "Replenishment" | "Pick" | "Despatch" | "Adjustment" | "CountAdjustment" | "StatusChange" | "Scrap" | "Reversal";
         PackConfigurationResponse: {
             level: string;
             /** Format: int32 */
@@ -315,11 +525,41 @@ export interface components {
             detail?: null | string;
             instance?: null | string;
         };
+        ReceiveStockRequest: {
+            sku: string;
+            /** Format: double */
+            quantity: number;
+            toLocationCode: string;
+            lotNumber?: null | string;
+            /** Format: date */
+            expiryDate?: null | string;
+            /** Format: date */
+            productionDate?: null | string;
+            sscc?: null | string;
+            status?: null | components["schemas"]["InventoryStatus"];
+            reason?: null | components["schemas"]["MovementReason"];
+            notes?: null | string;
+        };
+        ReconciliationResponse: {
+            /** Format: date-time */
+            runAt: string;
+            /** Format: int64 */
+            movementsReplayed: number;
+            /** Format: int32 */
+            holdingsChecked: number;
+            /** Format: double */
+            ledgerSum: number;
+            isClean: boolean;
+            drift: components["schemas"]["BalanceDriftResponse"][];
+        };
         RefreshRequest: {
             refreshToken: string;
         };
         ResolveScanRequest: {
             barcode: string;
+        };
+        ReverseMovementRequest: {
+            notes?: null | string;
         };
         ScanElementResponse: {
             ai: string;
@@ -363,8 +603,74 @@ export interface components {
             isExpiryTracked: boolean;
             isSerialTracked: boolean;
         };
+        StockBalanceResponse: {
+            sku: string;
+            description: string;
+            baseUom: string;
+            lotNumber: null | string;
+            /** Format: date */
+            expiryDate: null | string;
+            locationCode: string;
+            sscc: null | string;
+            status: components["schemas"]["InventoryStatus"];
+            /** Format: double */
+            quantity: number;
+            isAllocatable: boolean;
+        };
+        StockEnquiryResponse: {
+            items: components["schemas"]["StockBalanceResponse"][];
+            /** Format: int32 */
+            total: number;
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            pageSize: number;
+            /** Format: date-time */
+            asOf: null | string;
+            /** Format: int64 */
+            asOfSequence: null | number;
+        };
+        StockMovementResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: int64 */
+            sequence: number;
+            /** Format: date-time */
+            occurredAt: string;
+            sku: string;
+            lotNumber: null | string;
+            /** Format: double */
+            quantity: number;
+            fromLocationCode: string;
+            toLocationCode: string;
+            fromSscc: null | string;
+            toSscc: null | string;
+            fromStatus: components["schemas"]["InventoryStatus"];
+            toStatus: components["schemas"]["InventoryStatus"];
+            type: components["schemas"]["MovementType"];
+            reason: components["schemas"]["MovementReason"];
+            userName: string;
+            /** Format: uuid */
+            reversesMovementId: null | string;
+            isReversed: boolean;
+            notes: null | string;
+        };
         /** @enum {string} */
         TemperatureClass: "Ambient" | "Chilled" | "Frozen";
+        TransferStockRequest: {
+            sku: string;
+            /** Format: double */
+            quantity: number;
+            fromLocationCode: string;
+            toLocationCode: string;
+            lotNumber?: null | string;
+            fromSscc?: null | string;
+            toSscc?: null | string;
+            status?: null | components["schemas"]["InventoryStatus"];
+            type?: null | components["schemas"]["MovementType"];
+            reason?: null | components["schemas"]["MovementReason"];
+            notes?: null | string;
+        };
         UserInfo: {
             /** Format: uuid */
             id: string;
@@ -599,6 +905,408 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ReceiveStock: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReceiveStockRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MovementReceiptResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    TransferStock: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TransferStockRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MovementReceiptResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    AdjustStock: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdjustStockRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MovementReceiptResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ChangeStockStatus: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeStockStatusRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MovementReceiptResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ReverseMovement: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                movementId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": null | components["schemas"]["ReverseMovementRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MovementReceiptResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetStockBalances: {
+        parameters: {
+            query?: {
+                sku?: string;
+                location?: string;
+                lot?: string;
+                sscc?: string;
+                status?: components["schemas"]["InventoryStatus"];
+                includeEmpty?: boolean;
+                asOf?: string;
+                page?: number;
+                pageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StockEnquiryResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetStockMovements: {
+        parameters: {
+            query?: {
+                sku?: string;
+                location?: string;
+                lot?: string;
+                sscc?: string;
+                type?: components["schemas"]["MovementType"];
+                reason?: components["schemas"]["MovementReason"];
+                from?: string;
+                to?: string;
+                page?: number;
+                pageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InventoryPageOfStockMovementResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    RunReconciliation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReconciliationResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

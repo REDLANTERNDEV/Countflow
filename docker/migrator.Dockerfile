@@ -13,6 +13,7 @@ COPY backend/src/Countflow.Migrator/Countflow.Migrator.csproj                   
 COPY backend/src/Countflow.Bootstrap/Countflow.Bootstrap.csproj                       src/Countflow.Bootstrap/
 COPY backend/src/Countflow.SharedKernel/Countflow.SharedKernel.csproj                 src/Countflow.SharedKernel/
 COPY backend/src/Modules/Countflow.Modules.Identity/Countflow.Modules.Identity.csproj     src/Modules/Countflow.Modules.Identity/
+COPY backend/src/Modules/Countflow.Modules.Inventory/Countflow.Modules.Inventory.csproj   src/Modules/Countflow.Modules.Inventory/
 COPY backend/src/Modules/Countflow.Modules.MasterData/Countflow.Modules.MasterData.csproj src/Modules/Countflow.Modules.MasterData/
 
 RUN --mount=type=cache,target=/root/.nuget/packages,sharing=locked \

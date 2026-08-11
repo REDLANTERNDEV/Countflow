@@ -1,4 +1,5 @@
 using Countflow.Modules.Identity;
+using Countflow.Modules.Inventory;
 using Countflow.Modules.MasterData;
 using Countflow.SharedKernel.Modules;
 
@@ -17,6 +18,10 @@ public static class ModuleCatalog
     public static IReadOnlyList<ICountflowModule> All { get; } =
     [
         new IdentityModule(),
-        new MasterDataModule()
+        new MasterDataModule(),
+        // Order matters only for seeding, which IModuleSeeder.Order controls, but
+        // reading the list top to bottom as a dependency order is a useful habit:
+        // Inventory posts against MasterData's locations, never the reverse.
+        new InventoryModule()
     ];
 }

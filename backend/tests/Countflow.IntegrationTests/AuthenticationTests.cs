@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Countflow.Modules.Identity.Domain;
 using Countflow.Modules.Identity.Persistence;
+using Countflow.SharedKernel.Security;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 

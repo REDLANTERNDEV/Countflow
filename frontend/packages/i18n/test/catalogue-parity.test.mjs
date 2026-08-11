@@ -34,15 +34,27 @@ function keyPaths(source) {
       continue;
     }
 
-    const openObject = line.match(/^'?([\w.]+)'?\s*:\s*\{$/);
-    if (openObject) {
-      stack.push(openObject[1]);
-      continue;
+    // A key is either a bare identifier or a fully quoted string. Matching an
+    // *optional* leading quote would also match the continuation line of a
+    // wrapped value — `'Clean: {{holdings}} holdings…'` reads as a key named
+    // `Clean`, and the phantom key then shows up as a missing translation in
+    // whichever language happened not to wrap that string.
+    const key = (line) => {
+      const match = line.match(/^(?:'([\w.]+)'|([A-Za-z_$][\w$]*))\s*:/);
+      return match ? (match[1] ?? match[2]) : null;
+    };
+
+    if (/:\s*\{$/.test(line)) {
+      const name = key(line);
+      if (name) {
+        stack.push(name);
+        continue;
+      }
     }
 
-    const leaf = line.match(/^'?([\w.]+)'?\s*:/);
+    const leaf = key(line);
     if (leaf) {
-      paths.push([...stack, leaf[1]].join('.'));
+      paths.push([...stack, leaf].join('.'));
     }
   }
 

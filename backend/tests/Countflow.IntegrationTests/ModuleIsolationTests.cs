@@ -1,7 +1,10 @@
 using System.Net;
 using Countflow.Bootstrap;
 using Countflow.Modules.Identity.Persistence;
+using Countflow.Modules.Inventory.Persistence;
+using Countflow.Modules.MasterData.Domain;
 using Countflow.Modules.MasterData.Persistence;
+using Countflow.SharedKernel.Contracts;
 using Countflow.SharedKernel.Modules;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,6 +25,33 @@ public sealed class ModuleIsolationTests(CountflowApiFixture fixture) : IClassFi
 
         Assert.All(schemas, schema => Assert.False(string.IsNullOrWhiteSpace(schema)));
         Assert.Equal(schemas.Count, schemas.Distinct(StringComparer.Ordinal).Count());
+    }
+
+    [Fact]
+    public void Every_virtual_location_type_is_reachable_through_the_published_contract()
+    {
+        // Inventory never sees LocationType — it only knows CounterpartyKind, which
+        // is what keeps MasterData's topology vocabulary inside MasterData. The
+        // cost of that boundary is this pair of enums, and a new virtual location
+        // type that nobody added to the contract would be silently treated as a
+        // shelf by the ledger, including being forbidden to go negative. That would
+        // not fail; it would just quietly refuse every receipt through it.
+        var virtualTypes = Enum.GetValues<LocationType>().Where(type => type.IsVirtual()).ToList();
+
+        Assert.NotEmpty(virtualTypes);
+
+        Assert.All(virtualTypes, type => Assert.True(
+            Enum.TryParse<CounterpartyKind>(type.ToString(), out var kind) && kind != CounterpartyKind.None,
+            $"Virtual location type {type} has no CounterpartyKind, so the ledger cannot post against it."));
+
+        // And the other direction, which catches a counterparty invented in the
+        // contract that no location can ever satisfy.
+        var counterparties = Enum.GetValues<CounterpartyKind>()
+            .Where(kind => kind != CounterpartyKind.None);
+
+        Assert.All(counterparties, kind => Assert.True(
+            Enum.TryParse<LocationType>(kind.ToString(), out var type) && type.IsVirtual(),
+            $"CounterpartyKind {kind} has no virtual location type behind it."));
     }
 
     [Fact]
@@ -48,6 +78,7 @@ public sealed class ModuleIsolationTests(CountflowApiFixture fixture) : IClassFi
 
         Assert.Contains(IdentityModuleDbContext.SchemaName, schemas);
         Assert.Contains(MasterDataDbContext.SchemaName, schemas);
+        Assert.Contains(InventoryDbContext.SchemaName, schemas);
 
         // Nothing belongs in public — that is the shared namespace a module
         // boundary violation would land in.
@@ -66,7 +97,12 @@ public sealed class ModuleIsolationTests(CountflowApiFixture fixture) : IClassFi
 
         // A single shared history table would make two modules' migrations
         // collide, so each schema must carry its own.
-        foreach (var schema in new[] { IdentityModuleDbContext.SchemaName, MasterDataDbContext.SchemaName })
+        foreach (var schema in new[]
+                 {
+                     IdentityModuleDbContext.SchemaName,
+                     MasterDataDbContext.SchemaName,
+                     InventoryDbContext.SchemaName
+                 })
         {
             await using var command = connection.CreateCommand();
             command.CommandText =

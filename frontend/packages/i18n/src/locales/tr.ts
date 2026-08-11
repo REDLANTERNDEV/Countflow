@@ -41,6 +41,8 @@ export const tr: Catalogue = {
     warehouses: 'Depolar',
     locations: 'Lokasyonlar',
     items: 'Ürünler',
+    stock: 'Stok',
+    ledger: 'Defter',
     scanTest: 'Okutma testi',
   },
 
@@ -111,6 +113,82 @@ export const tr: Catalogue = {
     empty: 'Bu filtrelere uyan ürün yok.',
   },
 
+  stock: {
+    title: 'Stok',
+    intro:
+      'Bakiyeler stok defterinden türetilir, ayrı bir toplam olarak tutulmaz. Bir tarih ve saat seçtiğinizde bakiyeler o ana ait haliyle defterden yeniden hesaplanır.',
+    skuPlaceholder: 'Stok kodu',
+    locationPlaceholder: 'Lokasyon kodu',
+    lotPlaceholder: 'Parti',
+    ssccPlaceholder: 'SSCC',
+    allStatuses: 'Tüm durumlar',
+    includeEmpty: 'Boşalmış yerleri de göster',
+    asOf: 'Şu ana göre',
+    asOfClear: 'Şimdi',
+    asOfNotice:
+      '{{sequence}} numaralı kayda kadar defterden yeniden hesaplandı. Bunlar geçmişe ait rakamlardır.',
+    sku: 'Stok kodu',
+    description: 'Açıklama',
+    lot: 'Parti',
+    expiry: 'SKT',
+    location: 'Lokasyon',
+    sscc: 'SSCC',
+    status: 'Durum',
+    quantity: 'Miktar',
+    uom: 'Birim',
+    allocatable: 'Tahsis edilebilir',
+    held: 'Bloke',
+    empty: 'Bu filtrelere uyan stok yok.',
+
+    status_Available: 'Kullanılabilir',
+    status_Quarantine: 'Karantina',
+    status_Damaged: 'Hasarlı',
+    status_OnHold: 'Bloke',
+    status_Expired: 'Süresi geçmiş',
+  },
+
+  ledger: {
+    title: 'Stok defteri',
+    intro:
+      'Şimdiye kadar işlenmiş her stok hareketi, sırasıyla. Kayıtlar hiçbir zaman değiştirilmez veya silinmez — düzeltme, ters kayıt olarak eklenir; böylece hatanın kendisi de düzeltmesiyle birlikte kayıtta kalır.',
+    allTypes: 'Tüm hareket tipleri',
+    allReasons: 'Tüm nedenler',
+    entry: 'Kayıt',
+    when: 'Zaman',
+    sku: 'Stok kodu',
+    lot: 'Parti',
+    quantity: 'Miktar',
+    from: 'Nereden',
+    to: 'Nereye',
+    type: 'Tip',
+    reason: 'Neden',
+    user: 'İşlemi yapan',
+    notes: 'Not',
+    reversed: 'ters kayıtlandı',
+    reversal: 'düzeltme',
+    empty: 'Bu filtrelere uyan defter kaydı yok.',
+    reconcile: 'Deftere karşı doğrula',
+    reconciling: 'Yeniden hesaplanıyor…',
+    reconcileClean:
+      'Temiz: {{movements}} kayıttan {{holdings}} yer yeniden hesaplandı ve defterin toplamı sıfır.',
+    reconcileDrift:
+      '{{count}} yerde sapma var. Bakiye projeksiyonu defterle uyuşmuyor.',
+    reconcileNote:
+      'Defterin tamamını yeniden hesaplar ve sonucu kayıtlı bakiyelerle karşılaştırır. Sapmayı bildirir, asla kendisi düzeltmez: düzeltme, nedeni bilen birinin gireceği ters kayıttır.',
+
+    type_Receipt: 'Mal kabul',
+    type_Putaway: 'Yerleştirme',
+    type_Transfer: 'Transfer',
+    type_Replenishment: 'İkmal',
+    type_Pick: 'Toplama',
+    type_Despatch: 'Sevkiyat',
+    type_Adjustment: 'Düzeltme',
+    type_CountAdjustment: 'Sayım düzeltmesi',
+    type_StatusChange: 'Durum değişikliği',
+    type_Scrap: 'Zayi',
+    type_Reversal: 'Ters kayıt',
+  },
+
   scan: {
     title: 'Okutma testi',
     intro:
@@ -166,6 +244,40 @@ export const tr: Catalogue = {
     'gs1.invalid_date': 'Tarih alanı geçerli bir YYAAGG tarihi değil.',
     'gs1.value_too_long': 'Bir alan, tanımlayıcısının izin verdiğinden uzun.',
     'import.malformed_csv': 'Dosya CSV olarak okunamadı.',
+
+    // Stok defteri. Okutma uyarılarıyla aynı gerekçe: sunucu kod gönderir,
+    // metin burada yaşar.
+    'inventory.item_not_found': 'Bu stok koduna sahip ürün yok.',
+    'inventory.item_inactive': 'Bu ürün pasif durumda, hareket görebilir değil.',
+    'inventory.location_not_found': 'Bu koda sahip lokasyon yok.',
+    'inventory.location_blocked': 'Bu lokasyon bloke, mal kabul edemez.',
+    'inventory.lot_required': 'Bu ürün parti takipli, parti numarası zorunlu.',
+    'inventory.lot_not_permitted': 'Bu ürün parti takipli değil, parti numarası taşıyamaz.',
+    'inventory.lot_not_found': 'Bu ürüne ait böyle bir parti yok.',
+    'inventory.lot_ambiguous': 'Bu parti numarası birden fazla üründe var. Stok kodu ekleyin.',
+    'inventory.lot_expiry_conflict':
+      'Bu parti farklı bir son kullanma tarihiyle kayıtlı. Aynı partinin iki SKT’si olamaz.',
+    'inventory.expiry_requires_lot': 'Son kullanma tarihi partiye aittir, parti numarası gerekir.',
+    'inventory.quantity_not_positive': 'Miktar sıfırdan büyük olmalı.',
+    'inventory.holdings_identical': 'Bir hareket lokasyonu, paleti veya durumu değiştirmelidir.',
+    'inventory.insufficient_stock': 'Bu lokasyonda o kadar stok yok.',
+    'inventory.idempotency_key_required': 'Bu istekte tekrar koruma anahtarı yok.',
+    'inventory.idempotency_key_reused':
+      'Bu tekrar koruma anahtarı daha önce başka bir hareket için kullanılmış.',
+    'inventory.invalid_counterparty': 'Bu hareket tipi bu lokasyonlarla kullanılamaz.',
+    'inventory.status_change_needs_new_status': 'Durum değişikliği farklı bir duruma taşımalıdır.',
+    'inventory.movement_not_found': 'Bu numaraya sahip defter kaydı yok.',
+    'inventory.already_reversed': 'Bu kayıt zaten düzeltilmiş.',
+    'inventory.cannot_reverse_a_reversal':
+      'Düzeltmeyi değil, asıl kaydı düzeltin — bu kayıt onu zaten geri almış.',
+    'inventory.invalid_sscc': 'SSCC 18 hanedir ve kontrol hanesi tutmalıdır.',
+    'inventory.license_plate_not_found': 'Bu SSCC ile bir palet kaydı yok.',
+    'inventory.license_plate_cycle': 'Bir palet kendi içine yerleştirilemez.',
+    'inventory.as_of_in_future': 'Geçmişe dönük sorgu ileri bir tarih olamaz.',
+    'inventory.counterparty_missing':
+      'Bu depoda bu hareket için sanal karşı lokasyon tanımlı değil. Defter kayıt atamaz.',
+    'inventory.unknown_actor': 'Oturumunuz bir kullanıcı tanımlamıyor. Lütfen tekrar giriş yapın.',
+
     unknown: 'Bir şeyler ters gitti.',
   },
 };
