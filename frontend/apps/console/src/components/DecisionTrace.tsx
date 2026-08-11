@@ -39,6 +39,13 @@ export function DecisionTrace({ trace }: { trace: Trace }) {
   const admissible = trace.candidates.filter((candidate) => candidate.isAdmissible);
   const excluded = trace.candidates.filter((candidate) => !candidate.isAdmissible);
 
+  // Putaway chooses between empty bins; allocation chooses between holdings of
+  // stock. One component either way — the shape of a trace does not change with
+  // the decision — but a column headed "Location" over a list of batches is the
+  // kind of small lie that makes a trace harder to read than what it explains.
+  const aboutStock = trace.kind === 'Allocation';
+  const candidateLabel = aboutStock ? t('rules.trace.candidateStock') : t('rules.trace.candidate');
+
   return (
     <div className="flex flex-col gap-[var(--space-4)]">
       <div className="flex flex-wrap items-center gap-[var(--space-3)]">
@@ -46,7 +53,7 @@ export function DecisionTrace({ trace }: { trace: Trace }) {
           {t('rules.trace.ruleSet', { name: trace.ruleSetName, version: trace.ruleSetVersion })}
         </Badge>
         <span className="text-[length:var(--text-sm)] text-[var(--color-text-secondary)]">
-          {t('rules.trace.considered', {
+          {t(aboutStock ? 'rules.trace.consideredStock' : 'rules.trace.considered', {
             considered: trace.consideredCount,
             admissible: trace.admissibleCount,
           })}
@@ -75,7 +82,7 @@ export function DecisionTrace({ trace }: { trace: Trace }) {
               <THead>
                 <TR>
                   <TH>{t('rules.trace.rank')}</TH>
-                  <TH>{t('rules.trace.candidate')}</TH>
+                  <TH>{candidateLabel}</TH>
                   <TH numeric>{t('rules.trace.score')}</TH>
                   <TH>{t('rules.trace.breakdown')}</TH>
                 </TR>
@@ -132,7 +139,7 @@ export function DecisionTrace({ trace }: { trace: Trace }) {
             <Table>
               <THead>
                 <TR>
-                  <TH>{t('rules.trace.candidate')}</TH>
+                  <TH>{candidateLabel}</TH>
                   <TH>{t('rules.trace.excludedBy')}</TH>
                 </TR>
               </THead>

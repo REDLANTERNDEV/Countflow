@@ -130,7 +130,7 @@ public sealed class WorkQueue(
     }
 
     /// <summary>
-    /// One open task per pallet per origin.
+    /// One open putaway per pallet per origin.
     /// <para>
     /// A trailer is unloaded SKU by SKU onto one pallet, so a mixed pallet arrives
     /// as several receipts — but it is one thing an operator picks up and moves
@@ -140,17 +140,25 @@ public sealed class WorkQueue(
     /// work, and the ledger works out what is on it.
     /// </para>
     /// <para>
+    /// <b>Only for putaway</b>, and Phase 4 is where that stopped being obvious. A
+    /// pick names a pallet as well, because the operator has to be told which one
+    /// to break into — but the unit of work there is the order line, not the
+    /// pallet. Merging two orders' picks off one pallet would produce a single job
+    /// whose confirmation could only be right for one of them. The kind decides
+    /// what the unit of work is, and merging follows the unit of work.
+    /// </para>
+    /// <para>
     /// The suggestion and its trace stay as they were. The rules chose a home for
     /// the first thing on the pallet, and re-deciding for a pallet whose contents
     /// are still growing would rewrite an explanation somebody may already have
-    /// been shown. Re-slotting a mixed pallet as a whole is Phase 4 work.
+    /// been shown. Re-slotting a mixed pallet as a whole is still deferred.
     /// </para>
     /// </summary>
     private async Task<WorkTask?> FindOpenPlateTaskAsync(
         WorkTaskRequest request,
         CancellationToken cancellationToken)
     {
-        if (request.LicensePlateId is not { } plateId)
+        if (request.Kind != WorkTaskKind.Putaway || request.LicensePlateId is not { } plateId)
         {
             return null;
         }
@@ -164,6 +172,102 @@ public sealed class WorkQueue(
             .OrderBy(t => t.CreatedAt)
             .FirstOrDefaultAsync(cancellationToken);
     }
+
+    public async Task<IReadOnlyDictionary<Guid, WorkTaskSummary>> FindManyAsync(
+        IReadOnlyCollection<Guid> taskIds,
+        CancellationToken cancellationToken)
+    {
+        if (taskIds.Count == 0)
+        {
+            return new Dictionary<Guid, WorkTaskSummary>();
+        }
+
+        var ids = taskIds.Distinct().ToArray();
+
+        var rows = await dbContext.WorkTasks
+            .AsNoTracking()
+            .Where(t => ids.Contains(t.Id))
+            .Select(t => new Row(
+                t.Id, t.Kind, t.Status, t.Quantity,
+                t.CompletedAtLocationId, t.CompletedAt, t.CompletedByUserName, t.WasOverridden))
+            .ToListAsync(cancellationToken);
+
+        return rows.ToDictionary(
+            row => row.Id,
+            row => new WorkTaskSummary(
+                row.Id,
+                row.Kind,
+                ToState(row.Status),
+                row.Quantity,
+                row.CompletedAtLocationId,
+                row.CompletedAt,
+                row.CompletedByUserName,
+                row.WasOverridden));
+    }
+
+    /// <summary>
+    /// Withdraws work nobody has started.
+    /// <para>
+    /// Filtered to <see cref="WorkTaskStatus.Ready"/> in the predicate rather than
+    /// checked and then updated, so a task somebody claims in the same instant is
+    /// simply not among the rows that change. The count going back tells the
+    /// caller how much of its work it failed to withdraw, which is what a
+    /// cancelled order needs to know before it lets the stock go — releasing a
+    /// reservation an operator is at that moment walking towards would send them
+    /// to pick against a claim that no longer exists.
+    /// </para>
+    /// </summary>
+    public async Task<Result<int>> CancelAsync(
+        IReadOnlyCollection<Guid> taskIds,
+        string reason,
+        CancellationToken cancellationToken)
+    {
+        if (taskIds.Count == 0)
+        {
+            return 0;
+        }
+
+        var ids = taskIds.Distinct().ToArray();
+
+        var cancelled = await dbContext.WorkTasks
+            .Where(t => ids.Contains(t.Id) && t.Status == WorkTaskStatus.Ready)
+            .ExecuteUpdateAsync(
+                update => update
+                    .SetProperty(t => t.Status, WorkTaskStatus.Cancelled)
+                    .SetProperty(t => t.CancelledReason, reason),
+                cancellationToken);
+
+        if (cancelled > 0)
+        {
+            logger.LogInformation("Cancelled {Count} queued tasks: {Reason}", cancelled, reason);
+        }
+
+        return cancelled;
+    }
+
+    private sealed record Row(
+        Guid Id,
+        WorkTaskKind Kind,
+        WorkTaskStatus Status,
+        decimal Quantity,
+        Guid? CompletedAtLocationId,
+        DateTimeOffset? CompletedAt,
+        string? CompletedByUserName,
+        bool WasOverridden);
+
+    /// <summary>
+    /// The internal status and the published state are separate enums with
+    /// identical members, for the same reason <c>InventoryStatus</c> and
+    /// <c>StockCondition</c> are: they are allowed to diverge, and the mapping is
+    /// where that stays visible.
+    /// </summary>
+    private static WorkTaskState ToState(WorkTaskStatus status) => status switch
+    {
+        WorkTaskStatus.Assigned => WorkTaskState.Assigned,
+        WorkTaskStatus.Completed => WorkTaskState.Completed,
+        WorkTaskStatus.Cancelled => WorkTaskState.Cancelled,
+        _ => WorkTaskState.Ready
+    };
 
     private WorkTask Create(WorkTaskRequest request)
     {
@@ -179,6 +283,7 @@ public sealed class WorkQueue(
             SuggestedLocationId = request.SuggestedLocationId,
             LicensePlateId = request.LicensePlateId,
             DecisionTraceId = request.DecisionTraceId,
+            StockReservationId = request.StockReservationId,
             Condition = request.Condition,
             SourceReference = request.SourceReference
         };

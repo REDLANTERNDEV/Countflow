@@ -1,4 +1,5 @@
 using Countflow.Modules.Work.Domain;
+using Countflow.SharedKernel.Contracts;
 using Countflow.SharedKernel.Modules;
 using Microsoft.EntityFrameworkCore;
 
@@ -37,13 +38,21 @@ public sealed class WorkDbContext(DbContextOptions<WorkDbContext> options)
                 .HasForeignKey(s => s.WorkTaskId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // One open task per pallet per origin — the rule that stops a mixed
+            // One open putaway per pallet per origin — the rule that stops a mixed
             // pallet raising a job per SKU. Enforced by the database rather than
             // by the enqueue path, because two receipts arriving together would
             // otherwise both find nothing and both insert.
+            //
+            // Narrowed to putaway in Phase 4. A pick names a pallet too — the
+            // operator has to know which one to break into — but two orders drawing
+            // on one pallet are two jobs, and without the kind in the filter the
+            // second order's pick would merge into the first order's and be
+            // confirmed against the wrong document.
             task.HasIndex(t => new { t.LicensePlateId, t.FromLocationId, t.Kind })
                 .IsUnique()
-                .HasFilter($"\"LicensePlateId\" IS NOT NULL AND \"Status\" IN ({(int)WorkTaskStatus.Ready}, {(int)WorkTaskStatus.Assigned})");
+                .HasFilter(
+                    $"\"LicensePlateId\" IS NOT NULL AND \"Kind\" = {(int)WorkTaskKind.Putaway} " +
+                    $"AND \"Status\" IN ({(int)WorkTaskStatus.Ready}, {(int)WorkTaskStatus.Assigned})");
 
             // The queue read: ready work for a warehouse, best first. Covers the
             // handheld's claim-next, which is the hottest query in the building
@@ -55,6 +64,14 @@ public sealed class WorkDbContext(DbContextOptions<WorkDbContext> options)
 
             task.HasIndex(t => t.DecisionTraceId);
             task.HasIndex(t => t.SourceReference);
+
+            // A commitment is discharged by exactly one job. Two picks pointing at
+            // one reservation would be refused by the ledger when the second tried
+            // to consume it — this refuses them a step earlier, where the answer is
+            // still "that job already exists" rather than "that stock has gone".
+            task.HasIndex(t => t.StockReservationId)
+                .IsUnique()
+                .HasFilter("\"StockReservationId\" IS NOT NULL");
 
             task.ToTable(t =>
             {
@@ -75,7 +92,12 @@ public sealed class WorkDbContext(DbContextOptions<WorkDbContext> options)
         builder.Entity<WorkTaskSource>(source =>
         {
             source.HasKey(s => s.Id);
-            source.Property(s => s.IdempotencyKey).HasMaxLength(128).IsRequired();
+
+            // 256 from Phase 4. A putaway's key is one level deep; a pick's is
+            // derived from a wave's key, then an order's, then the commitment it
+            // discharges, and the whole chain is what makes a retried release
+            // raise the job exactly once.
+            source.Property(s => s.IdempotencyKey).HasMaxLength(256).IsRequired();
             source.Property(s => s.Quantity).HasPrecision(18, 4);
 
             // Exactly-once enqueuing, in one line. A retried dock receipt collides

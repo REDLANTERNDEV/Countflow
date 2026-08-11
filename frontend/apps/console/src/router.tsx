@@ -4,6 +4,7 @@ import { ItemDetailPage } from './routes/ItemDetailPage.js';
 import { ItemsPage } from './routes/ItemsPage.js';
 import { LedgerPage } from './routes/LedgerPage.js';
 import { LocationsPage } from './routes/LocationsPage.js';
+import { OutboundPage } from './routes/OutboundPage.js';
 import { RootLayout } from './routes/RootLayout.js';
 import { RulesPage } from './routes/RulesPage.js';
 import { ScanPage } from './routes/ScanPage.js';
@@ -57,6 +58,12 @@ const inboundRoute = createRoute({
   component: InboundPage,
 });
 
+const outboundRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/outbound',
+  component: OutboundPage,
+});
+
 const workRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/work',
@@ -83,6 +90,7 @@ const routeTree = rootRoute.addChildren([
   stockRoute,
   ledgerRoute,
   inboundRoute,
+  outboundRoute,
   workRoute,
   rulesRoute,
   scanRoute,

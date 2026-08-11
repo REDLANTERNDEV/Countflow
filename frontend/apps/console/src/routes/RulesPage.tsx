@@ -243,13 +243,25 @@ export function RulesPage() {
           <p className="mb-[var(--space-3)] mt-0 max-w-[72ch] text-[length:var(--text-sm)] text-[var(--color-text-secondary)]">
             {t('rules.availableHint')}
           </p>
-          <div className="flex flex-wrap gap-[var(--space-2)]">
-            {[...data.availableConstraints, ...data.availablePreferences].map((code) => (
-              <Badge key={code} tone="neutral" title={code}>
-                {translateRuleName(t, code)}
-              </Badge>
-            ))}
-          </div>
+          {/* Grouped by decision kind, because the two vocabularies are not
+              interchangeable: an allocation rule is written about holdings of
+              stock and a putaway rule about empty bins, so offering one where the
+              other belongs would offer a rule set the server is going to
+              refuse. */}
+          {data.vocabulary.map((kind) => (
+            <div key={kind.kind} className="mb-[var(--space-4)]">
+              <h4 className="mb-[var(--space-2)] mt-0 text-[length:var(--text-sm)] text-[var(--color-text-secondary)]">
+                {kind.kind}
+              </h4>
+              <div className="flex flex-wrap gap-[var(--space-2)]">
+                {[...kind.constraints, ...kind.preferences].map((code) => (
+                  <Badge key={code} tone="neutral" title={code}>
+                    {translateRuleName(t, code)}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          ))}
         </section>
       ) : null}
     </>

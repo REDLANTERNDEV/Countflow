@@ -251,6 +251,76 @@ namespace Countflow.Modules.Inventory.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Countflow.Modules.Inventory.Domain.StockReservation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BalanceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("ClosedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ConsumedByMovementId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("DecisionTraceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("IdempotencyKey")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<Guid>("OwnerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("OwnerReference")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<string>("ReleaseReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("State")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("UserName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IdempotencyKey")
+                        .IsUnique();
+
+                    b.HasIndex("BalanceId", "State");
+
+                    b.HasIndex("OwnerId", "State");
+
+                    b.ToTable("StockReservations", "inventory", t =>
+                        {
+                            t.HasCheckConstraint("CK_StockReservations_ClosedHasTimestamp", "\"State\" = 1 OR \"ClosedAt\" IS NOT NULL");
+
+                            t.HasCheckConstraint("CK_StockReservations_PositiveQuantity", "\"Quantity\" > 0");
+                        });
+                });
+
             modelBuilder.Entity("Countflow.Modules.Inventory.Domain.LicensePlate", b =>
                 {
                     b.HasOne("Countflow.Modules.Inventory.Domain.LicensePlate", "Parent")
@@ -259,6 +329,17 @@ namespace Countflow.Modules.Inventory.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Parent");
+                });
+
+            modelBuilder.Entity("Countflow.Modules.Inventory.Domain.StockReservation", b =>
+                {
+                    b.HasOne("Countflow.Modules.Inventory.Domain.StockBalance", "Balance")
+                        .WithMany()
+                        .HasForeignKey("BalanceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Balance");
                 });
 
             modelBuilder.Entity("Countflow.Modules.Inventory.Domain.LicensePlate", b =>

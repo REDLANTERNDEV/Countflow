@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <!-- SharedKernel only, exactly as Inbound. Releasing an order asks
+         IAllocationAdvisor which stock, holds it through IStockReservations,
+         raises the picks through IWorkQueue and despatches through IStockPosting;
+         it has a project reference to none of them, so the orchestration cannot
+         quietly become a reimplementation (ADR 0002). -->
+    <ProjectReference Include="../../Countflow.SharedKernel/Countflow.SharedKernel.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+  </ItemGroup>
+
+</Project>

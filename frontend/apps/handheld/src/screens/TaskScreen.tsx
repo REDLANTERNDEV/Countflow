@@ -14,11 +14,16 @@ interface TaskScreenProps {
 }
 
 /**
- * One job: what to move, where the rules say to put it, and why.
+ * One job: what to move, where the rules say it goes, and why.
  *
- * The confirmation is a scan of the rack label rather than a "yes" button, and
- * that is the whole safety property of directed putaway. A button confirms that
- * the operator read the screen; a scan confirms they are standing at the bin.
+ * The confirmation is a scan of the location label rather than a "yes" button,
+ * and that is the whole safety property of directed work. A button confirms that
+ * the operator read the screen; a scan confirms they are standing there.
+ *
+ * Phase 4 added picking and did not add a screen. A pick is the same shape of job
+ * as a putaway — take this from here, confirm it at there — so the only thing
+ * that changes is the sentence above the destination. If it had needed more than
+ * that, the task model would have been drawn wrong.
  */
 export function TaskScreen({ taskId, onDone }: TaskScreenProps) {
   const { t } = useTranslation();
@@ -132,6 +137,7 @@ export function TaskScreen({ taskId, onDone }: TaskScreenProps) {
   const suggestion = task.suggestedLocationCode;
   const scanned = confirmed.trim().toUpperCase();
   const overriding = scanned.length > 0 && suggestion !== null && scanned !== suggestion;
+  const isPick = task.kind === 'Pick';
 
   return (
     <div className="flex flex-col gap-[var(--space-4)]">
@@ -174,10 +180,21 @@ export function TaskScreen({ taskId, onDone }: TaskScreenProps) {
 
       <div className="flex flex-col gap-[var(--space-1)]">
         <span className="text-[length:var(--text-sm)] text-[var(--color-text-secondary)]">
-          {t('work.from')}
+          {/* On a pick this is the instruction rather than background: the bin
+              the operator has to walk to is the first half of the job. */}
+          {isPick ? t('work.pickFrom') : t('work.from')}
         </span>
         <Code className="text-[length:var(--text-base)]">{task.fromLocationCode}</Code>
       </div>
+
+      {isPick && task.sourceReference ? (
+        <div className="flex flex-col gap-[var(--space-1)]">
+          <span className="text-[length:var(--text-sm)] text-[var(--color-text-secondary)]">
+            {t('work.forOrder')}
+          </span>
+          <Code>{task.sourceReference}</Code>
+        </div>
+      ) : null}
 
       <div
         className="flex flex-col gap-[var(--space-2)] rounded-[var(--radius-surface)]
@@ -185,7 +202,7 @@ export function TaskScreen({ taskId, onDone }: TaskScreenProps) {
                    p-[var(--space-4)]"
       >
         <span className="text-[length:var(--text-sm)] text-[var(--color-text-secondary)]">
-          {t('work.putAwayAt')}
+          {isPick ? t('work.takeTo') : t('work.putAwayAt')}
         </span>
 
         {suggestion ? (
@@ -218,7 +235,7 @@ export function TaskScreen({ taskId, onDone }: TaskScreenProps) {
       {showWhy && detail.decision ? <WhyHere trace={detail.decision} /> : null}
 
       <ScanField
-        label={t('work.scanLocation')}
+        label={isPick ? t('work.scanDrop') : t('work.scanLocation')}
         placeholder={suggestion ?? 'WH1-STOR-AMB-A01-01-01-A'}
         clearOnScan={false}
         onScan={(value) => setConfirmed(value.toUpperCase())}

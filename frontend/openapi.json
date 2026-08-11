@@ -1122,6 +1122,57 @@
         }
       }
     },
+    "/api/rules/allocation/preview": {
+      "post": {
+        "tags": [
+          "Rules"
+        ],
+        "summary": "Run the allocation rules without reserving anything.",
+        "operationId": "PreviewAllocation",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreviewAllocationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreviewAllocationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/work/tasks": {
       "get": {
         "tags": [
@@ -1682,6 +1733,624 @@
         }
       }
     },
+    "/api/outbound/orders": {
+      "get": {
+        "tags": [
+          "Outbound"
+        ],
+        "summary": "Customer orders, open and urgent first.",
+        "operationId": "GetSalesOrders",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/SalesOrderStatus"
+            }
+          },
+          {
+            "name": "waveId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 25
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesOrderPage"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Outbound"
+        ],
+        "summary": "Take a customer order.",
+        "operationId": "CreateSalesOrder",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateOrderRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesOrderResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/outbound/orders/{id}": {
+      "get": {
+        "tags": [
+          "Outbound"
+        ],
+        "summary": "One order, with its allocations and their picks.",
+        "operationId": "GetSalesOrder",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesOrderResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/outbound/orders/{id}/release": {
+      "post": {
+        "tags": [
+          "Outbound"
+        ],
+        "summary": "Allocate stock by rule and raise the picks.",
+        "operationId": "ReleaseSalesOrder",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ReleaseOrderRequest"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReleaseOrderResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/outbound/orders/{id}/pack": {
+      "post": {
+        "tags": [
+          "Outbound"
+        ],
+        "summary": "Confirm the order is picked and made up at the bench.",
+        "operationId": "PackSalesOrder",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/PackOrderRequest"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SalesOrderResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/outbound/orders/{id}/despatch": {
+      "post": {
+        "tags": [
+          "Outbound"
+        ],
+        "summary": "Post the picked stock out to the Customer counterparty.",
+        "operationId": "DespatchSalesOrder",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DespatchOrderResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/outbound/orders/{id}/cancel": {
+      "post": {
+        "tags": [
+          "Outbound"
+        ],
+        "summary": "Cancel an order, withdraw its picks and release its stock.",
+        "operationId": "CancelSalesOrder",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelOrderRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CancelOrderResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/outbound/waves": {
+      "get": {
+        "tags": [
+          "Outbound"
+        ],
+        "summary": "Waves and the orders grouped into them.",
+        "operationId": "GetWaves",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/WaveStatus"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WaveResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Outbound"
+        ],
+        "summary": "Group orders for release together.",
+        "operationId": "CreateWave",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateWaveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WaveResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/outbound/waves/{id}/release": {
+      "post": {
+        "tags": [
+          "Outbound"
+        ],
+        "summary": "Allocate and raise the picks for every order in a wave.",
+        "operationId": "ReleaseWave",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ReleaseWaveRequest"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReleaseWaveResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/auth/login": {
       "post": {
         "tags": [
@@ -2149,6 +2818,38 @@
           }
         }
       },
+      "CancelOrderRequest": {
+        "required": [
+          "reason"
+        ],
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string"
+          }
+        }
+      },
+      "CancelOrderResponse": {
+        "required": [
+          "order",
+          "reservationsReleased",
+          "tasksCancelled"
+        ],
+        "type": "object",
+        "properties": {
+          "order": {
+            "$ref": "#/components/schemas/SalesOrderResponse"
+          },
+          "reservationsReleased": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "tasksCancelled": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
       "ChangeStockStatusRequest": {
         "required": [
           "sku",
@@ -2332,6 +3033,111 @@
           }
         }
       },
+      "CreateOrderLineRequest": {
+        "required": [
+          "sku",
+          "quantity"
+        ],
+        "type": "object",
+        "properties": {
+          "sku": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "lotNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "CreateOrderRequest": {
+        "required": [
+          "warehouseCode",
+          "reference",
+          "lines"
+        ],
+        "type": "object",
+        "properties": {
+          "warehouseCode": {
+            "type": "string"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateOrderLineRequest"
+            }
+          },
+          "customerName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "stagingLocationCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "shipBy": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "priority": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "CreateWaveRequest": {
+        "required": [
+          "warehouseCode",
+          "reference",
+          "orderIds"
+        ],
+        "type": "object",
+        "properties": {
+          "warehouseCode": {
+            "type": "string"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "orderIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "DecisionKind": {
         "enum": [
           "Putaway",
@@ -2399,6 +3205,24 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/TracedCandidate"
+            }
+          }
+        }
+      },
+      "DespatchOrderResponse": {
+        "required": [
+          "order",
+          "movements"
+        ],
+        "type": "object",
+        "properties": {
+          "order": {
+            "$ref": "#/components/schemas/SalesOrderResponse"
+          },
+          "movements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PostedMovement"
             }
           }
         }
@@ -2991,6 +3815,141 @@
         ],
         "type": "string"
       },
+      "OrderAllocationResponse": {
+        "required": [
+          "id",
+          "quantity",
+          "locationCode",
+          "lotNumber",
+          "expiryDate",
+          "decisionTraceId",
+          "workTaskId",
+          "taskState",
+          "pickedQuantity",
+          "pickedAtLocationCode"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "quantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "locationCode": {
+            "type": "string"
+          },
+          "lotNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "expiryDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "decisionTraceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "workTaskId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "taskState": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/WorkTaskState"
+              }
+            ]
+          },
+          "pickedQuantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "pickedAtLocationCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "OrderLineResponse": {
+        "required": [
+          "id",
+          "lineNumber",
+          "sku",
+          "description",
+          "baseUom",
+          "orderedQuantity",
+          "allocatedQuantity",
+          "outstandingQuantity",
+          "pickedQuantity",
+          "requiredLotNumber",
+          "allocations"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "lineNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sku": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "baseUom": {
+            "type": "string"
+          },
+          "orderedQuantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "allocatedQuantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "outstandingQuantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "pickedQuantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "requiredLotNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "allocations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrderAllocationResponse"
+            }
+          }
+        }
+      },
       "PackConfigurationResponse": {
         "required": [
           "level",
@@ -3059,6 +4018,17 @@
           },
           "isPickUnit": {
             "type": "boolean"
+          }
+        }
+      },
+      "PackOrderRequest": {
+        "type": "object",
+        "properties": {
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -3174,6 +4144,112 @@
           },
           "wasAlreadyPosted": {
             "type": "boolean"
+          }
+        }
+      },
+      "PreviewAllocationLine": {
+        "required": [
+          "locationCode",
+          "lotNumber",
+          "expiryDate",
+          "quantity",
+          "score"
+        ],
+        "type": "object",
+        "properties": {
+          "locationCode": {
+            "type": "string"
+          },
+          "lotNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "expiryDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "quantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "score": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "PreviewAllocationRequest": {
+        "required": [
+          "warehouseCode",
+          "sku",
+          "quantity"
+        ],
+        "type": "object",
+        "properties": {
+          "warehouseCode": {
+            "type": "string"
+          },
+          "sku": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "shipBy": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          }
+        }
+      },
+      "PreviewAllocationResponse": {
+        "required": [
+          "decisionTraceId",
+          "lines",
+          "allocatedQuantity",
+          "shortfallQuantity",
+          "consideredCount",
+          "admissibleCount",
+          "trace"
+        ],
+        "type": "object",
+        "properties": {
+          "decisionTraceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PreviewAllocationLine"
+            }
+          },
+          "allocatedQuantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "shortfallQuantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "consideredCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "admissibleCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "trace": {
+            "$ref": "#/components/schemas/DecisionTraceView"
           }
         }
       },
@@ -3408,6 +4484,80 @@
           }
         }
       },
+      "ReleaseOrderRequest": {
+        "type": "object",
+        "properties": {
+          "stagingLocationCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ReleaseOrderResponse": {
+        "required": [
+          "order",
+          "allocationsRaised",
+          "tasksRaised",
+          "shortfallQuantity"
+        ],
+        "type": "object",
+        "properties": {
+          "order": {
+            "$ref": "#/components/schemas/SalesOrderResponse"
+          },
+          "allocationsRaised": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "tasksRaised": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "shortfallQuantity": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "ReleaseWaveRequest": {
+        "type": "object",
+        "properties": {
+          "stagingLocationCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ReleaseWaveResponse": {
+        "required": [
+          "wave",
+          "ordersReleased",
+          "tasksRaised",
+          "shortfallQuantity"
+        ],
+        "type": "object",
+        "properties": {
+          "wave": {
+            "$ref": "#/components/schemas/WaveResponse"
+          },
+          "ordersReleased": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "tasksRaised": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "shortfallQuantity": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
       "ResolveScanRequest": {
         "required": [
           "barcode"
@@ -3566,8 +4716,7 @@
       "RuleSetsResponse": {
         "required": [
           "items",
-          "availableConstraints",
-          "availablePreferences"
+          "vocabulary"
         ],
         "type": "object",
         "properties": {
@@ -3577,19 +4726,175 @@
               "$ref": "#/components/schemas/RuleSetResponse"
             }
           },
-          "availableConstraints": {
+          "vocabulary": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RuleVocabularyResponse"
+            }
+          }
+        }
+      },
+      "RuleVocabularyResponse": {
+        "required": [
+          "kind",
+          "constraints",
+          "preferences"
+        ],
+        "type": "object",
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/DecisionKind"
+          },
+          "constraints": {
             "type": "array",
             "items": {
               "type": "string"
             }
           },
-          "availablePreferences": {
+          "preferences": {
             "type": "array",
             "items": {
               "type": "string"
             }
           }
         }
+      },
+      "SalesOrderPage": {
+        "required": [
+          "items",
+          "total",
+          "page",
+          "pageSize"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SalesOrderResponse"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "SalesOrderResponse": {
+        "required": [
+          "id",
+          "reference",
+          "customerName",
+          "status",
+          "stagingLocationCode",
+          "shipBy",
+          "priority",
+          "waveId",
+          "notes",
+          "createdAt",
+          "releasedAt",
+          "packedAt",
+          "despatchedAt",
+          "lines"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "customerName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/SalesOrderStatus"
+          },
+          "stagingLocationCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "shipBy": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "priority": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "waveId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "releasedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "packedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "despatchedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrderLineResponse"
+            }
+          }
+        }
+      },
+      "SalesOrderStatus": {
+        "enum": [
+          "New",
+          "Released",
+          "Packed",
+          "Despatched",
+          "Cancelled"
+        ],
+        "type": "string"
       },
       "ScanElementResponse": {
         "required": [
@@ -3810,7 +5115,9 @@
           "sscc",
           "status",
           "quantity",
-          "isAllocatable"
+          "isAllocatable",
+          "reservedQuantity",
+          "availableQuantity"
         ],
         "type": "object",
         "properties": {
@@ -3854,6 +5161,20 @@
           },
           "isAllocatable": {
             "type": "boolean"
+          },
+          "reservedQuantity": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "availableQuantity": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
           }
         }
       },
@@ -4230,6 +5551,68 @@
           }
         }
       },
+      "WaveResponse": {
+        "required": [
+          "id",
+          "reference",
+          "status",
+          "notes",
+          "createdAt",
+          "releasedAt",
+          "releasedByUserName",
+          "orders"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/WaveStatus"
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "releasedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "releasedByUserName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "orders": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SalesOrderResponse"
+            }
+          }
+        }
+      },
+      "WaveStatus": {
+        "enum": [
+          "Planned",
+          "Released",
+          "Cancelled"
+        ],
+        "type": "string"
+      },
       "WorkTaskDetailResponse": {
         "required": [
           "task",
@@ -4422,6 +5805,15 @@
           }
         }
       },
+      "WorkTaskState": {
+        "enum": [
+          "Ready",
+          "Assigned",
+          "Completed",
+          "Cancelled"
+        ],
+        "type": "string"
+      },
       "WorkTaskStatus": {
         "enum": [
           "Ready",
@@ -4454,6 +5846,9 @@
     },
     {
       "name": "Inbound"
+    },
+    {
+      "name": "Outbound"
     },
     {
       "name": "Authentication"

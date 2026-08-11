@@ -161,13 +161,21 @@ public static class CompleteWorkTask
     }
 
     /// <summary>
-    /// A pallet moves whole; loose stock moves by the line.
+    /// What confirming a job means, by kind.
     /// <para>
-    /// A task carrying a licence plate is a task about a pallet, so it goes
-    /// through the composite move — everything on that plate, in one transaction,
-    /// under one key family. That is the caller Phase 2 deferred the composite
-    /// for, and it is why the deferral was the right call: the shape of the
-    /// command only became obvious once something needed to issue it.
+    /// The one place in the module that knows the difference, and it is four
+    /// lines. Everything else — the queue, the claim, the override recording, the
+    /// handheld screen — is written against "take stock from here, confirm it at
+    /// there", which is what a putaway and a pick both are. A second screen or a
+    /// second endpoint per kind would have been a sign the task model was drawn
+    /// wrong; a switch over which published operation to call is not.
+    /// </para>
+    /// <para>
+    /// A pallet moves whole; loose stock moves by the line. A putaway task
+    /// carrying a licence plate is a task about a pallet, so it goes through the
+    /// composite move — everything on that plate, in one transaction, under one
+    /// key family. A pick is the opposite motion: it names the commitment it
+    /// discharges and takes exactly what was promised off the plate.
     /// </para>
     /// </summary>
     private static async Task<Result<IReadOnlyList<PostedMovement>>> PostAsync(
@@ -179,6 +187,34 @@ public static class CompleteWorkTask
         PostingActor actor,
         CancellationToken cancellationToken)
     {
+        if (task.Kind == WorkTaskKind.Pick)
+        {
+            // Refused rather than posted with a null, exactly as a directed
+            // movement with no trace is. Stock leaving a bin against no claim is
+            // an order being filled from inventory nobody promised it.
+            if (task.StockReservationId is not { } reservationId)
+            {
+                return Result.Failure<IReadOnlyList<PostedMovement>>(WorkErrors.TaskHasNoReservation);
+            }
+
+            var picked = await posting.PickAsync(
+                new PickInstruction
+                {
+                    ReservationId = reservationId,
+                    ToLocationId = destinationId,
+                    IdempotencyKey = idempotencyKey,
+                    Actor = actor,
+                    TaskId = task.Id,
+                    DecisionTraceId = decisionTraceId,
+                    Notes = task.SourceReference
+                },
+                cancellationToken);
+
+            return picked.IsFailure
+                ? Result.Failure<IReadOnlyList<PostedMovement>>(picked.Error)
+                : Result.Success<IReadOnlyList<PostedMovement>>([picked.Value]);
+        }
+
         if (task.LicensePlateId is { } plateId)
         {
             return await posting.PutawayLicensePlateAsync(

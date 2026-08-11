@@ -102,6 +102,9 @@ namespace Countflow.Modules.Work.Persistence.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("integer");
 
+                    b.Property<Guid?>("StockReservationId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid?>("SuggestedLocationId")
                         .HasColumnType("uuid");
 
@@ -117,11 +120,15 @@ namespace Countflow.Modules.Work.Persistence.Migrations
 
                     b.HasIndex("SourceReference");
 
+                    b.HasIndex("StockReservationId")
+                        .IsUnique()
+                        .HasFilter("\"StockReservationId\" IS NOT NULL");
+
                     b.HasIndex("AssignedToUserId", "Status");
 
                     b.HasIndex("LicensePlateId", "FromLocationId", "Kind")
                         .IsUnique()
-                        .HasFilter("\"LicensePlateId\" IS NOT NULL AND \"Status\" IN (1, 2)");
+                        .HasFilter("\"LicensePlateId\" IS NOT NULL AND \"Kind\" = 1 AND \"Status\" IN (1, 2)");
 
                     b.HasIndex("WarehouseId", "Status", "Priority", "CreatedAt");
 
@@ -144,8 +151,8 @@ namespace Countflow.Modules.Work.Persistence.Migrations
 
                     b.Property<string>("IdempotencyKey")
                         .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
 
                     b.Property<decimal>("Quantity")
                         .HasPrecision(18, 4)

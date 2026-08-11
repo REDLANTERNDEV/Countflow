@@ -54,6 +54,9 @@ export function RootLayout() {
           <Link to="/inbound" className={navLink} activeProps={{ className: navLinkActive }}>
             {t('nav.inbound')}
           </Link>
+          <Link to="/outbound" className={navLink} activeProps={{ className: navLinkActive }}>
+            {t('nav.outbound')}
+          </Link>
           <Link to="/work" className={navLink} activeProps={{ className: navLinkActive }}>
             {t('nav.work')}
           </Link>

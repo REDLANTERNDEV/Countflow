@@ -46,6 +46,21 @@ public enum TemperatureBand
 /// "unknown" as distinct from "zero".
 /// </param>
 /// <param name="UnitWeightKg">Gross weight of one base unit, in kg. Null for the same reason.</param>
+/// <param name="ShelfLifeDays">
+/// Total life of a batch from production, in days. Crossed the boundary in Phase 4
+/// as the denominator of <paramref name="MinimumRemainingShelfLifePercent"/>: a
+/// remaining-life rule that only knew the expiry date could say how long is left
+/// but not what fraction of the life that is, and the fraction is what the
+/// customer's contract is written in.
+/// </param>
+/// <param name="MinimumRemainingShelfLifePercent">
+/// How much of that life must still be ahead of the goods for a customer to
+/// accept them. Null when the item has no such policy, which is most of a
+/// non-food catalogue. Read by the allocation rules and by nothing else — stock
+/// inside this window is still perfectly sellable, it just cannot be sent to
+/// <i>this</i> order, which is why it is an allocation constraint rather than a
+/// status.
+/// </param>
 public sealed record ItemSnapshot(
     Guid Id,
     string Sku,
@@ -59,7 +74,9 @@ public sealed record ItemSnapshot(
     TemperatureBand TemperatureBand,
     bool IsHazardous,
     decimal? UnitVolumeM3,
-    decimal? UnitWeightKg);
+    decimal? UnitWeightKg,
+    int? ShelfLifeDays = null,
+    int? MinimumRemainingShelfLifePercent = null);
 
 /// <summary>MasterData's published read surface for items. See <see cref="ILocationDirectory"/>.</summary>
 public interface IItemDirectory

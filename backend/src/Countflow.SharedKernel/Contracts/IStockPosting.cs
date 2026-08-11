@@ -165,6 +165,75 @@ public sealed record PlatePutawayInstruction
 }
 
 /// <summary>
+/// Takes reserved stock out of its bin and drops it where the order is being
+/// assembled.
+/// <para>
+/// The line is named by its <see cref="ReservationId"/> and not by an item,
+/// a quantity and a location. That is the whole shape of the guarantee: a caller
+/// cannot pick stock nobody promised, cannot pick more than was promised, and
+/// cannot pick from a holding other than the one the rules chose — because none
+/// of those are expressible. The reservation already says what is being taken
+/// from where, and the pick discharges it in the same transaction as the movement
+/// it posts.
+/// </para>
+/// </summary>
+/// <param name="ToLocationId">
+/// The pack bench or staging lane the picker drops at. Confirmed by scanning it,
+/// so it is the location the operator was actually standing at rather than the one
+/// the system expected.
+/// </param>
+public sealed record PickInstruction
+{
+    public required Guid ReservationId { get; init; }
+
+    public required Guid ToLocationId { get; init; }
+
+    public required string IdempotencyKey { get; init; }
+
+    public required PostingActor Actor { get; init; }
+
+    public required Guid TaskId { get; init; }
+
+    public required Guid DecisionTraceId { get; init; }
+
+    public string? Notes { get; init; }
+}
+
+/// <summary>One item and batch leaving the building.</summary>
+public sealed record DespatchLine(
+    Guid ItemId,
+    Guid? LotId,
+    decimal Quantity,
+    StockCondition Condition = StockCondition.Available);
+
+/// <summary>
+/// Sends the assembled order to the Customer counterparty.
+/// <para>
+/// Every line in one transaction, which is what <c>PostBatchAsync</c> was built
+/// for: a shipment that is half despatched is worse than one that is not
+/// despatched at all, because the trailer has left either way and only the second
+/// state is obvious. Each line still carries its own key, derived from the root,
+/// so a retry is recognised line by line.
+/// </para>
+/// </summary>
+public sealed record DespatchInstruction
+{
+    /// <summary>Where the packed order is standing — a pack bench or a shipping lane.</summary>
+    public required Guid FromLocationId { get; init; }
+
+    public required IReadOnlyList<DespatchLine> Lines { get; init; }
+
+    public required string IdempotencyKey { get; init; }
+
+    public required PostingActor Actor { get; init; }
+
+    /// <summary>The order this despatch settles. Recorded on every line, so the ledger can be read back by document.</summary>
+    public string? Reference { get; init; }
+
+    public string? Notes { get; init; }
+}
+
+/// <summary>
 /// Inventory's published write surface — how another module moves stock without
 /// being able to reach the ledger.
 /// <para>
@@ -193,5 +262,17 @@ public interface IStockPosting
 
     Task<Result<IReadOnlyList<PostedMovement>>> PutawayLicensePlateAsync(
         PlatePutawayInstruction instruction,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Moves reserved stock to the pack bench and discharges the reservation that
+    /// held it, together or not at all.
+    /// </summary>
+    Task<Result<PostedMovement>> PickAsync(
+        PickInstruction instruction,
+        CancellationToken cancellationToken);
+
+    Task<Result<IReadOnlyList<PostedMovement>>> DespatchAsync(
+        DespatchInstruction instruction,
         CancellationToken cancellationToken);
 }

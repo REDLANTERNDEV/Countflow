@@ -8,6 +8,7 @@ using Countflow.Modules.Inventory.Features.Transfers;
 using Countflow.Modules.Inventory.Integration;
 using Countflow.Modules.Inventory.Ledger;
 using Countflow.Modules.Inventory.Persistence;
+using Countflow.Modules.Inventory.Reservations;
 using Countflow.SharedKernel.Contracts;
 using Countflow.SharedKernel.Modules;
 using Microsoft.AspNetCore.Routing;
@@ -39,11 +40,18 @@ public sealed class InventoryModule : ICountflowModule
         services.AddScoped<LedgerReplay>();
         services.AddScoped<LedgerReconciler>();
 
-        // The published boundary (ADR 0002). Inbound and Work move stock through
-        // these and cannot name StockLedger, so the single posting path stays
-        // single no matter how many modules come to depend on it.
+        // Phase 4's addition, and deliberately a sibling of the ledger rather than
+        // part of it: a reserved quantity is a claim on stock, not a movement of
+        // it (see StockReservation).
+        services.AddScoped<ReservationLedger>();
+
+        // The published boundary (ADR 0002). Inbound, Work and Outbound move stock
+        // through these and cannot name StockLedger, so the single posting path
+        // stays single no matter how many modules come to depend on it.
         services.AddScoped<IStockPosting, StockPosting>();
         services.AddScoped<IStockQuery, StockQuery>();
+        services.AddScoped<IStockAvailability, StockAvailability>();
+        services.AddScoped<IStockReservations, StockReservations>();
 
         // TryAdd, because a clock is host-wide and every module that posts
         // timestamps will want the same one — including a test host that has

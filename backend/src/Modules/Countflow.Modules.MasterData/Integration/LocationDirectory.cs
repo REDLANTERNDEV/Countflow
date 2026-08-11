@@ -64,6 +64,25 @@ public sealed class LocationDirectory(MasterDataDbContext dbContext) : ILocation
         return row is null || VirtualTypes.Contains(row.Type) ? null : ToStorageSnapshot(row);
     }
 
+    public async Task<IReadOnlyDictionary<Guid, StorageLocationSnapshot>> FindStorageLocationsAsync(
+        IReadOnlyCollection<Guid> ids,
+        CancellationToken cancellationToken)
+    {
+        if (ids.Count == 0)
+        {
+            return new Dictionary<Guid, StorageLocationSnapshot>();
+        }
+
+        var distinct = ids.Distinct().ToArray();
+
+        var rows = await AsStorageRows(dbContext.Locations.Where(l => distinct.Contains(l.Id)))
+            .ToListAsync(cancellationToken);
+
+        return rows
+            .Where(row => !VirtualTypes.Contains(row.Type))
+            .ToDictionary(row => row.Id, ToStorageSnapshot);
+    }
+
     public async Task<IReadOnlyList<StorageLocationSnapshot>> FindStorageCandidatesAsync(
         Guid warehouseId,
         CancellationToken cancellationToken)

@@ -22,7 +22,7 @@ export interface RuleNote {
  * added on the server before its translation lands degrades to the raw word
  * rather than to a missing-key marker.
  */
-const TOKEN_ARGS = new Set(['role', 'item', 'location', 'abc']);
+const TOKEN_ARGS = new Set(['role', 'item', 'location', 'abc', 'condition']);
 
 export function translateRuleNote(t: TFunction, note: RuleNote): string {
   const args: Record<string, string> = {};

@@ -38,6 +38,7 @@ export const en = {
     stock: 'Stock',
     ledger: 'Ledger',
     inbound: 'Inbound',
+    outbound: 'Outbound',
     work: 'Work queue',
     rules: 'Rules',
     scanTest: 'Scan test',
@@ -131,10 +132,16 @@ export const en = {
     location: 'Location',
     sscc: 'SSCC',
     status: 'Status',
-    quantity: 'Quantity',
+    quantity: 'On hand',
     uom: 'UoM',
     allocatable: 'Allocatable',
     held: 'Held',
+    reserved: 'Committed',
+    available: 'Available',
+    // The sentence the third column exists to make true.
+    availableNote:
+      'On hand is what a stocktake would count. Available is what can still be promised — the difference is stock already committed to orders that have not been picked yet.',
+    reservedHistoric: 'Commitments are current state, so they are not shown against historical figures.',
     empty: 'No stock matches these filters.',
 
     status_Available: 'Available',
@@ -234,17 +241,23 @@ export const en = {
     nextJob: 'Next job',
     takingJob: 'Finding work…',
     noWork: 'Nothing waiting',
-    noWorkHint: 'Putaway jobs appear here as goods are booked in.',
+    noWorkHint: 'Jobs appear here as goods are booked in and orders are released.',
     claim: 'Take this job',
     release: 'Give it back',
     confirm: 'Confirm',
     confirming: 'Confirming…',
     putAwayAt: 'Put away at',
+    // A pick is the same job shape running the other way, and the screen is the
+    // same screen — only the sentence at the top of it changes.
+    takeTo: 'Take it to',
+    pickFrom: 'Pick from',
+    forOrder: 'For',
     suggested: 'Suggested',
     noSuggestion: 'No location suggested',
     noSuggestionHint:
       'Nothing in the building met the rules. Scan where you actually put it — the reason is recorded either way.',
     scanLocation: 'Scan the rack label',
+    scanDrop: 'Scan the bench label',
     whyHere: 'Why here?',
     hideWhy: 'Hide',
     overriding: 'This is not the suggested location',
@@ -308,9 +321,14 @@ export const en = {
       title: 'Decision trace',
       ruleSet: '{{name}} v{{version}}',
       considered: '{{admissible}} of {{considered}} locations were admissible',
+      // Allocation considers holdings of stock rather than empty bins, and a
+      // column headed "Location" over a list of batches is the sort of small lie
+      // that makes a trace harder to read than the thing it explains.
+      consideredStock: '{{admissible}} of {{considered}} holdings were admissible',
       chose: 'Chose {{location}}',
       choseNothing: 'Nothing was suitable',
       candidate: 'Location',
+      candidateStock: 'Stock',
       rank: 'Rank',
       score: 'Score',
       excludedBy: 'Ruled out by',
@@ -345,6 +363,17 @@ export const en = {
       'putaway.velocity_slotting': 'Fast movers near the pick face',
       'putaway.travel_distance': 'Shorter walk',
       'putaway.cube_utilisation': 'Fill the space',
+
+      'allocation.stock_available': 'Not already promised to another order',
+      'allocation.condition_allocatable': 'Stock is sellable',
+      'allocation.pickable_location': 'Somewhere a picker can be sent',
+      'allocation.lot_match': 'The batch the customer asked for',
+      'allocation.not_expired': 'Not past its expiry date',
+      'allocation.minimum_shelf_life': 'Enough shelf life left for the customer',
+      'allocation.fefo': 'Ship the oldest batch first',
+      'allocation.clear_holding': 'Clear part-used locations',
+      'allocation.prefer_pick_face': 'Pick from the pick face',
+      'allocation.travel_distance': 'Shorter walk',
     },
 
     // The coded reasons a rule gives about one location. The API sends the code
@@ -369,6 +398,26 @@ export const en = {
       cube_fill: 'This would fill {{percent}}% of the free space.',
     },
 
+    // The coded reasons the allocation rules give about one holding of stock.
+    allocation: {
+      fully_committed: 'All {{onHand}} here is already promised to other orders.',
+      not_allocatable: 'This stock is {{condition}}.',
+      not_pickable: 'Not somewhere a picker can be sent — it is a {{role}}.',
+      location_blocked: 'Blocked.',
+      location_unknown: 'Not a storage location.',
+      wrong_lot: 'Batch {{lot}} is not the one the customer asked for.',
+      expired: 'Expired on {{expiry}}.',
+      short_dated:
+        'Only {{remaining}}% of its life left, and the customer requires {{required}}% (expires {{expiry}}).',
+      expires_on: 'Expires {{expiry}}, in {{days}} days.',
+      no_expiry: 'No expiry date.',
+      would_clear: 'This would clear the last {{units}} here.',
+      would_leave: 'This would leave {{units}} behind.',
+      nothing_free: 'Nothing free here.',
+      location_role: 'In a {{role}} location.',
+      travel_distance: 'Zone {{zone}}, {{percent}}% along the route.',
+    },
+
     // Enum values that arrive inside a rule note's arguments. Translated by
     // `translateRuleNote` so a Turkish trace does not read half in English.
     token: {
@@ -385,6 +434,11 @@ export const en = {
       A: 'A',
       B: 'B',
       C: 'C',
+      Available: 'available',
+      Quarantine: 'in quarantine',
+      Damaged: 'damaged',
+      OnHold: 'on hold',
+      Expired: 'expired',
     },
   },
 
@@ -430,6 +484,72 @@ export const en = {
       receiveAnother: 'Receive another',
       shortBy: '{{quantity}} still outstanding on {{reference}}',
       lineComplete: '{{reference}} is now complete',
+    },
+  },
+
+  outbound: {
+    title: 'Outbound',
+    subtitle: 'What customers have asked for, which stock is promised to it, and how far it has got.',
+    reference: 'Order',
+    customer: 'Customer',
+    shipBy: 'Ship by',
+    staging: 'Pack bench',
+    lines: 'Lines',
+    ordered: 'Ordered',
+    allocated: 'Committed',
+    outstanding: 'Short',
+    picked: 'Picked',
+    allocations: 'Committed stock',
+    allocationLocation: 'From',
+    allocationLot: 'Batch',
+    allocationExpiry: 'Expiry',
+    allocationQuantity: 'Quantity',
+    allocationTask: 'Pick',
+    allocationPickedAt: 'Dropped at',
+    whyThisStock: 'Why this stock?',
+    hideWhy: 'Hide',
+    noAllocations: 'Nothing committed yet.',
+    empty: 'No orders match these filters.',
+    allStatuses: 'All statuses',
+
+    release: 'Release',
+    releasing: 'Releasing…',
+    pack: 'Mark packed',
+    packing: 'Packing…',
+    despatch: 'Despatch',
+    despatching: 'Despatching…',
+    cancel: 'Cancel order',
+    cancelling: 'Cancelling…',
+    cancelReason: 'Why is it being cancelled?',
+
+    releasedSummary:
+      'Committed {{allocations}} holdings and raised {{tasks}} picks.',
+    shortfall: '{{quantity}} could not be found. Release again once stock arrives.',
+    despatchedSummary: '{{count}} ledger entries posted to the customer account.',
+
+    status: {
+      New: 'New',
+      Released: 'Released',
+      Packed: 'Packed',
+      Despatched: 'Despatched',
+      Cancelled: 'Cancelled',
+    },
+
+    waves: {
+      title: 'Waves',
+      hint: 'Orders released together, so the queue can hand the picks out in route order.',
+      reference: 'Wave',
+      statusLabel: 'Status',
+      contents: 'Orders',
+      releasedAt: 'Released',
+      orders: '{{count}} orders',
+      release: 'Release the wave',
+      empty: 'No waves.',
+      status: {
+        Planned: 'Planned',
+        Released: 'Released',
+        Cancelled: 'Cancelled',
+      },
     },
   },
 
@@ -528,6 +648,46 @@ export const en = {
     'inbound.quantity_not_positive': 'Quantity must be greater than zero.',
     'inbound.idempotency_key_required': 'This request is missing its idempotency key.',
     'inbound.no_lines': 'An advice note needs at least one line.',
+
+    // Inventory, Phase 4. "There is none" and "it is spoken for" are different
+    // sentences because they lead to different phone calls.
+    'inventory.holding_not_found': 'That stock holding no longer exists.',
+    'inventory.insufficient_available_stock':
+      'There is stock there, but it is already promised to other orders.',
+    'inventory.reservation_not_open': 'That stock has already been picked or released.',
+    'inventory.reservation_not_found': 'No reservation with that identifier.',
+    'inventory.nothing_to_despatch': 'There was nothing to despatch.',
+
+    'rules.warehouse_not_found': 'No warehouse with that code.',
+    'work.task_has_no_reservation':
+      'That pick carries no reservation, so confirming it would take stock nobody had claimed.',
+
+    // Outbound.
+    'outbound.order_not_found': 'No order with that reference.',
+    'outbound.item_not_found': 'No item with that SKU.',
+    'outbound.location_not_found': 'No location with that code.',
+    'outbound.warehouse_not_found': 'No warehouse with that code.',
+    'outbound.wave_not_found': 'No wave with that identifier.',
+    'outbound.order_reference_taken': 'That order reference is already in use.',
+    'outbound.wave_reference_taken': 'That wave reference is already in use.',
+    'outbound.no_lines': 'An order needs at least one line.',
+    'outbound.no_orders': 'A wave needs at least one order.',
+    'outbound.quantity_not_positive': 'Quantity must be greater than zero.',
+    'outbound.idempotency_key_required': 'This request is missing its idempotency key.',
+    'outbound.staging_required': 'Choose a pack bench for this order before releasing it.',
+    'outbound.not_a_staging_location':
+      'Picks are dropped at a pack bench, a staging lane or a shipping door — not back into racking.',
+    'outbound.order_not_releasable': 'An order in that state cannot be released.',
+    'outbound.picks_outstanding': 'Some picks are still open. Confirm them before packing.',
+    'outbound.order_not_packable': 'An order in that state cannot be packed.',
+    'outbound.order_not_despatchable': 'Pack the order before despatching it.',
+    'outbound.already_despatched': 'That order has already been despatched.',
+    'outbound.order_not_cancellable': 'A packed or despatched order cannot be cancelled.',
+    'outbound.picks_in_progress':
+      'An operator is holding a pick for this order. Ask them to release the job, then cancel.',
+    'outbound.nothing_picked': 'Nothing was picked for this order, so there is nothing to despatch.',
+    'outbound.wave_not_releasable': 'That wave has already been released or cancelled.',
+    'outbound.order_not_waveable': 'That order is already released or in another wave.',
 
     unknown: 'Something went wrong.',
   },

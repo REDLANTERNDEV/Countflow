@@ -55,6 +55,8 @@ public sealed class StockLedger(
 {
     private const string BalancesTable = $"{InventoryDbContext.SchemaName}.\"StockBalances\"";
 
+    private const string ReservationsTable = $"{InventoryDbContext.SchemaName}.\"StockReservations\"";
+
     public async Task<Result<MovementReceipt>> PostAsync(
         PostingCommand command,
         CancellationToken cancellationToken)
@@ -274,6 +276,19 @@ public sealed class StockLedger(
             {
                 var command = pending[index];
                 var movement = movements[index];
+
+                // Discharged here, inside the transaction that appended the
+                // movement, so the goods and the promise they were held under
+                // settle together. Refusing when the claim is no longer open is
+                // what stops one reservation being picked twice: the second
+                // attempt finds nothing to close and takes the whole batch down
+                // with it, rather than moving stock nobody had a claim on.
+                if (command.ConsumesReservationId is { } reservationId
+                    && !await ConsumeReservationAsync(reservationId, movement.Id, cancellationToken))
+                {
+                    return Result.Failure<IReadOnlyList<MovementReceipt>>(
+                        InventoryErrors.ReservationNotOpen);
+                }
 
                 // Applied in command order rather than netted, so each entry's
                 // reported "after" figure is the state as that entry left it —
@@ -652,6 +667,46 @@ public sealed class StockLedger(
     }
 
     /// <summary>
+    /// Closes a reservation as picked, and reports whether there was one open to
+    /// close.
+    /// <para>
+    /// The <c>State</c> predicate is the guard, not a preceding read: two picks of
+    /// one reservation arriving together both pass any check made before the
+    /// transaction, and the second one's <c>UPDATE</c> blocks on the row the first
+    /// is holding and then matches nothing. Which is the answer — the claim was
+    /// already spent.
+    /// </para>
+    /// <para>
+    /// Reservations are locked <i>after</i> the balance rows, matching the order
+    /// <c>ReservationLedger</c> takes them in. Both paths touch both tables, so
+    /// the pair has to be acquired the same way round in both or they deadlock.
+    /// </para>
+    /// </summary>
+    private async Task<bool> ConsumeReservationAsync(
+        Guid reservationId,
+        Guid movementId,
+        CancellationToken cancellationToken)
+    {
+        const string sql = $"""
+            UPDATE {ReservationsTable}
+            SET "State" = @picked,
+                "ClosedAt" = @now,
+                "ConsumedByMovementId" = @movementId
+            WHERE "Id" = @id AND "State" = @open
+            """;
+
+        await using var command = CreateCommand(sql);
+
+        command.Parameters.Add(new NpgsqlParameter("picked", NpgsqlDbType.Integer) { Value = (int)ReservationState.Picked });
+        command.Parameters.Add(new NpgsqlParameter("open", NpgsqlDbType.Integer) { Value = (int)ReservationState.Open });
+        command.Parameters.Add(new NpgsqlParameter("now", NpgsqlDbType.TimestampTz) { Value = clock.GetUtcNow() });
+        command.Parameters.Add(new NpgsqlParameter("movementId", NpgsqlDbType.Uuid) { Value = movementId });
+        command.Parameters.Add(new NpgsqlParameter("id", NpgsqlDbType.Uuid) { Value = reservationId });
+
+        return await command.ExecuteNonQueryAsync(cancellationToken) == 1;
+    }
+
+    /// <summary>
     /// A command on the context's own connection, enlisted in its current
     /// transaction.
     /// <para>
@@ -703,16 +758,6 @@ public sealed class StockLedger(
             SqlState: PostgresErrorCodes.UniqueViolation
         } postgres
         && postgres.ConstraintName?.Contains("IdempotencyKey", StringComparison.Ordinal) == true;
-
-    /// <summary>
-    /// Identifies one row of the balance projection: a holding, plus the item and
-    /// lot occupying it.
-    /// </summary>
-    private readonly record struct BalanceKey(Guid ItemId, Guid? LotId, Holding Holding)
-    {
-        /// <summary>See <see cref="LockEveryTouchedBalanceAsync"/> for why the holding's key comes first.</summary>
-        public string LockOrderKey => $"{Holding.LockOrderKey}|{ItemId:D}|{LotId:D}";
-    }
 
     private readonly record struct LockedBalance(Guid Id, decimal Quantity, bool AllowsNegative);
 }

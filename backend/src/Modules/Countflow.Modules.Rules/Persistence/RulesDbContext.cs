@@ -88,7 +88,11 @@ public sealed class RulesDbContext(DbContextOptions<RulesDbContext> options)
         builder.Entity<DecisionTraceCandidate>(candidate =>
         {
             candidate.HasKey(c => c.Id);
-            candidate.Property(c => c.CandidateKey).HasMaxLength(64).IsRequired();
+
+            // Widened from 64 in Phase 4. A putaway candidate is a rack label; an
+            // allocation candidate is a holding, and the only key a human reads a
+            // holding by is its location *and* its batch.
+            candidate.Property(c => c.CandidateKey).HasMaxLength(128).IsRequired();
             candidate.Property(c => c.Score).HasPrecision(9, 4);
             candidate.Property(c => c.ExcludedByJson).HasColumnType("jsonb");
             candidate.Property(c => c.ScoresJson).HasColumnType("jsonb").IsRequired();

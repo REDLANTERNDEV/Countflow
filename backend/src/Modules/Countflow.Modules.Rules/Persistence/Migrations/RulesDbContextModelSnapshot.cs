@@ -99,8 +99,8 @@ namespace Countflow.Modules.Rules.Persistence.Migrations
 
                     b.Property<string>("CandidateKey")
                         .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<Guid>("DecisionTraceId")
                         .HasColumnType("uuid");

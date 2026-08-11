@@ -167,6 +167,20 @@ public interface ILocationDirectory
         CancellationToken cancellationToken);
 
     /// <summary>
+    /// The same richer snapshots, by id.
+    /// <para>
+    /// For the caller that already knows which handful of locations it cares
+    /// about. Allocation starts from stock rather than from the building — a few
+    /// holdings, not two thousand bins — so fetching the whole warehouse to
+    /// describe four of them would be the wrong shape of query even though the
+    /// answer would be identical.
+    /// </para>
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, StorageLocationSnapshot>> FindStorageLocationsAsync(
+        IReadOnlyCollection<Guid> ids,
+        CancellationToken cancellationToken);
+
+    /// <summary>
     /// One physical location by its code, with its role and capacity.
     /// <para>
     /// The richer sibling of <see cref="FindByCodeAsync"/>, for the callers that

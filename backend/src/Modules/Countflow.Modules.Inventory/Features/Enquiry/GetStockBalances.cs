@@ -1,6 +1,7 @@
 using Countflow.Modules.Inventory.Domain;
 using Countflow.Modules.Inventory.Ledger;
 using Countflow.Modules.Inventory.Persistence;
+using Countflow.Modules.Inventory.Reservations;
 using Countflow.SharedKernel.Contracts;
 using Countflow.SharedKernel.Results;
 using Microsoft.AspNetCore.Builder;
@@ -10,6 +11,19 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Countflow.Modules.Inventory.Features.Enquiry;
 
+/// <param name="Quantity">On hand — what a stocktake would count.</param>
+/// <param name="ReservedQuantity">
+/// Committed to orders that have not been picked yet, and the distinction Phase 2
+/// deliberately did not draw. Null when the figures are historical: reservations
+/// are current state rather than an append-only history, so unlike a balance they
+/// cannot honestly be reconstructed as of a past instant, and reporting today's
+/// commitments against last week's stock would be worse than reporting none.
+/// </param>
+/// <param name="AvailableQuantity">
+/// What can still be promised. Clamped at zero, because an ad-hoc transfer can
+/// legitimately move stock out from under a claim and a negative availability is
+/// not a thing anybody can act on.
+/// </param>
 public sealed record StockBalanceResponse(
     string Sku,
     string Description,
@@ -20,7 +34,9 @@ public sealed record StockBalanceResponse(
     string? Sscc,
     InventoryStatus Status,
     decimal Quantity,
-    bool IsAllocatable);
+    bool IsAllocatable,
+    decimal? ReservedQuantity,
+    decimal? AvailableQuantity);
 
 /// <param name="AsOf">
 /// Echoed back when the answer was reconstructed from the ledger rather than read
@@ -51,6 +67,7 @@ public static class GetStockBalances
         endpoints.MapGet("/api/inventory/balances", async (
                 InventoryDbContext dbContext,
                 LedgerReplay replay,
+                ReservationLedger reservations,
                 IItemDirectory items,
                 ILocationDirectory locations,
                 CancellationToken cancellationToken,
@@ -111,7 +128,7 @@ public static class GetStockBalances
                     .ToList();
 
                 var response = await DescribeAsync(
-                    dbContext, items, locations, window, cancellationToken);
+                    dbContext, items, locations, reservations, window, cancellationToken);
 
                 return Results.Ok(new StockEnquiryResponse(
                     response,
@@ -135,7 +152,13 @@ public static class GetStockBalances
     /// modes reduce to this so the paging, filtering and description code below is
     /// written once.
     /// </summary>
+    /// <param name="BalanceId">
+    /// Null on a replayed row. A reconstructed holding is a sum over the ledger
+    /// rather than a row that exists, so there is nothing for a commitment to hang
+    /// off — which is exactly why the reserved column is blank in as-of mode.
+    /// </param>
     private sealed record Row(
+        Guid? BalanceId,
         Guid ItemId,
         Guid? LotId,
         Guid LocationId,
@@ -228,7 +251,7 @@ public static class GetStockBalances
         if (status is { } wanted) query = query.Where(b => b.Status == wanted);
 
         var rows = await query
-            .Select(b => new Row(b.ItemId, b.LotId, b.LocationId, b.LicensePlateId, b.Status, b.Quantity))
+            .Select(b => new Row(b.Id, b.ItemId, b.LotId, b.LocationId, b.LicensePlateId, b.Status, b.Quantity))
             .ToListAsync(cancellationToken);
 
         return new Holdings(rows, AsOfSequence: null);
@@ -262,7 +285,7 @@ public static class GetStockBalances
 
         var rows = replayed
             .Where(r => status is null || r.Status == status)
-            .Select(r => new Row(r.ItemId, r.LotId, r.LocationId, r.LicensePlateId, r.Status, r.Quantity))
+            .Select(r => new Row(null, r.ItemId, r.LotId, r.LocationId, r.LicensePlateId, r.Status, r.Quantity))
             .ToList();
 
         return new Holdings(rows, sequence);
@@ -280,6 +303,7 @@ public static class GetStockBalances
         InventoryDbContext dbContext,
         IItemDirectory items,
         ILocationDirectory locations,
+        ReservationLedger reservations,
         List<Row> rows,
         CancellationToken cancellationToken)
     {
@@ -287,6 +311,10 @@ public static class GetStockBalances
         {
             return [];
         }
+
+        var reservedByBalance = await reservations.OpenByBalanceAsync(
+            [.. rows.Where(r => r.BalanceId is not null).Select(r => r.BalanceId!.Value)],
+            cancellationToken);
 
         var itemsById = await items.FindManyAsync(
             [.. rows.Select(r => r.ItemId).Distinct()], cancellationToken);
@@ -320,6 +348,10 @@ public static class GetStockBalances
                 var item = itemsById.GetValueOrDefault(row.ItemId);
                 var lot = row.LotId is { } lotId ? lotsById.GetValueOrDefault(lotId) : null;
 
+                decimal? reserved = row.BalanceId is { } balanceId
+                    ? reservedByBalance.GetValueOrDefault(balanceId)
+                    : null;
+
                 return new StockBalanceResponse(
                     item?.Sku ?? string.Empty,
                     item?.Description ?? string.Empty,
@@ -330,7 +362,9 @@ public static class GetStockBalances
                     row.LicensePlateId is { } plateId ? platesById.GetValueOrDefault(plateId) : null,
                     row.Status,
                     row.Quantity,
-                    row.Status.IsAllocatable());
+                    row.Status.IsAllocatable(),
+                    reserved,
+                    reserved is { } committed ? Math.Max(0m, row.Quantity - committed) : null);
             })
         ];
     }

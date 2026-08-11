@@ -72,6 +72,8 @@ public sealed class ItemDirectory(MasterDataDbContext dbContext) : IItemDirector
                 i.AbcClass,
                 i.TemperatureClass,
                 i.IsHazardous,
+                i.ShelfLifeDays,
+                i.MinimumRemainingShelfLifePercent,
                 i.PackConfigurations
                     .Where(p => p.Level == PackagingLevel.Each)
                     .Select(p => new PackRow(p.BaseUnitQuantity, p.LengthMm, p.WidthMm, p.HeightMm, p.GrossWeightKg))
@@ -96,6 +98,8 @@ public sealed class ItemDirectory(MasterDataDbContext dbContext) : IItemDirector
         AbcClass AbcClass,
         TemperatureClass TemperatureClass,
         bool IsHazardous,
+        int? ShelfLifeDays,
+        int? MinimumRemainingShelfLifePercent,
         PackRow? Each);
 
     private static ItemSnapshot? ToSnapshot(ItemRow? row) => row is null
@@ -113,7 +117,9 @@ public sealed class ItemDirectory(MasterDataDbContext dbContext) : IItemDirector
             ToBand(row.TemperatureClass),
             row.IsHazardous,
             UnitVolume(row.Each),
-            UnitWeight(row.Each));
+            UnitWeight(row.Each),
+            row.ShelfLifeDays,
+            row.MinimumRemainingShelfLifePercent);
 
     /// <summary>
     /// Volume of one base unit. Null unless every dimension is on file — a

@@ -83,6 +83,19 @@ public sealed class WorkTask
     /// </summary>
     public Guid? DecisionTraceId { get; init; }
 
+    /// <summary>
+    /// The commitment a pick discharges. Carried, never interpreted — this module
+    /// has no idea what a reservation is, in exactly the way it has no idea what a
+    /// decision trace contains, and both are handed back untouched to the module
+    /// that understands them.
+    /// <para>
+    /// Null on every kind but <see cref="WorkTaskKind.Pick"/>, and completing a
+    /// pick without one is refused rather than posted: stock leaving a bin against
+    /// no claim is the outbound equivalent of a directed movement with no trace.
+    /// </para>
+    /// </summary>
+    public Guid? StockReservationId { get; init; }
+
     public StockCondition Condition { get; init; } = StockCondition.Available;
 
     /// <summary>The document line that caused this — an ASN line reference. Opaque to this module.</summary>

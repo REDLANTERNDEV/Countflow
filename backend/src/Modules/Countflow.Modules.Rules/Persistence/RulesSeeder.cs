@@ -1,3 +1,4 @@
+using Countflow.Modules.Rules.Allocation;
 using Countflow.Modules.Rules.Domain;
 using Countflow.Modules.Rules.Putaway;
 using Countflow.SharedKernel.Modules;
@@ -28,6 +29,15 @@ public sealed class RulesSeeder(RulesDbContext dbContext, ILogger<RulesSeeder> l
     public int Order => 20;
 
     public async Task SeedAsync(CancellationToken cancellationToken)
+    {
+        // Checked per kind rather than "are there any rule sets", because Phase 4
+        // adds a second kind to a database that already has the first. An
+        // upgrade seeds only what is missing.
+        await SeedPutawayAsync(cancellationToken);
+        await SeedAllocationAsync(cancellationToken);
+    }
+
+    private async Task SeedPutawayAsync(CancellationToken cancellationToken)
     {
         if (await dbContext.RuleSets.AnyAsync(r => r.Kind == DecisionKind.Putaway, cancellationToken))
         {
@@ -66,6 +76,55 @@ public sealed class RulesSeeder(RulesDbContext dbContext, ILogger<RulesSeeder> l
         Preference(ruleSet, PutawayPreferences.VelocitySlotting.RuleCode, order: 110, weight: 0.25m);
         Preference(ruleSet, PutawayPreferences.TravelDistance.RuleCode, order: 120, weight: 0.25m);
         Preference(ruleSet, PutawayPreferences.CubeUtilisation.RuleCode, order: 130, weight: 0.15m);
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        logger.LogInformation(
+            "Seeded rule set {Name} v{Version} with {Rules} rules",
+            ruleSet.Name,
+            ruleSet.Version,
+            ruleSet.Rules.Count);
+    }
+
+    private async Task SeedAllocationAsync(CancellationToken cancellationToken)
+    {
+        if (await dbContext.RuleSets.AnyAsync(r => r.Kind == DecisionKind.Allocation, cancellationToken))
+        {
+            logger.LogInformation("Allocation rule set already present; skipping seed");
+            return;
+        }
+
+        var ruleSet = new RuleSet
+        {
+            Kind = DecisionKind.Allocation,
+            Name = "Standard allocation",
+            Version = 1,
+            Status = RuleSetStatus.Active,
+            WarehouseId = null,
+            ActivatedAt = DateTimeOffset.UtcNow,
+            Notes = "Shipped default. FEFO first, and short-dated stock is refused rather than ranked down."
+        };
+
+        dbContext.RuleSets.Add(ruleSet);
+
+        // Availability first because it is the cheapest and the most common
+        // exclusion once a warehouse is busy; condition and location before the
+        // dates because "that pallet is in quarantine" is a more useful sentence
+        // than "that pallet is short-dated" when both are true.
+        Constraint(ruleSet, AllocationConstraints.StockAvailable.RuleCode, order: 10);
+        Constraint(ruleSet, AllocationConstraints.ConditionAllocatable.RuleCode, order: 20);
+        Constraint(ruleSet, AllocationConstraints.PickableLocation.RuleCode, order: 30);
+        Constraint(ruleSet, AllocationConstraints.LotMatch.RuleCode, order: 40);
+        Constraint(ruleSet, AllocationConstraints.NotExpired.RuleCode, order: 50);
+        Constraint(ruleSet, AllocationConstraints.MinimumRemainingShelfLife.RuleCode, order: 60);
+
+        // Rotation carries the most weight by a distance: it is the rule the whole
+        // business of tracking expiry exists to serve, and a warehouse that lets
+        // travel outvote it is one that writes off stock at the back of the rack.
+        Preference(ruleSet, AllocationPreferences.FirstExpiredFirstOut.RuleCode, order: 100, weight: 0.45m);
+        Preference(ruleSet, AllocationPreferences.PreferPickFace.RuleCode, order: 110, weight: 0.25m);
+        Preference(ruleSet, AllocationPreferences.ClearTheHolding.RuleCode, order: 120, weight: 0.20m);
+        Preference(ruleSet, AllocationPreferences.TravelDistance.RuleCode, order: 130, weight: 0.10m);
 
         await dbContext.SaveChangesAsync(cancellationToken);
 

@@ -310,6 +310,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/rules/allocation/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Run the allocation rules without reserving anything. */
+        post: operations["PreviewAllocation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/work/tasks": {
         parameters: {
             query?: never;
@@ -458,6 +475,144 @@ export interface paths {
         put?: never;
         /** Book goods in against an advice note and raise the putaway. */
         post: operations["ReceiveAtDock"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/outbound/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Customer orders, open and urgent first. */
+        get: operations["GetSalesOrders"];
+        put?: never;
+        /** Take a customer order. */
+        post: operations["CreateSalesOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/outbound/orders/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One order, with its allocations and their picks. */
+        get: operations["GetSalesOrder"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/outbound/orders/{id}/release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Allocate stock by rule and raise the picks. */
+        post: operations["ReleaseSalesOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/outbound/orders/{id}/pack": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirm the order is picked and made up at the bench. */
+        post: operations["PackSalesOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/outbound/orders/{id}/despatch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Post the picked stock out to the Customer counterparty. */
+        post: operations["DespatchSalesOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/outbound/orders/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel an order, withdraw its picks and release its stock. */
+        post: operations["CancelSalesOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/outbound/waves": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Waves and the orders grouped into them. */
+        get: operations["GetWaves"];
+        put?: never;
+        /** Group orders for release together. */
+        post: operations["CreateWave"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/outbound/waves/{id}/release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Allocate and raise the picks for every order in a wave. */
+        post: operations["ReleaseWave"];
         delete?: never;
         options?: never;
         head?: never;
@@ -625,6 +780,16 @@ export interface components {
             /** Format: int64 */
             lastMovementSequence: number;
         };
+        CancelOrderRequest: {
+            reason: string;
+        };
+        CancelOrderResponse: {
+            order: components["schemas"]["SalesOrderResponse"];
+            /** Format: int32 */
+            reservationsReleased: number;
+            /** Format: int32 */
+            tasksCancelled: number;
+        };
         ChangeStockStatusRequest: {
             sku: string;
             /** Format: double */
@@ -668,6 +833,30 @@ export interface components {
             carrierReference?: null | string;
             notes?: null | string;
         };
+        CreateOrderLineRequest: {
+            sku: string;
+            /** Format: double */
+            quantity: number;
+            lotNumber?: null | string;
+        };
+        CreateOrderRequest: {
+            warehouseCode: string;
+            reference: string;
+            lines: components["schemas"]["CreateOrderLineRequest"][];
+            customerName?: null | string;
+            stagingLocationCode?: null | string;
+            /** Format: date */
+            shipBy?: null | string;
+            /** Format: int32 */
+            priority?: null | number;
+            notes?: null | string;
+        };
+        CreateWaveRequest: {
+            warehouseCode: string;
+            reference: string;
+            orderIds: string[];
+            notes?: null | string;
+        };
         /** @enum {string} */
         DecisionKind: "Putaway" | "Allocation" | "Waving" | "TaskAssignment";
         DecisionTraceView: {
@@ -687,6 +876,10 @@ export interface components {
             selectedId: null | string;
             selectedKey: null | string;
             candidates: components["schemas"]["TracedCandidate"][];
+        };
+        DespatchOrderResponse: {
+            order: components["schemas"]["SalesOrderResponse"];
+            movements: components["schemas"]["PostedMovement"][];
         };
         DockReceiptRequest: {
             sku: string;
@@ -828,6 +1021,43 @@ export interface components {
         };
         /** @enum {string} */
         MovementType: "Receipt" | "Putaway" | "Transfer" | "Replenishment" | "Pick" | "Despatch" | "Adjustment" | "CountAdjustment" | "StatusChange" | "Scrap" | "Reversal";
+        OrderAllocationResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: double */
+            quantity: number;
+            locationCode: string;
+            lotNumber: null | string;
+            /** Format: date */
+            expiryDate: null | string;
+            /** Format: uuid */
+            decisionTraceId: string;
+            /** Format: uuid */
+            workTaskId: null | string;
+            taskState: null | components["schemas"]["WorkTaskState"];
+            /** Format: double */
+            pickedQuantity: number;
+            pickedAtLocationCode: null | string;
+        };
+        OrderLineResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: int32 */
+            lineNumber: number;
+            sku: string;
+            description: string;
+            baseUom: string;
+            /** Format: double */
+            orderedQuantity: number;
+            /** Format: double */
+            allocatedQuantity: number;
+            /** Format: double */
+            outstandingQuantity: number;
+            /** Format: double */
+            pickedQuantity: number;
+            requiredLotNumber: null | string;
+            allocations: components["schemas"]["OrderAllocationResponse"][];
+        };
         PackConfigurationResponse: {
             level: string;
             /** Format: int32 */
@@ -845,6 +1075,9 @@ export interface components {
             volumeM3: null | number;
             isReceivingUnit: boolean;
             isPickUnit: boolean;
+        };
+        PackOrderRequest: {
+            notes?: null | string;
         };
         PagedResponseOfItemResponse: {
             items: components["schemas"]["ItemResponse"][];
@@ -882,6 +1115,38 @@ export interface components {
             /** Format: double */
             toQuantityAfter: number;
             wasAlreadyPosted: boolean;
+        };
+        PreviewAllocationLine: {
+            locationCode: string;
+            lotNumber: null | string;
+            /** Format: date */
+            expiryDate: null | string;
+            /** Format: double */
+            quantity: number;
+            /** Format: double */
+            score: number;
+        };
+        PreviewAllocationRequest: {
+            warehouseCode: string;
+            sku: string;
+            /** Format: double */
+            quantity: number;
+            /** Format: date */
+            shipBy?: null | string;
+        };
+        PreviewAllocationResponse: {
+            /** Format: uuid */
+            decisionTraceId: string;
+            lines: components["schemas"]["PreviewAllocationLine"][];
+            /** Format: double */
+            allocatedQuantity: number;
+            /** Format: double */
+            shortfallQuantity: number;
+            /** Format: int32 */
+            consideredCount: number;
+            /** Format: int32 */
+            admissibleCount: number;
+            trace: components["schemas"]["DecisionTraceView"];
         };
         PreviewPutawayRequest: {
             sku: string;
@@ -941,6 +1206,30 @@ export interface components {
         RefreshRequest: {
             refreshToken: string;
         };
+        ReleaseOrderRequest: {
+            stagingLocationCode?: null | string;
+        };
+        ReleaseOrderResponse: {
+            order: components["schemas"]["SalesOrderResponse"];
+            /** Format: int32 */
+            allocationsRaised: number;
+            /** Format: int32 */
+            tasksRaised: number;
+            /** Format: double */
+            shortfallQuantity: number;
+        };
+        ReleaseWaveRequest: {
+            stagingLocationCode?: null | string;
+        };
+        ReleaseWaveResponse: {
+            wave: components["schemas"]["WaveResponse"];
+            /** Format: int32 */
+            ordersReleased: number;
+            /** Format: int32 */
+            tasksRaised: number;
+            /** Format: double */
+            shortfallQuantity: number;
+        };
         ResolveScanRequest: {
             barcode: string;
         };
@@ -986,9 +1275,48 @@ export interface components {
         RuleSetStatus: "Draft" | "Active" | "Archived";
         RuleSetsResponse: {
             items: components["schemas"]["RuleSetResponse"][];
-            availableConstraints: string[];
-            availablePreferences: string[];
+            vocabulary: components["schemas"]["RuleVocabularyResponse"][];
         };
+        RuleVocabularyResponse: {
+            kind: components["schemas"]["DecisionKind"];
+            constraints: string[];
+            preferences: string[];
+        };
+        SalesOrderPage: {
+            items: components["schemas"]["SalesOrderResponse"][];
+            /** Format: int32 */
+            total: number;
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            pageSize: number;
+        };
+        SalesOrderResponse: {
+            /** Format: uuid */
+            id: string;
+            reference: string;
+            customerName: null | string;
+            status: components["schemas"]["SalesOrderStatus"];
+            stagingLocationCode: null | string;
+            /** Format: date */
+            shipBy: null | string;
+            /** Format: int32 */
+            priority: number;
+            /** Format: uuid */
+            waveId: null | string;
+            notes: null | string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            releasedAt: null | string;
+            /** Format: date-time */
+            packedAt: null | string;
+            /** Format: date-time */
+            despatchedAt: null | string;
+            lines: components["schemas"]["OrderLineResponse"][];
+        };
+        /** @enum {string} */
+        SalesOrderStatus: "New" | "Released" | "Packed" | "Despatched" | "Cancelled";
         ScanElementResponse: {
             ai: string;
             title: string;
@@ -1054,6 +1382,10 @@ export interface components {
             /** Format: double */
             quantity: number;
             isAllocatable: boolean;
+            /** Format: double */
+            reservedQuantity: null | number;
+            /** Format: double */
+            availableQuantity: null | number;
         };
         /** @enum {string} */
         StockCondition: "Available" | "Quarantine" | "Damaged" | "OnHold" | "Expired";
@@ -1144,6 +1476,21 @@ export interface components {
             countryCode: null | string;
             isActive: boolean;
         };
+        WaveResponse: {
+            /** Format: uuid */
+            id: string;
+            reference: string;
+            status: components["schemas"]["WaveStatus"];
+            notes: null | string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            releasedAt: null | string;
+            releasedByUserName: null | string;
+            orders: components["schemas"]["SalesOrderResponse"][];
+        };
+        /** @enum {string} */
+        WaveStatus: "Planned" | "Released" | "Cancelled";
         WorkTaskDetailResponse: {
             task: components["schemas"]["WorkTaskResponse"];
             decision: null | components["schemas"]["DecisionTraceView"];
@@ -1190,6 +1537,8 @@ export interface components {
             wasOverridden: boolean;
             overrideReason: null | string;
         };
+        /** @enum {string} */
+        WorkTaskState: "Ready" | "Assigned" | "Completed" | "Cancelled";
         /** @enum {string} */
         WorkTaskStatus: "Ready" | "Assigned" | "Completed" | "Cancelled";
     };
@@ -1915,6 +2264,48 @@ export interface operations {
             };
         };
     };
+    PreviewAllocation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PreviewAllocationRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreviewAllocationResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     GetWorkTasks: {
         parameters: {
             query?: {
@@ -2269,6 +2660,435 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DockReceiptResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetSalesOrders: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["SalesOrderStatus"];
+                waveId?: string;
+                page?: number;
+                pageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SalesOrderPage"];
+                };
+            };
+        };
+    };
+    CreateSalesOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateOrderRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SalesOrderResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetSalesOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SalesOrderResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ReleaseSalesOrder: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": null | components["schemas"]["ReleaseOrderRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseOrderResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    PackSalesOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": null | components["schemas"]["PackOrderRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SalesOrderResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    DespatchSalesOrder: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DespatchOrderResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CancelSalesOrder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CancelOrderRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CancelOrderResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetWaves: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["WaveStatus"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WaveResponse"][];
+                };
+            };
+        };
+    };
+    CreateWave: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateWaveRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WaveResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ReleaseWave: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": null | components["schemas"]["ReleaseWaveRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseWaveResponse"];
                 };
             };
             /** @description Bad Request */

@@ -102,4 +102,38 @@ public static class InventoryErrors
 
     public static readonly Error UnknownActor =
         Error.Unauthorized("inventory.unknown_actor", "The access token carries no usable user identity.");
+
+    // ---- Commitments ----
+
+    public static readonly Error HoldingNotFound =
+        Error.NotFound("inventory.holding_not_found", "No stock holding with that identifier.");
+
+    /// <summary>
+    /// There is stock, but it is spoken for. Deliberately distinct from
+    /// <see cref="InsufficientStock"/>: "the bin is empty" and "the bin is full of
+    /// somebody else's order" lead to entirely different conversations, and a
+    /// system that reports them with one message sends people to count a shelf
+    /// that is exactly as full as it says.
+    /// </summary>
+    public static Error InsufficientAvailableStock(decimal available, decimal requested) =>
+        Error.Conflict(
+            "inventory.insufficient_available_stock",
+            $"{available} is available to promise but {requested} was requested.");
+
+    /// <summary>
+    /// The claim behind a pick was already picked or released. Against an
+    /// append-only ledger this is the difference between moving stock once and
+    /// moving it twice, so it fails the posting rather than proceeding without a
+    /// commitment.
+    /// </summary>
+    public static readonly Error ReservationNotOpen =
+        Error.Conflict(
+            "inventory.reservation_not_open",
+            "That reservation has already been picked or released.");
+
+    public static readonly Error ReservationNotFound =
+        Error.NotFound("inventory.reservation_not_found", "No reservation with that identifier.");
+
+    public static readonly Error NothingToDespatch =
+        Error.Validation("inventory.nothing_to_despatch", "A despatch must carry at least one line.");
 }

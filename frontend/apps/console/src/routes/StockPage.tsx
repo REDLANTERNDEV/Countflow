@@ -84,8 +84,12 @@ export function StockPage() {
     <>
       <PageHead title={t('stock.title')} count={total} />
 
-      <p className="mb-[var(--space-4)] max-w-[72ch] text-[length:var(--text-sm)] text-[var(--color-text-secondary)]">
+      <p className="mb-[var(--space-2)] max-w-[72ch] text-[length:var(--text-sm)] text-[var(--color-text-secondary)]">
         {t('stock.intro')}
+      </p>
+
+      <p className="mb-[var(--space-4)] max-w-[72ch] text-[length:var(--text-sm)] text-[var(--color-text-secondary)]">
+        {t('stock.availableNote')}
       </p>
 
       <div className="mb-[var(--space-4)] flex flex-wrap items-center gap-[var(--space-3)]">
@@ -206,13 +210,15 @@ export function StockPage() {
                   <TH>{t('stock.sscc')}</TH>
                   <TH>{t('stock.status')}</TH>
                   <TH numeric>{t('stock.quantity')}</TH>
+                  <TH numeric>{t('stock.reserved')}</TH>
+                  <TH numeric>{t('stock.available')}</TH>
                   <TH>{t('stock.uom')}</TH>
                 </TR>
               </THead>
               <TBody>
                 {data.items.length === 0 ? (
                   <TR>
-                    <TD colSpan={9}>
+                    <TD colSpan={11}>
                       <EmptyState title={t('stock.empty')} />
                     </TD>
                   </TR>
@@ -240,6 +246,25 @@ export function StockPage() {
                       </TD>
                       <TD numeric>
                         <Numeric value={row.quantity} locale={locale} />
+                      </TD>
+                      {/* On hand, committed, available — the distinction the
+                          outbound loop turns on, and the only place most people
+                          will ever meet it. Blank rather than zero when the
+                          figures are historical: commitments are current state,
+                          so a replayed balance genuinely has none to report. */}
+                      <TD numeric className="text-[var(--color-text-secondary)]">
+                        {row.reservedQuantity == null ? (
+                          t('common.none')
+                        ) : (
+                          <Numeric value={row.reservedQuantity} locale={locale} />
+                        )}
+                      </TD>
+                      <TD numeric>
+                        {row.availableQuantity == null ? (
+                          t('common.none')
+                        ) : (
+                          <Numeric value={row.availableQuantity} locale={locale} />
+                        )}
                       </TD>
                       <TD className="text-[var(--color-text-tertiary)]">{row.baseUom}</TD>
                     </TR>

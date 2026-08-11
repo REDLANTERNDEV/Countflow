@@ -55,6 +55,16 @@ public sealed record WorkTaskRequest
 
     public Guid? DecisionTraceId { get; init; }
 
+    /// <summary>
+    /// The commitment this job discharges, for a pick. Carried and handed back
+    /// untouched — Work never resolves it, exactly as it never resolves
+    /// <see cref="DecisionTraceId"/>. It travels here rather than being looked up
+    /// at completion because the alternative is a second write stamping the task
+    /// onto the reservation, and a crash between the two would leave a
+    /// commitment no job can discharge.
+    /// </summary>
+    public Guid? StockReservationId { get; init; }
+
     public StockCondition Condition { get; init; } = StockCondition.Available;
 
     /// <summary>Lower runs first. Defaults to the middle of the band so anything urgent can sort above it.</summary>
@@ -70,8 +80,68 @@ public sealed record WorkTaskRequest
     public required string IdempotencyKey { get; init; }
 }
 
-/// <summary>The Work module's published surface for raising directed work.</summary>
+/// <summary>
+/// Where a job is in its life, for the module that raised it. Mirrors Work's own
+/// <c>WorkTaskStatus</c>, published for the same reason <see cref="StockCondition"/>
+/// is: the raiser has to be able to tell whether its work happened, and it cannot
+/// read another module's tables to find out.
+/// </summary>
+public enum WorkTaskState
+{
+    Ready = 1,
+    Assigned = 2,
+    Completed = 3,
+    Cancelled = 4
+}
+
+/// <summary>
+/// What became of a job, for whoever asked for it.
+/// </summary>
+/// <param name="CompletedAtLocationId">
+/// Where the operator actually confirmed. The raising module needs this rather
+/// than the suggestion: an order is despatched from the bench the picker really
+/// used, and asking the queue is how outbound learns that without Work having to
+/// know outbound exists.
+/// </param>
+public sealed record WorkTaskSummary(
+    Guid Id,
+    WorkTaskKind Kind,
+    WorkTaskState State,
+    decimal Quantity,
+    Guid? CompletedAtLocationId,
+    DateTimeOffset? CompletedAt,
+    string? CompletedByUserName,
+    bool WasOverridden);
+
+/// <summary>
+/// The Work module's published surface for directed work raised by another
+/// module.
+/// <para>
+/// Still almost entirely write-only, and the two additions keep the line in the
+/// same place. A raiser may add work, ask what became of the work it added, and
+/// withdraw work nobody has started — because all three are things it is
+/// answerable for. What it may not do is claim or complete a task: those are the
+/// operator's, and a contract that exposed them would let a module move stock with
+/// nobody standing at the rack.
+/// </para>
+/// </summary>
 public interface IWorkQueue
 {
     Task<Result<Guid>> EnqueueAsync(WorkTaskRequest request, CancellationToken cancellationToken);
+
+    /// <summary>Batch lookup by id. Absent ids are simply missing from the result.</summary>
+    Task<IReadOnlyDictionary<Guid, WorkTaskSummary>> FindManyAsync(
+        IReadOnlyCollection<Guid> taskIds,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Withdraws jobs that have not been started, and returns how many actually
+    /// went. A claimed task is left standing: an operator halfway to the rack is
+    /// not something another module gets to cancel out from under them, and the
+    /// count is what tells the caller some of its work is still live.
+    /// </summary>
+    Task<Result<int>> CancelAsync(
+        IReadOnlyCollection<Guid> taskIds,
+        string reason,
+        CancellationToken cancellationToken);
 }

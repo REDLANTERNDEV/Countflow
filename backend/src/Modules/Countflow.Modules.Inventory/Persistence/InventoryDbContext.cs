@@ -15,6 +15,13 @@ public sealed class InventoryDbContext(DbContextOptions<InventoryDbContext> opti
     /// <summary>The projection of the ledger. Rebuildable, never authoritative.</summary>
     public DbSet<StockBalance> StockBalances => Set<StockBalance>();
 
+    /// <summary>
+    /// Claims against the projection. Not part of the ledger and not derived from
+    /// it — see <see cref="StockReservation"/> for why a promise is not a movement,
+    /// and why it lives in this schema anyway.
+    /// </summary>
+    public DbSet<StockReservation> StockReservations => Set<StockReservation>();
+
     public DbSet<Lot> Lots => Set<Lot>();
 
     public DbSet<LicensePlate> LicensePlates => Set<LicensePlate>();
@@ -163,6 +170,58 @@ public sealed class InventoryDbContext(DbContextOptions<InventoryDbContext> opti
                 table.HasCheckConstraint(
                     "CK_StockBalances_NonNegativeUnlessCounterparty",
                     "\"Quantity\" >= 0 OR \"AllowsNegative\""));
+        });
+
+        builder.Entity<StockReservation>(reservation =>
+        {
+            reservation.HasKey(r => r.Id);
+
+            reservation.Property(r => r.Quantity).HasPrecision(18, 4);
+
+            // 256 rather than the 128 a movement's key gets, because this one sits
+            // at the bottom of a derivation chain: a wave's key begets an order's,
+            // which begets a line's, which begets one per holding. Four identifiers
+            // deep is genuinely what makes a retried wave release idempotent at
+            // every level, and truncating it to fit would break exactly that.
+            reservation.Property(r => r.IdempotencyKey).HasMaxLength(256).IsRequired();
+            reservation.Property(r => r.OwnerReference).HasMaxLength(128).IsRequired();
+            reservation.Property(r => r.UserName).HasMaxLength(256).IsRequired();
+            reservation.Property(r => r.ReleaseReason).HasMaxLength(500);
+
+            // The one foreign key in this module, and it stays inside the schema:
+            // a claim without the holding it stands against is meaningless, and
+            // balance rows are never deleted, so it can never be the thing that
+            // blocks a write. Restrict rather than cascade — a delete that took
+            // live commitments with it is a delete that should have failed.
+            reservation.HasOne(r => r.Balance!)
+                .WithMany()
+                .HasForeignKey(r => r.BalanceId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Exactly-once reserving. A retried order release collides here rather
+            // than committing the same pallet to one order twice.
+            reservation.HasIndex(r => r.IdempotencyKey).IsUnique();
+
+            // The availability query: open claims against a holding, summed on
+            // every allocation and on every page of the stock screen.
+            reservation.HasIndex(r => new { r.BalanceId, r.State });
+
+            // "What is this order still holding?" — the cancellation path, and the
+            // repair an interrupted release runs before it allocates again.
+            reservation.HasIndex(r => new { r.OwnerId, r.State });
+
+            reservation.ToTable(table =>
+            {
+                table.HasCheckConstraint("CK_StockReservations_PositiveQuantity", "\"Quantity\" > 0");
+
+                // A closed claim has to say when it closed, or the age of the
+                // oldest open commitment — which is the number that tells a
+                // supervisor an order is stuck — is computed from a column that is
+                // sometimes null for no reason.
+                table.HasCheckConstraint(
+                    "CK_StockReservations_ClosedHasTimestamp",
+                    $"\"State\" = {(int)ReservationState.Open} OR \"ClosedAt\" IS NOT NULL");
+            });
         });
 
         builder.Entity<Lot>(lot =>

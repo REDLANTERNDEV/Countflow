@@ -74,6 +74,21 @@ public sealed record PostingCommand
 
     public Guid? ReversesMovementId { get; init; }
 
+    /// <summary>
+    /// A commitment this movement discharges, closed inside the same transaction
+    /// that appends the movement.
+    /// <para>
+    /// Not part of the ledger entry — a reservation leaves no trace on the
+    /// movement row, because a claim being settled is not a property of the
+    /// physical fact being recorded. It is here because atomicity has to come from
+    /// somewhere, and the only code that holds both the movement insert and the
+    /// reservation row inside one transaction is the posting path. Anything else
+    /// would leave a window in which the goods have moved and the promise is
+    /// still standing.
+    /// </para>
+    /// </summary>
+    public Guid? ConsumesReservationId { get; init; }
+
     public string? Notes { get; init; }
 
     /// <summary>

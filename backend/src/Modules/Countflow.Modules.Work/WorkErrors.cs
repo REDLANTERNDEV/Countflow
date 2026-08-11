@@ -38,6 +38,17 @@ public static class WorkErrors
             "work.task_has_no_decision",
             "That task carries no decision trace, so completing it would post an unexplained movement.");
 
+    /// <summary>
+    /// A pick with no commitment behind it. The outbound twin of
+    /// <see cref="TaskHasNoDecision"/>: reaching it means whichever module raised
+    /// the job never reserved the stock, and confirming it would take goods out of
+    /// a bin against nobody's order.
+    /// </summary>
+    public static readonly Error TaskHasNoReservation =
+        Error.Failure(
+            "work.task_has_no_reservation",
+            "That pick carries no reservation, so confirming it would take stock nobody had claimed.");
+
     public static readonly Error IdempotencyKeyRequired =
         Error.Validation("work.idempotency_key_required", "Every write command must carry an idempotency key.");
 

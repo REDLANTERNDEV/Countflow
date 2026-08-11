@@ -2,6 +2,7 @@ using Countflow.Modules.Identity;
 using Countflow.Modules.Inbound;
 using Countflow.Modules.Inventory;
 using Countflow.Modules.MasterData;
+using Countflow.Modules.Outbound;
 using Countflow.Modules.Rules;
 using Countflow.Modules.Work;
 using Countflow.SharedKernel.Modules;
@@ -31,6 +32,10 @@ public static class ModuleCatalog
         // orchestrates the three. None of them can name another's DbContext.
         new RulesModule(),
         new WorkModule(),
-        new InboundModule()
+        new InboundModule(),
+        // Phase 4. Outbound orchestrates the same three: Rules chooses which stock,
+        // Inventory holds and moves it, Work fetches it. It publishes nothing and
+        // names no other module's DbContext.
+        new OutboundModule()
     ];
 }

@@ -33,6 +33,9 @@ public static class RulesErrors
     public static readonly Error LocationNotFound =
         Error.NotFound("rules.location_not_found", "No location with that identifier or code.");
 
+    public static readonly Error WarehouseNotFound =
+        Error.NotFound("rules.warehouse_not_found", "No warehouse with that code.");
+
     public static readonly Error TraceNotFound =
         Error.NotFound("rules.trace_not_found", "No decision trace with that identifier.");
 

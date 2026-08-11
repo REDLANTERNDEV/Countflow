@@ -1,3 +1,4 @@
+using Countflow.Modules.Rules.Allocation;
 using Countflow.Modules.Rules.Domain;
 using Countflow.Modules.Rules.Persistence;
 using Countflow.Modules.Rules.Putaway;
@@ -30,15 +31,29 @@ public sealed record RuleSetResponse(
     DateTimeOffset? ActivatedAt,
     IReadOnlyList<RuleResponse> Rules);
 
-/// <param name="AvailableConstraints">
-/// Rule codes this build can run. Returned alongside the sets so the console can
-/// show what a rule set <i>could</i> contain, not only what it does — a
-/// supervisor cannot tune rules they have no way of discovering.
+/// <summary>
+/// Rule codes this build can run, for one decision kind.
+/// <para>
+/// Per kind rather than one flat list, and Phase 4 is what forced that: the two
+/// vocabularies are not interchangeable — an allocation rule is typed against
+/// holdings and a putaway rule against locations, so neither can appear in the
+/// other's set — and a console offering a supervisor
+/// <c>putaway.temperature_match</c> as something to add to an allocation set would
+/// be offering a rule set the catalogue is going to refuse.
+/// </para>
+/// </summary>
+public sealed record RuleVocabularyResponse(
+    DecisionKind Kind,
+    IReadOnlyList<string> Constraints,
+    IReadOnlyList<string> Preferences);
+
+/// <param name="Vocabulary">
+/// What a rule set <i>could</i> contain, not only what it does — a supervisor
+/// cannot tune rules they have no way of discovering.
 /// </param>
 public sealed record RuleSetsResponse(
     IReadOnlyList<RuleSetResponse> Items,
-    IReadOnlyList<string> AvailableConstraints,
-    IReadOnlyList<string> AvailablePreferences);
+    IReadOnlyList<RuleVocabularyResponse> Vocabulary);
 
 /// <summary>
 /// The rule sets the warehouse is running, and the vocabulary they are built
@@ -82,8 +97,16 @@ public static class GetRuleSets
                                         r.Code, r.Role, r.Order, r.Weight, r.Parameters, r.IsEnabled))
                             ]))
                     ],
-                    PutawayRuleCatalogue.ConstraintCodes,
-                    PutawayRuleCatalogue.PreferenceCodes));
+                    [
+                        new RuleVocabularyResponse(
+                            DecisionKind.Putaway,
+                            PutawayRuleCatalogue.ConstraintCodes,
+                            PutawayRuleCatalogue.PreferenceCodes),
+                        new RuleVocabularyResponse(
+                            DecisionKind.Allocation,
+                            AllocationRuleCatalogue.ConstraintCodes,
+                            AllocationRuleCatalogue.PreferenceCodes)
+                    ]));
             })
             .RequireAuthorization(policy => policy.RequireRole(Roles.Admin, Roles.Supervisor))
             .WithTags("Rules")

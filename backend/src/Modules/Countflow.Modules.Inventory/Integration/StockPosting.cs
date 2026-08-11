@@ -1,6 +1,7 @@
 using Countflow.Modules.Inventory.Domain;
 using Countflow.Modules.Inventory.Ledger;
 using Countflow.Modules.Inventory.Persistence;
+using Countflow.Modules.Inventory.Reservations;
 using Countflow.SharedKernel.Contracts;
 using Countflow.SharedKernel.Results;
 using Microsoft.EntityFrameworkCore;
@@ -26,6 +27,7 @@ namespace Countflow.Modules.Inventory.Integration;
 public sealed class StockPosting(
     InventoryDbContext dbContext,
     StockLedger ledger,
+    ReservationLedger reservations,
     StockReferenceResolver resolve,
     IItemDirectory items,
     ILocationDirectory locations) : IStockPosting
@@ -193,6 +195,129 @@ public sealed class StockPosting(
             .. posted.Value.Select((receipt, index) =>
                 Describe(receipt, commands[index].LotId, instruction.LicensePlateId))
         ]);
+    }
+
+    /// <summary>
+    /// Takes the reserved stock to the bench, and closes the claim that was
+    /// holding it.
+    /// <para>
+    /// Everything about what is being moved comes from the reservation: the
+    /// caller supplies only where the operator dropped it. That is what makes
+    /// "you cannot pick stock nobody promised" a property of the type rather than
+    /// a check somebody remembered to write.
+    /// </para>
+    /// <para>
+    /// The goods come off their licence plate. A picker takes cases from a pallet
+    /// into a tote, and the pallet they came from is not the thing that arrives at
+    /// the customer — so the plate travels on a putaway, which moves the pallet,
+    /// and is dropped by a pick, which breaks into it. A whole-pallet pick empties
+    /// the plate for the same reason, which is the honest description of what
+    /// happened to it.
+    /// </para>
+    /// </summary>
+    public async Task<Result<PostedMovement>> PickAsync(
+        PickInstruction instruction,
+        CancellationToken cancellationToken)
+    {
+        var reservation = await reservations.FindAsync(instruction.ReservationId, cancellationToken);
+        if (reservation is null)
+        {
+            return Result.Failure<PostedMovement>(InventoryErrors.ReservationNotFound);
+        }
+
+        // Checked here so an operator gets a coded answer, and checked again
+        // inside the posting transaction so two confirmations arriving together
+        // cannot both pass. This one is for the person; that one is for the
+        // invariant.
+        if (reservation.State != ReservationState.Open)
+        {
+            return Result.Failure<PostedMovement>(InventoryErrors.ReservationNotOpen);
+        }
+
+        var holding = reservation.Balance!;
+
+        var posted = await ledger.PostAsync(
+            new PostingCommand
+            {
+                ItemId = holding.ItemId,
+                LotId = holding.LotId,
+                Quantity = reservation.Quantity,
+                From = new Holding(holding.LocationId, holding.LicensePlateId, holding.Status),
+                To = new Holding(instruction.ToLocationId, null, holding.Status),
+                Type = MovementType.Pick,
+                Reason = MovementReason.OrderPick,
+                IdempotencyKey = instruction.IdempotencyKey,
+                Actor = ToActor(instruction.Actor),
+                TaskId = instruction.TaskId,
+                DecisionTraceId = instruction.DecisionTraceId,
+                ConsumesReservationId = reservation.Id,
+                Notes = instruction.Notes ?? reservation.OwnerReference
+            },
+            cancellationToken);
+
+        return posted.IsFailure
+            ? Result.Failure<PostedMovement>(posted.Error)
+            : Describe(posted.Value, holding.LotId, licensePlateId: null);
+    }
+
+    /// <summary>
+    /// Sends the packed order out of the building, every line together.
+    /// <para>
+    /// The customer account belongs to the warehouse the goods are leaving, so it
+    /// is derived from the origin rather than asked for — the mirror of
+    /// <see cref="ReceiveAsync"/>, and what makes the round trip from Supplier to
+    /// Customer sum to zero.
+    /// </para>
+    /// </summary>
+    public async Task<Result<IReadOnlyList<PostedMovement>>> DespatchAsync(
+        DespatchInstruction instruction,
+        CancellationToken cancellationToken)
+    {
+        if (instruction.Lines.Count == 0)
+        {
+            return Result.Failure<IReadOnlyList<PostedMovement>>(InventoryErrors.NothingToDespatch);
+        }
+
+        var origin = await locations.FindAsync(instruction.FromLocationId, cancellationToken);
+        if (origin is null) return Result.Failure<IReadOnlyList<PostedMovement>>(InventoryErrors.LocationNotFound);
+
+        var customer = await resolve.CounterpartyAsync(
+            origin.WarehouseId, CounterpartyKind.Customer, cancellationToken);
+        if (customer.IsFailure) return Result.Failure<IReadOnlyList<PostedMovement>>(customer.Error);
+
+        var commands = instruction.Lines.Select((line, index) =>
+        {
+            var status = ToStatus(line.Condition);
+
+            return new PostingCommand
+            {
+                ItemId = line.ItemId,
+                LotId = line.LotId,
+                Quantity = line.Quantity,
+                From = new Holding(instruction.FromLocationId, null, status),
+                To = new Holding(customer.Value.Id, null, status),
+                Type = MovementType.Despatch,
+                Reason = MovementReason.CustomerDespatch,
+
+                // Positional, and safe to be: the lines are the caller's own list
+                // in its own order, and a retry of the same despatch hands over
+                // the same list. A batch that derived keys from the ledger's state
+                // instead would renumber itself the moment anything else posted.
+                IdempotencyKey = $"{instruction.IdempotencyKey}:{index:D3}",
+                Actor = ToActor(instruction.Actor),
+                Notes = instruction.Notes ?? instruction.Reference
+            };
+        }).ToList();
+
+        var posted = await ledger.PostBatchAsync(commands, cancellationToken);
+
+        return posted.IsFailure
+            ? Result.Failure<IReadOnlyList<PostedMovement>>(posted.Error)
+            : Result.Success<IReadOnlyList<PostedMovement>>(
+            [
+                .. posted.Value.Select((receipt, index) =>
+                    Describe(receipt, commands[index].LotId, licensePlateId: null))
+            ]);
     }
 
     private static PostedMovement Describe(MovementReceipt receipt, Guid? lotId, Guid? licensePlateId) =>
