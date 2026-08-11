@@ -56,6 +56,19 @@ public static class InventoryErrors
             "inventory.idempotency_key_reused",
             "That idempotency key was already used for a different movement.");
 
+    public static readonly Error IdempotencyKeysNotDistinct =
+        Error.Validation(
+            "inventory.idempotency_keys_not_distinct",
+            "Every entry in a batch needs its own idempotency key.");
+
+    public static readonly Error NothingToPost =
+        Error.Validation("inventory.nothing_to_post", "A posting must carry at least one movement.");
+
+    public static readonly Error LicensePlateEmpty =
+        Error.Conflict(
+            "inventory.license_plate_empty",
+            "That licence plate holds no stock at the location it was scanned in.");
+
     public static Error InvalidCounterparty(string detail) =>
         Error.Validation("inventory.invalid_counterparty", detail);
 

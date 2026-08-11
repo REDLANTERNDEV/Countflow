@@ -2,19 +2,24 @@
 # Build context is the repository root.
 # syntax=docker/dockerfile:1
 
+# Every project file, and nothing else. Collected generically rather than listed
+# one COPY per project, so that adding a module really is the single line in
+# ModuleCatalog it is advertised to be — see the longer note in api.Dockerfile.
+FROM mcr.microsoft.com/dotnet/sdk:10.0-noble AS projects
+WORKDIR /ctx
+COPY backend/ ./
+RUN find . -path ./tests -prune -o \
+        \( -name '*.csproj' -o -name 'Directory.*.props' \) -print \
+    | tar -cf /projects.tar --files-from -
+
 FROM mcr.microsoft.com/dotnet/sdk:10.0-noble AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 
 # sharing=locked on the NuGet cache: this image builds concurrently with the API
 # image and they share one global-packages folder. See api.Dockerfile.
-COPY backend/Directory.Build.props backend/Directory.Packages.props ./
-COPY backend/src/Countflow.Migrator/Countflow.Migrator.csproj                         src/Countflow.Migrator/
-COPY backend/src/Countflow.Bootstrap/Countflow.Bootstrap.csproj                       src/Countflow.Bootstrap/
-COPY backend/src/Countflow.SharedKernel/Countflow.SharedKernel.csproj                 src/Countflow.SharedKernel/
-COPY backend/src/Modules/Countflow.Modules.Identity/Countflow.Modules.Identity.csproj     src/Modules/Countflow.Modules.Identity/
-COPY backend/src/Modules/Countflow.Modules.Inventory/Countflow.Modules.Inventory.csproj   src/Modules/Countflow.Modules.Inventory/
-COPY backend/src/Modules/Countflow.Modules.MasterData/Countflow.Modules.MasterData.csproj src/Modules/Countflow.Modules.MasterData/
+COPY --from=projects /projects.tar /tmp/projects.tar
+RUN tar -xf /tmp/projects.tar -C /src && rm /tmp/projects.tar
 
 RUN --mount=type=cache,target=/root/.nuget/packages,sharing=locked \
     dotnet restore src/Countflow.Migrator/Countflow.Migrator.csproj

@@ -28,6 +28,8 @@ public sealed record StockMovementResponse(
     string UserName,
     Guid? ReversesMovementId,
     bool IsReversed,
+    Guid? TaskId,
+    Guid? DecisionTraceId,
     string? Notes);
 
 /// <summary>
@@ -223,6 +225,13 @@ public static class GetStockMovements
                 m.UserName,
                 m.ReversesMovementId,
                 reversedSet.Contains(m.Id),
+                // Both null before Phase 3 and both populated on directed work
+                // afterwards. Exposed on the ledger read rather than only on the
+                // task, because the ledger is what an auditor is given: a movement
+                // that cannot say what directed it, or why, is exactly the
+                // unanswerable entry ADR 0004 exists to prevent.
+                m.TaskId,
+                m.DecisionTraceId,
                 m.Notes))
         ];
     }

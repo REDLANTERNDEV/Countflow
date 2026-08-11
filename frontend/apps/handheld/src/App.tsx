@@ -2,6 +2,9 @@ import { useTranslation } from '@countflow/i18n';
 import { Badge, Button, Code, Field, Input, LogoSymbol, ScanField, Spinner } from '@countflow/ui';
 import { useCallback, useEffect, useState } from 'react';
 import { api, tokenStore } from './api.js';
+import { HomeScreen } from './screens/HomeScreen.js';
+import { ReceiveScreen } from './screens/ReceiveScreen.js';
+import { TaskScreen } from './screens/TaskScreen.js';
 import { useConnectivity } from './useConnectivity.js';
 
 interface CurrentUser {
@@ -10,11 +13,22 @@ interface CurrentUser {
   roles: string[];
 }
 
+/**
+ * Where the operator is.
+ *
+ * Deliberately not a router. A handheld has three screens and no address bar; a
+ * URL-driven router would add a dependency, a bundle, and a back button that
+ * means nothing on a device with a hardware one. When Phase 4 adds picking this
+ * becomes four screens, and it is still not a router.
+ */
+type Screen = { name: 'home' } | { name: 'receive' } | { name: 'task'; taskId: string };
+
 export function App() {
   const { t } = useTranslation();
   const online = useConnectivity();
 
   const [user, setUser] = useState<CurrentUser | null>(null);
+  const [screen, setScreen] = useState<Screen>({ name: 'home' });
   const [initialising, setInitialising] = useState(true);
   const [operatorCode, setOperatorCode] = useState('');
   const [password, setPassword] = useState('');
@@ -70,6 +84,7 @@ export function App() {
 
     tokenStore.clear();
     setUser(null);
+    setScreen({ name: 'home' });
     setOperatorCode('');
   }
 
@@ -148,25 +163,27 @@ export function App() {
     <main className={shell}>
       <ConnectivityBadge online={online} />
 
-      <h1 className="m-0 mt-[var(--space-2)] text-[length:var(--text-2xl)] tracking-[var(--tracking-display)]">
-        {user.displayName}
-      </h1>
-      <p className="mb-[var(--space-5)] mt-0 text-[var(--color-text-secondary)]">
-        <Code>{user.operatorCode}</Code> · {user.roles.join(', ')}
-      </p>
+      {screen.name === 'home' ? (
+        <HomeScreen
+          displayName={user.displayName}
+          operatorCode={user.operatorCode}
+          roles={user.roles}
+          onReceive={() => setScreen({ name: 'receive' })}
+          onOpenTask={(taskId) => setScreen({ name: 'task', taskId })}
+          onSignOut={() => void signOut()}
+        />
+      ) : null}
 
-      <div className="rounded-[var(--radius-surface)] border border-[var(--color-border-subtle)]
-                      bg-[var(--color-surface-raised)] p-[var(--space-5)] text-center">
-        <p className="m-0 text-[var(--color-text-secondary)]">No work assigned.</p>
-        <p className="mb-0 mt-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--color-text-tertiary)]">
-          Receiving and putaway tasks arrive in Phase 3, along with the offline
-          command queue.
-        </p>
-      </div>
+      {screen.name === 'receive' ? (
+        <ReceiveScreen
+          onBack={() => setScreen({ name: 'home' })}
+          onOpenTask={(taskId) => setScreen({ name: 'task', taskId })}
+        />
+      ) : null}
 
-      <Button className="mt-auto w-full" onClick={() => void signOut()}>
-        {t('common.signOut')}
-      </Button>
+      {screen.name === 'task' ? (
+        <TaskScreen taskId={screen.taskId} onDone={() => setScreen({ name: 'home' })} />
+      ) : null}
     </main>
   );
 }

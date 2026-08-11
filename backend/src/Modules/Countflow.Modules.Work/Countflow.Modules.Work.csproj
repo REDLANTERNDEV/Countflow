@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <!-- SharedKernel only. Work posts stock through IStockPosting and explains
+         itself through IDecisionTraceReader; it has no project reference to
+         Inventory or Rules, so completing a task cannot grow a second way to
+         write the ledger (ADR 0002). -->
+    <ProjectReference Include="../../Countflow.SharedKernel/Countflow.SharedKernel.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+  </ItemGroup>
+
+</Project>

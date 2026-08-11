@@ -999,6 +999,689 @@
         }
       }
     },
+    "/api/rules/sets": {
+      "get": {
+        "tags": [
+          "Rules"
+        ],
+        "summary": "Rule sets and the rule vocabulary this build can run.",
+        "operationId": "GetRuleSets",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/DecisionKind"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleSetsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rules/traces/{id}": {
+      "get": {
+        "tags": [
+          "Rules"
+        ],
+        "summary": "Why the rules chose what they chose \u2014 every candidate, score and exclusion.",
+        "operationId": "GetDecisionTrace",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionTraceView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rules/putaway/preview": {
+      "post": {
+        "tags": [
+          "Rules"
+        ],
+        "summary": "Run the putaway rules without posting anything.",
+        "operationId": "PreviewPutaway",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreviewPutawayRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreviewPutawayResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/work/tasks": {
+      "get": {
+        "tags": [
+          "Work"
+        ],
+        "summary": "Directed work, newest queue order first.",
+        "operationId": "GetWorkTasks",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/WorkTaskStatus"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/WorkTaskKind"
+            }
+          },
+          {
+            "name": "mine",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkTaskPage"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/work/tasks/{id}": {
+      "get": {
+        "tags": [
+          "Work"
+        ],
+        "summary": "One task, with the decision trace behind its suggestion.",
+        "operationId": "GetWorkTask",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkTaskDetailResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/work/tasks/claim-next": {
+      "post": {
+        "tags": [
+          "Work"
+        ],
+        "summary": "Take the next job in the queue.",
+        "operationId": "ClaimNextTask",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ClaimNextTaskRequest"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkTaskDetailResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/work/tasks/{id}/claim": {
+      "post": {
+        "tags": [
+          "Work"
+        ],
+        "summary": "Take one named task.",
+        "operationId": "ClaimTask",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkTaskDetailResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/work/tasks/{id}/release": {
+      "post": {
+        "tags": [
+          "Work"
+        ],
+        "summary": "Hand a claimed task back to the queue.",
+        "operationId": "ReleaseTask",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/work/tasks/{id}/complete": {
+      "post": {
+        "tags": [
+          "Work"
+        ],
+        "summary": "Confirm a task at the location the operator actually scanned.",
+        "operationId": "CompleteWorkTask",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompleteWorkTaskRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompleteWorkTaskResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/inbound/asns": {
+      "get": {
+        "tags": [
+          "Inbound"
+        ],
+        "summary": "Advance shipping notices and their receiving progress.",
+        "operationId": "GetAsns",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/AsnStatus"
+            }
+          },
+          {
+            "name": "reference",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AsnPage"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Inbound"
+        ],
+        "summary": "Announce an inbound delivery.",
+        "operationId": "CreateAsn",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAsnRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AsnResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/inbound/asns/{reference}": {
+      "get": {
+        "tags": [
+          "Inbound"
+        ],
+        "summary": "One advice note, with its lines.",
+        "operationId": "GetAsn",
+        "parameters": [
+          {
+            "name": "reference",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AsnResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/inbound/receipts": {
+      "post": {
+        "tags": [
+          "Inbound"
+        ],
+        "summary": "Book goods in against an advice note and raise the putaway.",
+        "operationId": "ReceiveAtDock",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DockReceiptRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DockReceiptResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/auth/login": {
       "post": {
         "tags": [
@@ -1199,6 +1882,203 @@
           }
         }
       },
+      "AsnLineProgress": {
+        "required": [
+          "reference",
+          "lineNumber",
+          "expectedQuantity",
+          "receivedQuantity",
+          "outstandingQuantity",
+          "asnStatus"
+        ],
+        "type": "object",
+        "properties": {
+          "reference": {
+            "type": "string"
+          },
+          "lineNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "expectedQuantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "receivedQuantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "outstandingQuantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "asnStatus": {
+            "$ref": "#/components/schemas/AsnStatus"
+          }
+        }
+      },
+      "AsnLineResponse": {
+        "required": [
+          "lineNumber",
+          "sku",
+          "description",
+          "baseUom",
+          "expectedQuantity",
+          "receivedQuantity",
+          "outstandingQuantity",
+          "expectedLotNumber",
+          "expectedExpiryDate"
+        ],
+        "type": "object",
+        "properties": {
+          "lineNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sku": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "baseUom": {
+            "type": "string"
+          },
+          "expectedQuantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "receivedQuantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "outstandingQuantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "expectedLotNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "expectedExpiryDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          }
+        }
+      },
+      "AsnPage": {
+        "required": [
+          "items",
+          "total",
+          "page",
+          "pageSize"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AsnResponse"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "AsnResponse": {
+        "required": [
+          "id",
+          "reference",
+          "status",
+          "supplierName",
+          "expectedAt",
+          "carrierReference",
+          "notes",
+          "createdAt",
+          "closedAt",
+          "lines"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/AsnStatus"
+          },
+          "supplierName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "expectedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "carrierReference": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "closedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AsnLineResponse"
+            }
+          }
+        }
+      },
+      "AsnStatus": {
+        "enum": [
+          "Expected",
+          "Receiving",
+          "Complete",
+          "Closed",
+          "Cancelled"
+        ],
+        "type": "string"
+      },
       "AuthResponse": {
         "required": [
           "accessToken",
@@ -1315,6 +2195,369 @@
             "type": [
               "null",
               "string"
+            ]
+          }
+        }
+      },
+      "ClaimNextTaskRequest": {
+        "type": "object",
+        "properties": {
+          "warehouseId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "kind": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/WorkTaskKind"
+              }
+            ]
+          }
+        }
+      },
+      "CompleteWorkTaskRequest": {
+        "required": [
+          "toLocationCode"
+        ],
+        "type": "object",
+        "properties": {
+          "toLocationCode": {
+            "type": "string"
+          },
+          "overrideReason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "CompleteWorkTaskResponse": {
+        "required": [
+          "task",
+          "movements"
+        ],
+        "type": "object",
+        "properties": {
+          "task": {
+            "$ref": "#/components/schemas/WorkTaskResponse"
+          },
+          "movements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PostedMovement"
+            }
+          }
+        }
+      },
+      "CreateAsnLineRequest": {
+        "required": [
+          "sku",
+          "expectedQuantity"
+        ],
+        "type": "object",
+        "properties": {
+          "sku": {
+            "type": "string"
+          },
+          "expectedQuantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "expectedLotNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "expectedExpiryDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          }
+        }
+      },
+      "CreateAsnRequest": {
+        "required": [
+          "reference",
+          "warehouseCode",
+          "lines"
+        ],
+        "type": "object",
+        "properties": {
+          "reference": {
+            "type": "string"
+          },
+          "warehouseCode": {
+            "type": "string"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateAsnLineRequest"
+            }
+          },
+          "supplierName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "expectedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "carrierReference": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "DecisionKind": {
+        "enum": [
+          "Putaway",
+          "Allocation",
+          "Waving",
+          "TaskAssignment"
+        ],
+        "type": "string"
+      },
+      "DecisionTraceView": {
+        "required": [
+          "id",
+          "kind",
+          "ruleSetName",
+          "ruleSetVersion",
+          "decidedAt",
+          "consideredCount",
+          "admissibleCount",
+          "selectedId",
+          "selectedKey",
+          "candidates"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/DecisionKind"
+          },
+          "ruleSetName": {
+            "type": "string"
+          },
+          "ruleSetVersion": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "decidedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "consideredCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "admissibleCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "selectedId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "selectedKey": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "candidates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TracedCandidate"
+            }
+          }
+        }
+      },
+      "DockReceiptRequest": {
+        "required": [
+          "sku",
+          "quantity",
+          "toLocationCode"
+        ],
+        "type": "object",
+        "properties": {
+          "sku": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "toLocationCode": {
+            "type": "string"
+          },
+          "asnReference": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "asnLineNumber": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "lotNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "expiryDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "productionDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "sscc": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "condition": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/StockCondition"
+              }
+            ]
+          },
+          "isReturn": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "DockReceiptResponse": {
+        "required": [
+          "receipt",
+          "sku",
+          "description",
+          "toLocationCode",
+          "lotNumber",
+          "sscc",
+          "workTaskId",
+          "suggestedLocationCode",
+          "decisionTraceId",
+          "consideredCount",
+          "admissibleCount",
+          "asnLine"
+        ],
+        "type": "object",
+        "properties": {
+          "receipt": {
+            "$ref": "#/components/schemas/PostedMovement"
+          },
+          "sku": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "toLocationCode": {
+            "type": "string"
+          },
+          "lotNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "sscc": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "workTaskId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "suggestedLocationCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "decisionTraceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "consideredCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "admissibleCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "asnLine": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/AsnLineProgress"
+              }
             ]
           }
         }
@@ -1877,6 +3120,137 @@
           }
         }
       },
+      "PostedMovement": {
+        "required": [
+          "movementId",
+          "sequence",
+          "occurredAt",
+          "quantity",
+          "lotId",
+          "licensePlateId",
+          "fromQuantityAfter",
+          "toQuantityAfter",
+          "wasAlreadyPosted"
+        ],
+        "type": "object",
+        "properties": {
+          "movementId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sequence": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "quantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "lotId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "licensePlateId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "fromQuantityAfter": {
+            "type": "number",
+            "format": "double"
+          },
+          "toQuantityAfter": {
+            "type": "number",
+            "format": "double"
+          },
+          "wasAlreadyPosted": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PreviewPutawayRequest": {
+        "required": [
+          "sku",
+          "quantity",
+          "fromLocationCode"
+        ],
+        "type": "object",
+        "properties": {
+          "sku": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "fromLocationCode": {
+            "type": "string"
+          },
+          "lotNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "condition": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/StockCondition"
+              }
+            ]
+          }
+        }
+      },
+      "PreviewPutawayResponse": {
+        "required": [
+          "decisionTraceId",
+          "locationCode",
+          "score",
+          "consideredCount",
+          "admissibleCount",
+          "trace"
+        ],
+        "type": "object",
+        "properties": {
+          "decisionTraceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "locationCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "score": {
+            "type": "number",
+            "format": "double"
+          },
+          "consideredCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "admissibleCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "trace": {
+            "$ref": "#/components/schemas/DecisionTraceView"
+          }
+        }
+      },
       "ProblemDetails": {
         "type": "object",
         "properties": {
@@ -2053,6 +3427,167 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "RuleNote": {
+        "required": [
+          "code",
+          "args"
+        ],
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "args": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "RuleResponse": {
+        "required": [
+          "code",
+          "role",
+          "order",
+          "weight",
+          "parameters",
+          "isEnabled"
+        ],
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/RuleRole"
+          },
+          "order": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "weight": {
+            "type": "number",
+            "format": "double"
+          },
+          "parameters": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "isEnabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "RuleRole": {
+        "enum": [
+          "Constraint",
+          "Preference"
+        ],
+        "type": "string"
+      },
+      "RuleSetResponse": {
+        "required": [
+          "id",
+          "kind",
+          "name",
+          "version",
+          "status",
+          "warehouseId",
+          "notes",
+          "createdAt",
+          "activatedAt",
+          "rules"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/DecisionKind"
+          },
+          "name": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "status": {
+            "$ref": "#/components/schemas/RuleSetStatus"
+          },
+          "warehouseId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "activatedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "rules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RuleResponse"
+            }
+          }
+        }
+      },
+      "RuleSetStatus": {
+        "enum": [
+          "Draft",
+          "Active",
+          "Archived"
+        ],
+        "type": "string"
+      },
+      "RuleSetsResponse": {
+        "required": [
+          "items",
+          "availableConstraints",
+          "availablePreferences"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RuleSetResponse"
+            }
+          },
+          "availableConstraints": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "availablePreferences": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       },
@@ -2234,6 +3769,36 @@
           }
         }
       },
+      "ScoreLine": {
+        "required": [
+          "ruleCode",
+          "weight",
+          "value",
+          "contribution",
+          "reason"
+        ],
+        "type": "object",
+        "properties": {
+          "ruleCode": {
+            "type": "string"
+          },
+          "weight": {
+            "type": "number",
+            "format": "double"
+          },
+          "value": {
+            "type": "number",
+            "format": "double"
+          },
+          "contribution": {
+            "type": "number",
+            "format": "double"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/RuleNote"
+          }
+        }
+      },
       "StockBalanceResponse": {
         "required": [
           "sku",
@@ -2291,6 +3856,16 @@
             "type": "boolean"
           }
         }
+      },
+      "StockCondition": {
+        "enum": [
+          "Available",
+          "Quarantine",
+          "Damaged",
+          "OnHold",
+          "Expired"
+        ],
+        "type": "string"
       },
       "StockEnquiryResponse": {
         "required": [
@@ -2356,6 +3931,8 @@
           "userName",
           "reversesMovementId",
           "isReversed",
+          "taskId",
+          "decisionTraceId",
           "notes"
         ],
         "type": "object",
@@ -2428,6 +4005,20 @@
           "isReversed": {
             "type": "boolean"
           },
+          "taskId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "decisionTraceId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
           "notes": {
             "type": [
               "null",
@@ -2443,6 +4034,54 @@
           "Frozen"
         ],
         "type": "string"
+      },
+      "TracedCandidate": {
+        "required": [
+          "candidateId",
+          "candidateKey",
+          "rank",
+          "isAdmissible",
+          "score",
+          "excludedBy",
+          "scores"
+        ],
+        "type": "object",
+        "properties": {
+          "candidateId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "candidateKey": {
+            "type": "string"
+          },
+          "rank": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "isAdmissible": {
+            "type": "boolean"
+          },
+          "score": {
+            "type": "number",
+            "format": "double"
+          },
+          "excludedBy": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RuleNote"
+              }
+            ]
+          },
+          "scores": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScoreLine"
+            }
+          }
+        }
       },
       "TransferStockRequest": {
         "required": [
@@ -2590,6 +4229,207 @@
             "type": "boolean"
           }
         }
+      },
+      "WorkTaskDetailResponse": {
+        "required": [
+          "task",
+          "decision"
+        ],
+        "type": "object",
+        "properties": {
+          "task": {
+            "$ref": "#/components/schemas/WorkTaskResponse"
+          },
+          "decision": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/DecisionTraceView"
+              }
+            ]
+          }
+        }
+      },
+      "WorkTaskKind": {
+        "enum": [
+          "Putaway",
+          "Replenishment",
+          "Pick",
+          "CycleCount"
+        ],
+        "type": "string"
+      },
+      "WorkTaskPage": {
+        "required": [
+          "items",
+          "total",
+          "page",
+          "pageSize"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkTaskResponse"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "WorkTaskResponse": {
+        "required": [
+          "id",
+          "kind",
+          "status",
+          "priority",
+          "sku",
+          "description",
+          "baseUom",
+          "quantity",
+          "lotNumber",
+          "expiryDate",
+          "sscc",
+          "fromLocationCode",
+          "suggestedLocationCode",
+          "decisionTraceId",
+          "condition",
+          "sourceReference",
+          "createdAt",
+          "assignedToUserName",
+          "completedAt",
+          "completedAtLocationCode",
+          "wasOverridden",
+          "overrideReason"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/WorkTaskKind"
+          },
+          "status": {
+            "$ref": "#/components/schemas/WorkTaskStatus"
+          },
+          "priority": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sku": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "baseUom": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "lotNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "expiryDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "sscc": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "fromLocationCode": {
+            "type": "string"
+          },
+          "suggestedLocationCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "decisionTraceId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "condition": {
+            "$ref": "#/components/schemas/StockCondition"
+          },
+          "sourceReference": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "assignedToUserName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "completedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "completedAtLocationCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "wasOverridden": {
+            "type": "boolean"
+          },
+          "overrideReason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "WorkTaskStatus": {
+        "enum": [
+          "Ready",
+          "Assigned",
+          "Completed",
+          "Cancelled"
+        ],
+        "type": "string"
       }
     }
   },
@@ -2605,6 +4445,15 @@
     },
     {
       "name": "Inventory"
+    },
+    {
+      "name": "Rules"
+    },
+    {
+      "name": "Work"
+    },
+    {
+      "name": "Inbound"
     },
     {
       "name": "Authentication"

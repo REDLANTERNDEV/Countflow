@@ -5,8 +5,10 @@ using Countflow.Modules.Inventory.Features.Reconciliation;
 using Countflow.Modules.Inventory.Features.Reversals;
 using Countflow.Modules.Inventory.Features.StatusChanges;
 using Countflow.Modules.Inventory.Features.Transfers;
+using Countflow.Modules.Inventory.Integration;
 using Countflow.Modules.Inventory.Ledger;
 using Countflow.Modules.Inventory.Persistence;
+using Countflow.SharedKernel.Contracts;
 using Countflow.SharedKernel.Modules;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
@@ -36,6 +38,12 @@ public sealed class InventoryModule : ICountflowModule
         services.AddScoped<StockReferenceResolver>();
         services.AddScoped<LedgerReplay>();
         services.AddScoped<LedgerReconciler>();
+
+        // The published boundary (ADR 0002). Inbound and Work move stock through
+        // these and cannot name StockLedger, so the single posting path stays
+        // single no matter how many modules come to depend on it.
+        services.AddScoped<IStockPosting, StockPosting>();
+        services.AddScoped<IStockQuery, StockQuery>();
 
         // TryAdd, because a clock is host-wide and every module that posts
         // timestamps will want the same one — including a test host that has

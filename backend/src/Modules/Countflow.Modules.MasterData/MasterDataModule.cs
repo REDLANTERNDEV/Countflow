@@ -32,6 +32,7 @@ public sealed class MasterDataModule : ICountflowModule
         // MasterDataDbContext, and the Inventory project cannot even name it.
         services.AddScoped<IItemDirectory, ItemDirectory>();
         services.AddScoped<ILocationDirectory, LocationDirectory>();
+        services.AddScoped<IWarehouseDirectory, WarehouseDirectory>();
     }
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints)

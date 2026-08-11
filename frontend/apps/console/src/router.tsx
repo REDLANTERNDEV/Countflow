@@ -1,11 +1,14 @@
 import { createRootRoute, createRoute, createRouter } from '@tanstack/react-router';
+import { InboundPage } from './routes/InboundPage.js';
 import { ItemDetailPage } from './routes/ItemDetailPage.js';
 import { ItemsPage } from './routes/ItemsPage.js';
 import { LedgerPage } from './routes/LedgerPage.js';
 import { LocationsPage } from './routes/LocationsPage.js';
 import { RootLayout } from './routes/RootLayout.js';
+import { RulesPage } from './routes/RulesPage.js';
 import { ScanPage } from './routes/ScanPage.js';
 import { StockPage } from './routes/StockPage.js';
+import { WorkPage } from './routes/WorkPage.js';
 import { WarehousesPage } from './pages/WarehousesPage.js';
 
 // Code-based routes rather than file-based: no codegen step to keep in sync,
@@ -48,6 +51,24 @@ const ledgerRoute = createRoute({
   component: LedgerPage,
 });
 
+const inboundRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/inbound',
+  component: InboundPage,
+});
+
+const workRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/work',
+  component: WorkPage,
+});
+
+const rulesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/rules',
+  component: RulesPage,
+});
+
 const scanRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/scan',
@@ -61,6 +82,9 @@ const routeTree = rootRoute.addChildren([
   itemDetailRoute,
   stockRoute,
   ledgerRoute,
+  inboundRoute,
+  workRoute,
+  rulesRoute,
   scanRoute,
 ]);
 

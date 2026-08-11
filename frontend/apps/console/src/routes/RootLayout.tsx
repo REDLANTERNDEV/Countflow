@@ -51,6 +51,15 @@ export function RootLayout() {
           <Link to="/ledger" className={navLink} activeProps={{ className: navLinkActive }}>
             {t('nav.ledger')}
           </Link>
+          <Link to="/inbound" className={navLink} activeProps={{ className: navLinkActive }}>
+            {t('nav.inbound')}
+          </Link>
+          <Link to="/work" className={navLink} activeProps={{ className: navLinkActive }}>
+            {t('nav.work')}
+          </Link>
+          <Link to="/rules" className={navLink} activeProps={{ className: navLinkActive }}>
+            {t('nav.rules')}
+          </Link>
           <Link to="/scan" className={navLink} activeProps={{ className: navLinkActive }}>
             {t('nav.scanTest')}
           </Link>

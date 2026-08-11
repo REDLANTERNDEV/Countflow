@@ -14,26 +14,29 @@ namespace Countflow.Modules.Inventory.Ledger;
 /// <summary>
 /// The only way stock moves.
 /// <para>
-/// Every command in this module — receipt, transfer, adjustment, status change,
-/// reversal — funnels through <see cref="PostAsync"/>. That is deliberate: the
-/// invariants in ADR 0001 are only worth anything if there is exactly one code
-/// path capable of violating them, and it is this one.
+/// Every command in this module — receipt, transfer, putaway, adjustment, status
+/// change, reversal — funnels through <see cref="PostBatchAsync"/>. That is
+/// deliberate: the invariants in ADR 0001 are only worth anything if there is
+/// exactly one code path capable of violating them, and it is this one.
+/// <see cref="PostAsync"/> is a single-command wrapper over it, not a second
+/// path.
 /// </para>
 /// <para>
 /// What happens in a posting, and why in this order:
 /// <list type="number">
 /// <item>Validate what can be validated without touching the database.</item>
-/// <item>Look for an entry already carrying this idempotency key. A handheld on a
+/// <item>Look for entries already carrying these idempotency keys. A handheld on a
 /// flaky link retries requests that may well have committed, so a repeat is
 /// normal traffic, not an error.</item>
-/// <item>Resolve the item and both locations through MasterData's published
+/// <item>Resolve the items and locations through MasterData's published
 /// directory — there is no cross-schema foreign key to lean on (ADR 0002), so
 /// referential integrity across the boundary is checked here.</item>
-/// <item>Open a transaction, create-or-lock both balance rows <b>in a globally
-/// consistent order</b>, and only then decide whether the source has enough.</item>
-/// <item>Append the movement, fold it into both balances, commit. The ledger line
-/// and the projection are written together or not at all — that is what makes the
-/// projection reconstructible rather than merely usually right.</item>
+/// <item>Open a transaction, create-or-lock every balance row the batch will
+/// touch <b>in a globally consistent order</b>, and only then decide whether the
+/// sources have enough.</item>
+/// <item>Append the movements, fold them into the balances, commit. The ledger
+/// lines and the projection are written together or not at all — that is what
+/// makes the projection reconstructible rather than merely usually right.</item>
 /// </list>
 /// </para>
 /// <para>
@@ -56,175 +59,358 @@ public sealed class StockLedger(
         PostingCommand command,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(command.IdempotencyKey))
+        var posted = await PostBatchAsync([command], cancellationToken);
+
+        return posted.IsSuccess
+            ? posted.Value[0]
+            : Result.Failure<MovementReceipt>(posted.Error);
+    }
+
+    /// <summary>
+    /// Posts several movements as one transaction.
+    /// <para>
+    /// Phase 2 shipped only the single-command form, and said so: a composite
+    /// command has to post several entries under one idempotency key, and until
+    /// putaway there was no caller that needed one. Splitting a whole-pallet move
+    /// into independent calls would be the wrong answer even so — a pallet that
+    /// is half moved is worse than one that is not moved at all, because the
+    /// second is obvious and the first is not.
+    /// </para>
+    /// <para>
+    /// The batch is all-or-nothing. Each entry keeps its own idempotency key, so a
+    /// retry of a partially-arrived batch is still recognised entry by entry;
+    /// what the transaction adds is that a partial arrival cannot happen in the
+    /// first place.
+    /// </para>
+    /// </summary>
+    public async Task<Result<IReadOnlyList<MovementReceipt>>> PostBatchAsync(
+        IReadOnlyList<PostingCommand> commands,
+        CancellationToken cancellationToken)
+    {
+        if (commands.Count == 0)
         {
-            return Result.Failure<MovementReceipt>(InventoryErrors.IdempotencyKeyRequired);
+            return Result.Failure<IReadOnlyList<MovementReceipt>>(InventoryErrors.NothingToPost);
         }
 
-        if (command.Quantity <= 0)
+        foreach (var command in commands)
         {
-            return Result.Failure<MovementReceipt>(InventoryErrors.QuantityNotPositive);
+            var basics = ValidateWithoutDatabase(command);
+            if (basics.IsFailure)
+            {
+                return Result.Failure<IReadOnlyList<MovementReceipt>>(basics.Error);
+            }
         }
 
-        if (command.From == command.To)
+        // Two entries in one batch sharing a key would collide with each other on
+        // the unique index and be indistinguishable on retry. Callers derive
+        // per-line keys from one root; this is the check that they actually did.
+        if (commands.Select(c => c.IdempotencyKey).Distinct(StringComparer.Ordinal).Count() != commands.Count)
         {
-            return Result.Failure<MovementReceipt>(InventoryErrors.HoldingsIdentical);
+            return Result.Failure<IReadOnlyList<MovementReceipt>>(InventoryErrors.IdempotencyKeysNotDistinct);
         }
 
-        // The common case for a retry: the first attempt landed and the client
-        // never heard about it. Cheap enough to check before doing anything else.
-        var alreadyPosted = await FindByIdempotencyKeyAsync(command.IdempotencyKey, cancellationToken);
-        if (alreadyPosted is not null)
+        var resolved = await ResolveAgainstLedgerAsync(commands, cancellationToken);
+        if (resolved.IsFailure)
         {
-            return await ReplayAsync(command, alreadyPosted, cancellationToken);
+            return Result.Failure<IReadOnlyList<MovementReceipt>>(resolved.Error);
         }
 
-        var validated = await ValidateAgainstMasterDataAsync(command, cancellationToken);
+        var (pending, replays) = resolved.Value;
+
+        if (pending.Count == 0)
+        {
+            return await ReplayAllAsync(commands, replays, cancellationToken);
+        }
+
+        var validated = await ValidateAgainstMasterDataAsync(pending, cancellationToken);
         if (validated.IsFailure)
         {
-            return Result.Failure<MovementReceipt>(validated.Error);
+            return Result.Failure<IReadOnlyList<MovementReceipt>>(validated.Error);
         }
-
-        var (from, to) = validated.Value;
 
         // Every module context is registered with EnableRetryOnFailure, and the
         // retrying execution strategy refuses to let application code open its own
         // transaction — it cannot replay half of one. Handing it the whole
         // transaction as a single unit is the sanctioned way round that, and it is
         // what we want anyway: a posting either lands completely or is retried
-        // completely, and the idempotency key makes the retry safe.
+        // completely, and the idempotency keys make the retry safe.
         var strategy = dbContext.Database.CreateExecutionStrategy();
 
         return await strategy.ExecuteAsync(
-            token => PostInTransactionAsync(command, from, to, token),
+            token => PostInTransactionAsync(commands, pending, replays, validated.Value, token),
             cancellationToken);
     }
 
-    private async Task<Result<MovementReceipt>> PostInTransactionAsync(
-        PostingCommand command,
-        LocationSnapshot from,
-        LocationSnapshot to,
+    private static Result ValidateWithoutDatabase(PostingCommand command)
+    {
+        if (string.IsNullOrWhiteSpace(command.IdempotencyKey))
+        {
+            return Result.Failure(InventoryErrors.IdempotencyKeyRequired);
+        }
+
+        if (command.Quantity <= 0)
+        {
+            return Result.Failure(InventoryErrors.QuantityNotPositive);
+        }
+
+        return command.From == command.To
+            ? Result.Failure(InventoryErrors.HoldingsIdentical)
+            : Result.Success();
+    }
+
+    /// <summary>
+    /// Splits the batch into what still needs writing and what is already in the
+    /// ledger.
+    /// <para>
+    /// The common case for a retry: the first attempt landed and the client never
+    /// heard about it. Cheap enough to check before doing anything else, and
+    /// checked per entry so a batch that arrived halfway — which the transaction
+    /// makes impossible now, but did not before, and will not if a future caller
+    /// reuses one key family across two batches — still resolves correctly.
+    /// </para>
+    /// </summary>
+    private async Task<Result<(List<PostingCommand> Pending, Dictionary<string, StockMovement> Replays)>>
+        ResolveAgainstLedgerAsync(IReadOnlyList<PostingCommand> commands, CancellationToken cancellationToken)
+    {
+        var keys = commands.Select(c => c.IdempotencyKey).ToArray();
+
+        var existing = await dbContext.StockMovements
+            .AsNoTracking()
+            .Where(m => keys.Contains(m.IdempotencyKey))
+            .ToDictionaryAsync(m => m.IdempotencyKey, cancellationToken);
+
+        var pending = new List<PostingCommand>(commands.Count);
+
+        foreach (var command in commands)
+        {
+            if (!existing.TryGetValue(command.IdempotencyKey, out var already))
+            {
+                pending.Add(command);
+                continue;
+            }
+
+            // Same key, different movement: the client reused a key it should have
+            // rotated. Silently returning the old receipt would report success for
+            // a movement that never happened, which is the one failure mode worse
+            // than an error.
+            if (!command.Matches(already))
+            {
+                logger.LogWarning(
+                    "Idempotency key {Key} reused for a different movement than #{Sequence}",
+                    command.IdempotencyKey,
+                    already.Sequence);
+
+                return Result.Failure<(List<PostingCommand>, Dictionary<string, StockMovement>)>(
+                    InventoryErrors.IdempotencyKeyReused);
+            }
+        }
+
+        return (pending, existing);
+    }
+
+    private async Task<Result<IReadOnlyList<MovementReceipt>>> PostInTransactionAsync(
+        IReadOnlyList<PostingCommand> commands,
+        IReadOnlyList<PostingCommand> pending,
+        Dictionary<string, StockMovement> replays,
+        IReadOnlyDictionary<Guid, LocationSnapshot> locationsById,
         CancellationToken cancellationToken)
     {
-        // An attempt may be a retry, in which case the previous one left an added
-        // movement in the tracker. Persisting it as well would post the command
-        // twice under one key.
+        // An attempt may be a retry, in which case the previous one left added
+        // movements in the tracker. Persisting them as well would post the batch
+        // twice under one key family.
         dbContext.ChangeTracker.Clear();
 
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
 
         try
         {
-            // Lock order, not command order. Two transfers in opposite directions
-            // between the same pair of holdings would otherwise each hold the row
-            // the other is waiting for; sorting by a key both writers compute the
-            // same way means locks are always taken in one global order, so no
-            // cycle can form. See Holding.LockOrderKey.
-            var sides = new[]
+            var locked = await LockEveryTouchedBalanceAsync(pending, locationsById, cancellationToken);
+
+            // Running quantities, not the locked snapshot: two lines of one pallet
+            // move can draw on the same balance row, and the second must see what
+            // the first took. Without this a whole-plate move of two lots of one
+            // item could pass a sufficiency check it collectively fails.
+            var running = locked.ToDictionary(entry => entry.Key, entry => entry.Value.Quantity);
+
+            var movements = new List<StockMovement>(pending.Count);
+
+            foreach (var command in pending)
+            {
+                var sourceKey = new BalanceKey(command.ItemId, command.LotId, command.From);
+                var source = locked[sourceKey];
+
+                // Virtual counterparties are the contra accounts and go negative by
+                // design; a shelf may not. The database enforces the same rule
+                // through CK_StockBalances_NonNegativeUnlessCounterparty, but a
+                // constraint violation cannot tell the operator how much is
+                // actually there.
+                if (!source.AllowsNegative && running[sourceKey] < command.Quantity)
                 {
-                    (Holding: command.From, Location: from),
-                    (Holding: command.To, Location: to)
+                    return Result.Failure<IReadOnlyList<MovementReceipt>>(
+                        InventoryErrors.InsufficientStock(
+                            locationsById[command.From.LocationId].Code,
+                            running[sourceKey],
+                            command.Quantity));
                 }
-                .OrderBy(side => side.Holding.LockOrderKey, StringComparer.Ordinal);
 
-            var locked = new Dictionary<Holding, LockedBalance>();
-            foreach (var side in sides)
-            {
-                locked[side.Holding] = await EnsureAndLockBalanceAsync(
-                    command.ItemId,
-                    command.LotId,
-                    side.Holding,
-                    side.Location.IsVirtual,
-                    cancellationToken);
+                running[sourceKey] -= command.Quantity;
+                running[new BalanceKey(command.ItemId, command.LotId, command.To)] += command.Quantity;
+
+                movements.Add(ToMovement(command));
             }
 
-            var source = locked[command.From];
+            dbContext.StockMovements.AddRange(movements);
 
-            // Virtual counterparties are the contra accounts and go negative by
-            // design; a shelf may not. The database enforces the same rule through
-            // CK_StockBalances_NonNegativeUnlessCounterparty, but a constraint
-            // violation cannot tell the operator how much is actually there.
-            if (!source.AllowsNegative && source.Quantity < command.Quantity)
-            {
-                return Result.Failure<MovementReceipt>(
-                    InventoryErrors.InsufficientStock(from.Code, source.Quantity, command.Quantity));
-            }
-
-            var movement = new StockMovement
-            {
-                OccurredAt = clock.GetUtcNow(),
-                ItemId = command.ItemId,
-                LotId = command.LotId,
-                Quantity = command.Quantity,
-                FromLocationId = command.From.LocationId,
-                FromLicensePlateId = command.From.LicensePlateId,
-                FromStatus = command.From.Status,
-                ToLocationId = command.To.LocationId,
-                ToLicensePlateId = command.To.LicensePlateId,
-                ToStatus = command.To.Status,
-                Type = command.Type,
-                Reason = command.Reason,
-                IdempotencyKey = command.IdempotencyKey,
-                TaskId = command.TaskId,
-                DecisionTraceId = command.DecisionTraceId,
-                ReversesMovementId = command.ReversesMovementId,
-                UserId = command.Actor.UserId,
-                UserName = command.Actor.UserName,
-                Notes = command.Notes
-            };
-
-            dbContext.StockMovements.Add(movement);
-
-            // Written before the balances so the movement's database-assigned
-            // sequence can be stamped onto both rows — that is what lets the
-            // reconciler say when a divergence started rather than only that one
-            // exists.
+            // Written before the balances so each movement's database-assigned
+            // sequence can be stamped onto the rows it touched — that is what lets
+            // the reconciler say when a divergence started rather than only that
+            // one exists.
             await dbContext.SaveChangesAsync(cancellationToken);
 
-            var fromAfter = await ApplyDeltaAsync(
-                source.Id, -command.Quantity, movement.Sequence, cancellationToken);
+            var receipts = new List<MovementReceipt>(commands.Count);
+            var posted = new Dictionary<string, MovementReceipt>(StringComparer.Ordinal);
 
-            var toAfter = await ApplyDeltaAsync(
-                locked[command.To].Id, command.Quantity, movement.Sequence, cancellationToken);
+            for (var index = 0; index < pending.Count; index++)
+            {
+                var command = pending[index];
+                var movement = movements[index];
+
+                // Applied in command order rather than netted, so each entry's
+                // reported "after" figure is the state as that entry left it —
+                // which is what a confirmation screen showing the second line of a
+                // pallet move has to say.
+                var fromAfter = await ApplyDeltaAsync(
+                    locked[new BalanceKey(command.ItemId, command.LotId, command.From)].Id,
+                    -command.Quantity,
+                    movement.Sequence,
+                    cancellationToken);
+
+                var toAfter = await ApplyDeltaAsync(
+                    locked[new BalanceKey(command.ItemId, command.LotId, command.To)].Id,
+                    command.Quantity,
+                    movement.Sequence,
+                    cancellationToken);
+
+                posted[command.IdempotencyKey] = new MovementReceipt(
+                    movement.Id,
+                    movement.Sequence,
+                    movement.OccurredAt,
+                    movement.Quantity,
+                    fromAfter,
+                    toAfter,
+                    WasAlreadyPosted: false);
+            }
 
             await transaction.CommitAsync(cancellationToken);
 
-            logger.LogInformation(
-                "Posted {Type} #{Sequence}: {Quantity} of item {ItemId} from {From} to {To} ({Reason}) by {User}",
-                command.Type,
-                movement.Sequence,
-                command.Quantity,
-                command.ItemId,
-                from.Code,
-                to.Code,
-                command.Reason,
-                command.Actor.UserName);
+            foreach (var command in pending)
+            {
+                logger.LogInformation(
+                    "Posted {Type} #{Sequence}: {Quantity} of item {ItemId} from {From} to {To} ({Reason}) by {User}",
+                    command.Type,
+                    posted[command.IdempotencyKey].Sequence,
+                    command.Quantity,
+                    command.ItemId,
+                    locationsById[command.From.LocationId].Code,
+                    locationsById[command.To.LocationId].Code,
+                    command.Reason,
+                    command.Actor.UserName);
+            }
 
-            return new MovementReceipt(
-                movement.Id,
-                movement.Sequence,
-                movement.OccurredAt,
-                movement.Quantity,
-                fromAfter,
-                toAfter,
-                WasAlreadyPosted: false);
+            // Rebuilt in the caller's order, so a batch's receipts line up with the
+            // lines that were handed in even when some of them were replays.
+            foreach (var command in commands)
+            {
+                receipts.Add(posted.TryGetValue(command.IdempotencyKey, out var fresh)
+                    ? fresh
+                    : await DescribeReplayAsync(command, replays[command.IdempotencyKey], cancellationToken));
+            }
+
+            return receipts;
         }
         catch (DbUpdateException exception) when (IsIdempotencyCollision(exception))
         {
-            // Two copies of the same retried command arrived close enough together
+            // Two copies of the same retried batch arrived close enough together
             // that both got past the check above. The unique index settles it; the
-            // loser reports the winner's entry, which is the same answer either
+            // loser reports the winner's entries, which is the same answer either
             // way.
             await transaction.RollbackAsync(cancellationToken);
             dbContext.ChangeTracker.Clear();
 
-            var winner = await FindByIdempotencyKeyAsync(command.IdempotencyKey, cancellationToken);
+            var winners = await ResolveAgainstLedgerAsync(commands, cancellationToken);
 
-            return winner is null
-                ? Result.Failure<MovementReceipt>(InventoryErrors.IdempotencyKeyReused)
-                : await ReplayAsync(command, winner, cancellationToken);
+            return winners.IsSuccess && winners.Value.Pending.Count == 0
+                ? await ReplayAllAsync(commands, winners.Value.Replays, cancellationToken)
+                : Result.Failure<IReadOnlyList<MovementReceipt>>(InventoryErrors.IdempotencyKeyReused);
         }
     }
+
+    /// <summary>
+    /// Creates-or-locks every balance row the batch will touch, in one global
+    /// order.
+    /// <para>
+    /// Lock order, not command order. Two transfers in opposite directions between
+    /// the same pair of holdings would otherwise each hold the row the other is
+    /// waiting for; sorting by a key every writer computes the same way means
+    /// locks are always taken in one global order, so no cycle can form.
+    /// </para>
+    /// <para>
+    /// The key extends <see cref="Holding.LockOrderKey"/> with the item and lot,
+    /// because a batch touches several balance rows at one location and the
+    /// holding alone no longer identifies a row. The extension is a suffix, so a
+    /// single-command posting — whose two rows share an item and lot — sorts
+    /// exactly as it did before, and a batch and a single command racing each
+    /// other still agree on the order.
+    /// </para>
+    /// </summary>
+    private async Task<Dictionary<BalanceKey, LockedBalance>> LockEveryTouchedBalanceAsync(
+        IReadOnlyList<PostingCommand> pending,
+        IReadOnlyDictionary<Guid, LocationSnapshot> locationsById,
+        CancellationToken cancellationToken)
+    {
+        var wanted = new Dictionary<BalanceKey, bool>();
+
+        foreach (var command in pending)
+        {
+            foreach (var holding in new[] { command.From, command.To })
+            {
+                wanted[new BalanceKey(command.ItemId, command.LotId, holding)] =
+                    locationsById[holding.LocationId].IsVirtual;
+            }
+        }
+
+        var locked = new Dictionary<BalanceKey, LockedBalance>(wanted.Count);
+
+        foreach (var (key, allowsNegative) in wanted.OrderBy(entry => entry.Key.LockOrderKey, StringComparer.Ordinal))
+        {
+            locked[key] = await EnsureAndLockBalanceAsync(key, allowsNegative, cancellationToken);
+        }
+
+        return locked;
+    }
+
+    private StockMovement ToMovement(PostingCommand command) => new()
+    {
+        OccurredAt = clock.GetUtcNow(),
+        ItemId = command.ItemId,
+        LotId = command.LotId,
+        Quantity = command.Quantity,
+        FromLocationId = command.From.LocationId,
+        FromLicensePlateId = command.From.LicensePlateId,
+        FromStatus = command.From.Status,
+        ToLocationId = command.To.LocationId,
+        ToLicensePlateId = command.To.LicensePlateId,
+        ToStatus = command.To.Status,
+        Type = command.Type,
+        Reason = command.Reason,
+        IdempotencyKey = command.IdempotencyKey,
+        TaskId = command.TaskId,
+        DecisionTraceId = command.DecisionTraceId,
+        ReversesMovementId = command.ReversesMovementId,
+        UserId = command.Actor.UserId,
+        UserName = command.Actor.UserName,
+        Notes = command.Notes
+    };
 
     /// <summary>
     /// Current quantity of one holding. Public because the enquiry endpoints and
@@ -244,96 +430,26 @@ public sealed class StockLedger(
         return balance ?? 0m;
     }
 
-    private async Task<Result<(LocationSnapshot From, LocationSnapshot To)>> ValidateAgainstMasterDataAsync(
-        PostingCommand command,
+    private async Task<Result<IReadOnlyList<MovementReceipt>>> ReplayAllAsync(
+        IReadOnlyList<PostingCommand> commands,
+        Dictionary<string, StockMovement> replays,
         CancellationToken cancellationToken)
     {
-        var item = await items.FindAsync(command.ItemId, cancellationToken);
-        if (item is null)
+        var receipts = new List<MovementReceipt>(commands.Count);
+
+        foreach (var command in commands)
         {
-            return Result.Failure<(LocationSnapshot, LocationSnapshot)>(InventoryErrors.ItemNotFound);
+            receipts.Add(await DescribeReplayAsync(command, replays[command.IdempotencyKey], cancellationToken));
         }
 
-        if (!item.IsActive)
-        {
-            return Result.Failure<(LocationSnapshot, LocationSnapshot)>(InventoryErrors.ItemInactive);
-        }
-
-        // Tracking policy is the item's, so the ledger asks rather than assumes.
-        // A lot-tracked item without a lot would produce a balance nobody can
-        // rotate by expiry, which is worse than a rejected scan.
-        if (item.IsLotTracked && command.LotId is null)
-        {
-            return Result.Failure<(LocationSnapshot, LocationSnapshot)>(InventoryErrors.LotRequired);
-        }
-
-        if (!item.IsLotTracked && command.LotId is not null)
-        {
-            return Result.Failure<(LocationSnapshot, LocationSnapshot)>(InventoryErrors.LotNotPermitted);
-        }
-
-        if (command.LotId is { } lotId
-            && !await dbContext.Lots.AnyAsync(
-                l => l.Id == lotId && l.ItemId == command.ItemId, cancellationToken))
-        {
-            return Result.Failure<(LocationSnapshot, LocationSnapshot)>(InventoryErrors.LotNotFound);
-        }
-
-        var from = await locations.FindAsync(command.From.LocationId, cancellationToken);
-        var to = await locations.FindAsync(command.To.LocationId, cancellationToken);
-
-        if (from is null || to is null)
-        {
-            return Result.Failure<(LocationSnapshot, LocationSnapshot)>(InventoryErrors.LocationNotFound);
-        }
-
-        // Only the destination has to be usable. Blocked racking still holds stock
-        // and the whole point of blocking it is usually to get the stock out, so
-        // refusing to move *from* an inactive location would trap it there.
-        if (!to.IsActive)
-        {
-            return Result.Failure<(LocationSnapshot, LocationSnapshot)>(InventoryErrors.LocationBlocked(to.Code));
-        }
-
-        var shape = MovementShape.Validate(command.Type, from, to);
-        if (shape.IsFailure)
-        {
-            return Result.Failure<(LocationSnapshot, LocationSnapshot)>(shape.Error);
-        }
-
-        if (command.Type == MovementType.StatusChange && command.From.Status == command.To.Status)
-        {
-            return Result.Failure<(LocationSnapshot, LocationSnapshot)>(
-                InventoryErrors.StatusChangeNeedsNewStatus);
-        }
-
-        return (from, to);
+        return receipts;
     }
 
-    private Task<StockMovement?> FindByIdempotencyKeyAsync(string key, CancellationToken cancellationToken) =>
-        dbContext.StockMovements
-            .AsNoTracking()
-            .SingleOrDefaultAsync(m => m.IdempotencyKey == key, cancellationToken);
-
-    private async Task<Result<MovementReceipt>> ReplayAsync(
+    private async Task<MovementReceipt> DescribeReplayAsync(
         PostingCommand command,
         StockMovement existing,
         CancellationToken cancellationToken)
     {
-        // Same key, different movement: the client reused a key it should have
-        // rotated. Silently returning the old receipt would report success for a
-        // movement that never happened, which is the one failure mode worse than
-        // an error.
-        if (!command.Matches(existing))
-        {
-            logger.LogWarning(
-                "Idempotency key {Key} reused for a different movement than #{Sequence}",
-                command.IdempotencyKey,
-                existing.Sequence);
-
-            return Result.Failure<MovementReceipt>(InventoryErrors.IdempotencyKeyReused);
-        }
-
         logger.LogInformation(
             "Idempotent replay of {Key}; movement #{Sequence} already posted",
             command.IdempotencyKey,
@@ -353,6 +469,100 @@ public sealed class StockLedger(
     }
 
     /// <summary>
+    /// Checks every pending command against MasterData and returns the location
+    /// snapshots the transaction will need, resolved once per distinct location
+    /// rather than once per line.
+    /// </summary>
+    private async Task<Result<IReadOnlyDictionary<Guid, LocationSnapshot>>> ValidateAgainstMasterDataAsync(
+        IReadOnlyList<PostingCommand> pending,
+        CancellationToken cancellationToken)
+    {
+        var itemCache = new Dictionary<Guid, ItemSnapshot?>();
+        var locationCache = new Dictionary<Guid, LocationSnapshot?>();
+
+        foreach (var command in pending)
+        {
+            if (!itemCache.TryGetValue(command.ItemId, out var item))
+            {
+                item = await items.FindAsync(command.ItemId, cancellationToken);
+                itemCache[command.ItemId] = item;
+            }
+
+            if (item is null)
+            {
+                return Result.Failure<IReadOnlyDictionary<Guid, LocationSnapshot>>(InventoryErrors.ItemNotFound);
+            }
+
+            if (!item.IsActive)
+            {
+                return Result.Failure<IReadOnlyDictionary<Guid, LocationSnapshot>>(InventoryErrors.ItemInactive);
+            }
+
+            // Tracking policy is the item's, so the ledger asks rather than assumes.
+            // A lot-tracked item without a lot would produce a balance nobody can
+            // rotate by expiry, which is worse than a rejected scan.
+            if (item.IsLotTracked && command.LotId is null)
+            {
+                return Result.Failure<IReadOnlyDictionary<Guid, LocationSnapshot>>(InventoryErrors.LotRequired);
+            }
+
+            if (!item.IsLotTracked && command.LotId is not null)
+            {
+                return Result.Failure<IReadOnlyDictionary<Guid, LocationSnapshot>>(InventoryErrors.LotNotPermitted);
+            }
+
+            if (command.LotId is { } lotId
+                && !await dbContext.Lots.AnyAsync(
+                    l => l.Id == lotId && l.ItemId == command.ItemId, cancellationToken))
+            {
+                return Result.Failure<IReadOnlyDictionary<Guid, LocationSnapshot>>(InventoryErrors.LotNotFound);
+            }
+
+            foreach (var holding in new[] { command.From, command.To })
+            {
+                if (!locationCache.ContainsKey(holding.LocationId))
+                {
+                    locationCache[holding.LocationId] =
+                        await locations.FindAsync(holding.LocationId, cancellationToken);
+                }
+            }
+
+            var from = locationCache[command.From.LocationId];
+            var to = locationCache[command.To.LocationId];
+
+            if (from is null || to is null)
+            {
+                return Result.Failure<IReadOnlyDictionary<Guid, LocationSnapshot>>(InventoryErrors.LocationNotFound);
+            }
+
+            // Only the destination has to be usable. Blocked racking still holds
+            // stock and the whole point of blocking it is usually to get the stock
+            // out, so refusing to move *from* an inactive location would trap it
+            // there.
+            if (!to.IsActive)
+            {
+                return Result.Failure<IReadOnlyDictionary<Guid, LocationSnapshot>>(
+                    InventoryErrors.LocationBlocked(to.Code));
+            }
+
+            var shape = MovementShape.Validate(command.Type, from, to);
+            if (shape.IsFailure)
+            {
+                return Result.Failure<IReadOnlyDictionary<Guid, LocationSnapshot>>(shape.Error);
+            }
+
+            if (command.Type == MovementType.StatusChange && command.From.Status == command.To.Status)
+            {
+                return Result.Failure<IReadOnlyDictionary<Guid, LocationSnapshot>>(
+                    InventoryErrors.StatusChangeNeedsNewStatus);
+            }
+        }
+
+        return Result.Success<IReadOnlyDictionary<Guid, LocationSnapshot>>(
+            locationCache.ToDictionary(entry => entry.Key, entry => entry.Value!));
+    }
+
+    /// <summary>
     /// Creates the balance row if it is missing and takes a row lock on it either
     /// way, returning what it currently holds.
     /// <para>
@@ -365,9 +575,7 @@ public sealed class StockLedger(
     /// </para>
     /// </summary>
     private async Task<LockedBalance> EnsureAndLockBalanceAsync(
-        Guid itemId,
-        Guid? lotId,
-        Holding holding,
+        BalanceKey key,
         bool allowsNegative,
         CancellationToken cancellationToken)
     {
@@ -385,11 +593,11 @@ public sealed class StockLedger(
         await using var command = CreateCommand(sql);
 
         command.Parameters.Add(new NpgsqlParameter("id", NpgsqlDbType.Uuid) { Value = Guid.CreateVersion7() });
-        command.Parameters.Add(new NpgsqlParameter("itemId", NpgsqlDbType.Uuid) { Value = itemId });
-        command.Parameters.Add(Nullable("lotId", lotId));
-        command.Parameters.Add(new NpgsqlParameter("locationId", NpgsqlDbType.Uuid) { Value = holding.LocationId });
-        command.Parameters.Add(Nullable("licensePlateId", holding.LicensePlateId));
-        command.Parameters.Add(new NpgsqlParameter("status", NpgsqlDbType.Integer) { Value = (int)holding.Status });
+        command.Parameters.Add(new NpgsqlParameter("itemId", NpgsqlDbType.Uuid) { Value = key.ItemId });
+        command.Parameters.Add(Nullable("lotId", key.LotId));
+        command.Parameters.Add(new NpgsqlParameter("locationId", NpgsqlDbType.Uuid) { Value = key.Holding.LocationId });
+        command.Parameters.Add(Nullable("licensePlateId", key.Holding.LicensePlateId));
+        command.Parameters.Add(new NpgsqlParameter("status", NpgsqlDbType.Integer) { Value = (int)key.Holding.Status });
         command.Parameters.Add(new NpgsqlParameter("allowsNegative", NpgsqlDbType.Boolean) { Value = allowsNegative });
         command.Parameters.Add(new NpgsqlParameter("now", NpgsqlDbType.TimestampTz) { Value = clock.GetUtcNow() });
 
@@ -400,7 +608,7 @@ public sealed class StockLedger(
             // Unreachable: the statement either inserts or updates, and both
             // return a row.
             throw new InvalidOperationException(
-                $"Balance upsert returned no row for item {itemId} at location {holding.LocationId}.");
+                $"Balance upsert returned no row for item {key.ItemId} at location {key.Holding.LocationId}.");
         }
 
         return new LockedBalance(
@@ -495,6 +703,16 @@ public sealed class StockLedger(
             SqlState: PostgresErrorCodes.UniqueViolation
         } postgres
         && postgres.ConstraintName?.Contains("IdempotencyKey", StringComparison.Ordinal) == true;
+
+    /// <summary>
+    /// Identifies one row of the balance projection: a holding, plus the item and
+    /// lot occupying it.
+    /// </summary>
+    private readonly record struct BalanceKey(Guid ItemId, Guid? LotId, Holding Holding)
+    {
+        /// <summary>See <see cref="LockEveryTouchedBalanceAsync"/> for why the holding's key comes first.</summary>
+        public string LockOrderKey => $"{Holding.LockOrderKey}|{ItemId:D}|{LotId:D}";
+    }
 
     private readonly record struct LockedBalance(Guid Id, decimal Quantity, bool AllowsNegative);
 }

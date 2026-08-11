@@ -259,6 +259,211 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/rules/sets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Rule sets and the rule vocabulary this build can run. */
+        get: operations["GetRuleSets"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/rules/traces/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Why the rules chose what they chose — every candidate, score and exclusion. */
+        get: operations["GetDecisionTrace"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/rules/putaway/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Run the putaway rules without posting anything. */
+        post: operations["PreviewPutaway"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/work/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Directed work, newest queue order first. */
+        get: operations["GetWorkTasks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/work/tasks/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One task, with the decision trace behind its suggestion. */
+        get: operations["GetWorkTask"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/work/tasks/claim-next": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Take the next job in the queue. */
+        post: operations["ClaimNextTask"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/work/tasks/{id}/claim": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Take one named task. */
+        post: operations["ClaimTask"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/work/tasks/{id}/release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Hand a claimed task back to the queue. */
+        post: operations["ReleaseTask"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/work/tasks/{id}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirm a task at the location the operator actually scanned. */
+        post: operations["CompleteWorkTask"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/inbound/asns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Advance shipping notices and their receiving progress. */
+        get: operations["GetAsns"];
+        put?: never;
+        /** Announce an inbound delivery. */
+        post: operations["CreateAsn"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/inbound/asns/{reference}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One advice note, with its lines. */
+        get: operations["GetAsn"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/inbound/receipts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Book goods in against an advice note and raise the putaway. */
+        post: operations["ReceiveAtDock"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/login": {
         parameters: {
             query?: never;
@@ -344,6 +549,61 @@ export interface components {
             status?: null | components["schemas"]["InventoryStatus"];
             notes?: null | string;
         };
+        AsnLineProgress: {
+            reference: string;
+            /** Format: int32 */
+            lineNumber: number;
+            /** Format: double */
+            expectedQuantity: number;
+            /** Format: double */
+            receivedQuantity: number;
+            /** Format: double */
+            outstandingQuantity: number;
+            asnStatus: components["schemas"]["AsnStatus"];
+        };
+        AsnLineResponse: {
+            /** Format: int32 */
+            lineNumber: number;
+            sku: string;
+            description: string;
+            baseUom: string;
+            /** Format: double */
+            expectedQuantity: number;
+            /** Format: double */
+            receivedQuantity: number;
+            /** Format: double */
+            outstandingQuantity: number;
+            expectedLotNumber: null | string;
+            /** Format: date */
+            expectedExpiryDate: null | string;
+        };
+        AsnPage: {
+            items: components["schemas"]["AsnResponse"][];
+            /** Format: int32 */
+            total: number;
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            pageSize: number;
+        };
+        AsnResponse: {
+            /** Format: uuid */
+            id: string;
+            reference: string;
+            status: components["schemas"]["AsnStatus"];
+            supplierName: null | string;
+            /** Format: date-time */
+            expectedAt: null | string;
+            carrierReference: null | string;
+            notes: null | string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            closedAt: null | string;
+            lines: components["schemas"]["AsnLineResponse"][];
+        };
+        /** @enum {string} */
+        AsnStatus: "Expected" | "Receiving" | "Complete" | "Closed" | "Cancelled";
         AuthResponse: {
             accessToken: string;
             /** Format: date-time */
@@ -376,6 +636,93 @@ export interface components {
             lotNumber?: null | string;
             sscc?: null | string;
             notes?: null | string;
+        };
+        ClaimNextTaskRequest: {
+            /** Format: uuid */
+            warehouseId?: null | string;
+            kind?: null | components["schemas"]["WorkTaskKind"];
+        };
+        CompleteWorkTaskRequest: {
+            toLocationCode: string;
+            overrideReason?: null | string;
+        };
+        CompleteWorkTaskResponse: {
+            task: components["schemas"]["WorkTaskResponse"];
+            movements: components["schemas"]["PostedMovement"][];
+        };
+        CreateAsnLineRequest: {
+            sku: string;
+            /** Format: double */
+            expectedQuantity: number;
+            expectedLotNumber?: null | string;
+            /** Format: date */
+            expectedExpiryDate?: null | string;
+        };
+        CreateAsnRequest: {
+            reference: string;
+            warehouseCode: string;
+            lines: components["schemas"]["CreateAsnLineRequest"][];
+            supplierName?: null | string;
+            /** Format: date-time */
+            expectedAt?: null | string;
+            carrierReference?: null | string;
+            notes?: null | string;
+        };
+        /** @enum {string} */
+        DecisionKind: "Putaway" | "Allocation" | "Waving" | "TaskAssignment";
+        DecisionTraceView: {
+            /** Format: uuid */
+            id: string;
+            kind: components["schemas"]["DecisionKind"];
+            ruleSetName: string;
+            /** Format: int32 */
+            ruleSetVersion: number;
+            /** Format: date-time */
+            decidedAt: string;
+            /** Format: int32 */
+            consideredCount: number;
+            /** Format: int32 */
+            admissibleCount: number;
+            /** Format: uuid */
+            selectedId: null | string;
+            selectedKey: null | string;
+            candidates: components["schemas"]["TracedCandidate"][];
+        };
+        DockReceiptRequest: {
+            sku: string;
+            /** Format: double */
+            quantity: number;
+            toLocationCode: string;
+            asnReference?: null | string;
+            /** Format: int32 */
+            asnLineNumber?: null | number;
+            lotNumber?: null | string;
+            /** Format: date */
+            expiryDate?: null | string;
+            /** Format: date */
+            productionDate?: null | string;
+            sscc?: null | string;
+            condition?: null | components["schemas"]["StockCondition"];
+            isReturn?: null | boolean;
+            notes?: null | string;
+        };
+        DockReceiptResponse: {
+            receipt: components["schemas"]["PostedMovement"];
+            sku: string;
+            description: string;
+            toLocationCode: string;
+            lotNumber: null | string;
+            sscc: null | string;
+            /** Format: uuid */
+            workTaskId: null | string;
+            suggestedLocationCode: null | string;
+            /** Format: uuid */
+            decisionTraceId: string;
+            /** Format: int32 */
+            consideredCount: number;
+            /** Format: int32 */
+            admissibleCount: number;
+            asnLine: null | components["schemas"]["AsnLineProgress"];
         };
         ImportIssue: {
             /** Format: int32 */
@@ -517,6 +864,45 @@ export interface components {
             /** Format: int32 */
             pageSize: number;
         };
+        PostedMovement: {
+            /** Format: uuid */
+            movementId: string;
+            /** Format: int64 */
+            sequence: number;
+            /** Format: date-time */
+            occurredAt: string;
+            /** Format: double */
+            quantity: number;
+            /** Format: uuid */
+            lotId: null | string;
+            /** Format: uuid */
+            licensePlateId: null | string;
+            /** Format: double */
+            fromQuantityAfter: number;
+            /** Format: double */
+            toQuantityAfter: number;
+            wasAlreadyPosted: boolean;
+        };
+        PreviewPutawayRequest: {
+            sku: string;
+            /** Format: double */
+            quantity: number;
+            fromLocationCode: string;
+            lotNumber?: null | string;
+            condition?: null | components["schemas"]["StockCondition"];
+        };
+        PreviewPutawayResponse: {
+            /** Format: uuid */
+            decisionTraceId: string;
+            locationCode: null | string;
+            /** Format: double */
+            score: number;
+            /** Format: int32 */
+            consideredCount: number;
+            /** Format: int32 */
+            admissibleCount: number;
+            trace: components["schemas"]["DecisionTraceView"];
+        };
         ProblemDetails: {
             type?: null | string;
             title?: null | string;
@@ -561,6 +947,48 @@ export interface components {
         ReverseMovementRequest: {
             notes?: null | string;
         };
+        RuleNote: {
+            code: string;
+            args: {
+                [key: string]: string;
+            };
+        };
+        RuleResponse: {
+            code: string;
+            role: components["schemas"]["RuleRole"];
+            /** Format: int32 */
+            order: number;
+            /** Format: double */
+            weight: number;
+            parameters: null | string;
+            isEnabled: boolean;
+        };
+        /** @enum {string} */
+        RuleRole: "Constraint" | "Preference";
+        RuleSetResponse: {
+            /** Format: uuid */
+            id: string;
+            kind: components["schemas"]["DecisionKind"];
+            name: string;
+            /** Format: int32 */
+            version: number;
+            status: components["schemas"]["RuleSetStatus"];
+            /** Format: uuid */
+            warehouseId: null | string;
+            notes: null | string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            activatedAt: null | string;
+            rules: components["schemas"]["RuleResponse"][];
+        };
+        /** @enum {string} */
+        RuleSetStatus: "Draft" | "Active" | "Archived";
+        RuleSetsResponse: {
+            items: components["schemas"]["RuleSetResponse"][];
+            availableConstraints: string[];
+            availablePreferences: string[];
+        };
         ScanElementResponse: {
             ai: string;
             title: string;
@@ -603,6 +1031,16 @@ export interface components {
             isExpiryTracked: boolean;
             isSerialTracked: boolean;
         };
+        ScoreLine: {
+            ruleCode: string;
+            /** Format: double */
+            weight: number;
+            /** Format: double */
+            value: number;
+            /** Format: double */
+            contribution: number;
+            reason: components["schemas"]["RuleNote"];
+        };
         StockBalanceResponse: {
             sku: string;
             description: string;
@@ -617,6 +1055,8 @@ export interface components {
             quantity: number;
             isAllocatable: boolean;
         };
+        /** @enum {string} */
+        StockCondition: "Available" | "Quarantine" | "Damaged" | "OnHold" | "Expired";
         StockEnquiryResponse: {
             items: components["schemas"]["StockBalanceResponse"][];
             /** Format: int32 */
@@ -653,10 +1093,26 @@ export interface components {
             /** Format: uuid */
             reversesMovementId: null | string;
             isReversed: boolean;
+            /** Format: uuid */
+            taskId: null | string;
+            /** Format: uuid */
+            decisionTraceId: null | string;
             notes: null | string;
         };
         /** @enum {string} */
         TemperatureClass: "Ambient" | "Chilled" | "Frozen";
+        TracedCandidate: {
+            /** Format: uuid */
+            candidateId: string;
+            candidateKey: string;
+            /** Format: int32 */
+            rank: number;
+            isAdmissible: boolean;
+            /** Format: double */
+            score: number;
+            excludedBy: null | components["schemas"]["RuleNote"];
+            scores: components["schemas"]["ScoreLine"][];
+        };
         TransferStockRequest: {
             sku: string;
             /** Format: double */
@@ -688,6 +1144,54 @@ export interface components {
             countryCode: null | string;
             isActive: boolean;
         };
+        WorkTaskDetailResponse: {
+            task: components["schemas"]["WorkTaskResponse"];
+            decision: null | components["schemas"]["DecisionTraceView"];
+        };
+        /** @enum {string} */
+        WorkTaskKind: "Putaway" | "Replenishment" | "Pick" | "CycleCount";
+        WorkTaskPage: {
+            items: components["schemas"]["WorkTaskResponse"][];
+            /** Format: int32 */
+            total: number;
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            pageSize: number;
+        };
+        WorkTaskResponse: {
+            /** Format: uuid */
+            id: string;
+            kind: components["schemas"]["WorkTaskKind"];
+            status: components["schemas"]["WorkTaskStatus"];
+            /** Format: int32 */
+            priority: number;
+            sku: string;
+            description: string;
+            baseUom: string;
+            /** Format: double */
+            quantity: number;
+            lotNumber: null | string;
+            /** Format: date */
+            expiryDate: null | string;
+            sscc: null | string;
+            fromLocationCode: string;
+            suggestedLocationCode: null | string;
+            /** Format: uuid */
+            decisionTraceId: null | string;
+            condition: components["schemas"]["StockCondition"];
+            sourceReference: null | string;
+            /** Format: date-time */
+            createdAt: string;
+            assignedToUserName: null | string;
+            /** Format: date-time */
+            completedAt: null | string;
+            completedAtLocationCode: null | string;
+            wasOverridden: boolean;
+            overrideReason: null | string;
+        };
+        /** @enum {string} */
+        WorkTaskStatus: "Ready" | "Assigned" | "Completed" | "Cancelled";
     };
     responses: never;
     parameters: never;
@@ -1307,6 +1811,486 @@ export interface operations {
             };
             /** @description Forbidden */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetRuleSets: {
+        parameters: {
+            query?: {
+                kind?: components["schemas"]["DecisionKind"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuleSetsResponse"];
+                };
+            };
+        };
+    };
+    GetDecisionTrace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionTraceView"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    PreviewPutaway: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PreviewPutawayRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreviewPutawayResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetWorkTasks: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["WorkTaskStatus"];
+                kind?: components["schemas"]["WorkTaskKind"];
+                mine?: boolean;
+                page?: number;
+                pageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkTaskPage"];
+                };
+            };
+        };
+    };
+    GetWorkTask: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkTaskDetailResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ClaimNextTask: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": null | components["schemas"]["ClaimNextTaskRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkTaskDetailResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ClaimTask: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkTaskDetailResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ReleaseTask: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CompleteWorkTask: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompleteWorkTaskRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompleteWorkTaskResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetAsns: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["AsnStatus"];
+                reference?: string;
+                page?: number;
+                pageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AsnPage"];
+                };
+            };
+        };
+    };
+    CreateAsn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAsnRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AsnResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetAsn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                reference: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AsnResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ReceiveAtDock: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DockReceiptRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DockReceiptResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

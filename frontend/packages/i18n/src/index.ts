@@ -91,4 +91,6 @@ export {
   formatNumber,
   upperCaseIdentifier,
 } from './format.js';
+export { translateRuleNote, translateRuleName } from './rules.js';
+export type { RuleNote } from './rules.js';
 export { useTranslation, Trans } from 'react-i18next';

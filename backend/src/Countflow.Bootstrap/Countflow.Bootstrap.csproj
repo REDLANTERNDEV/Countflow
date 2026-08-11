@@ -3,8 +3,11 @@
   <ItemGroup>
     <ProjectReference Include="../Countflow.SharedKernel/Countflow.SharedKernel.csproj" />
     <ProjectReference Include="../Modules/Countflow.Modules.Identity/Countflow.Modules.Identity.csproj" />
+    <ProjectReference Include="../Modules/Countflow.Modules.Inbound/Countflow.Modules.Inbound.csproj" />
     <ProjectReference Include="../Modules/Countflow.Modules.Inventory/Countflow.Modules.Inventory.csproj" />
     <ProjectReference Include="../Modules/Countflow.Modules.MasterData/Countflow.Modules.MasterData.csproj" />
+    <ProjectReference Include="../Modules/Countflow.Modules.Rules/Countflow.Modules.Rules.csproj" />
+    <ProjectReference Include="../Modules/Countflow.Modules.Work/Countflow.Modules.Work.csproj" />
   </ItemGroup>
 
 </Project>

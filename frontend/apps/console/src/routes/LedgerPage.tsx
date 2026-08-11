@@ -19,6 +19,7 @@ import {
 import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { api } from '../api.js';
+import { DecisionTrace } from '../components/DecisionTrace.js';
 import { PageHead } from '../components/PageHead.js';
 
 const MOVEMENT_TYPES = [
@@ -46,6 +47,7 @@ export function LedgerPage() {
   const [lot, setLot] = useState('');
   const [type, setType] = useState('');
   const [page, setPage] = useState(1);
+  const [openTraceId, setOpenTraceId] = useState<string | null>(null);
 
   const pageSize = 50;
 
@@ -76,6 +78,19 @@ export function LedgerPage() {
   const reconcile = useMutation({
     mutationFn: async () => {
       const { data, error } = await api.POST('/api/inventory/reconciliation', {});
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: trace } = useQuery({
+    queryKey: ['decision-trace', openTraceId],
+    enabled: openTraceId !== null,
+    queryFn: async () => {
+      const { data, error } = await api.GET('/api/rules/traces/{id}', {
+        params: { path: { id: openTraceId! } },
+      });
+
       if (error) throw error;
       return data;
     },
@@ -180,12 +195,13 @@ export function LedgerPage() {
                   <TH>{t('ledger.to')}</TH>
                   <TH>{t('ledger.reason')}</TH>
                   <TH>{t('ledger.user')}</TH>
+                  <TH>{t('work.whyHere')}</TH>
                 </TR>
               </THead>
               <TBody>
                 {data.items.length === 0 ? (
                   <TR>
-                    <TD colSpan={10}>
+                    <TD colSpan={11}>
                       <EmptyState title={t('ledger.empty')} />
                     </TD>
                   </TR>
@@ -229,6 +245,27 @@ export function LedgerPage() {
                       </TD>
                       <TD className="text-[var(--color-text-secondary)]">{entry.reason}</TD>
                       <TD className="text-[var(--color-text-tertiary)]">{entry.userName}</TD>
+                      <TD>
+                        {/* From Phase 3 a directed movement carries the rule
+                            evaluation that produced it (ADR 0004). This column is
+                            the point of the whole mechanism: the ledger, which is
+                            what an auditor is handed, can answer "why" as well as
+                            "what". */}
+                        {entry.decisionTraceId ? (
+                          <Button
+                            size="sm"
+                            onClick={() =>
+                              setOpenTraceId(
+                                openTraceId === entry.decisionTraceId ? null : entry.decisionTraceId!,
+                              )
+                            }
+                          >
+                            {openTraceId === entry.decisionTraceId
+                              ? t('work.hideWhy')
+                              : t('work.whyHere')}
+                          </Button>
+                        ) : null}
+                      </TD>
                     </TR>
                   ))
                 )}
@@ -248,6 +285,15 @@ export function LedgerPage() {
             </Button>
           </div>
         </>
+      ) : null}
+
+      {openTraceId && trace ? (
+        <section className="mt-[var(--space-5)]">
+          <h3 className="mb-[var(--space-3)] mt-0 text-[length:var(--text-lg)]">
+            {t('rules.trace.title')}
+          </h3>
+          <DecisionTrace trace={trace} />
+        </section>
       ) : null}
     </>
   );

@@ -1,6 +1,22 @@
 # Countflow API. Build context is the repository root.
 # syntax=docker/dockerfile:1
 
+# Every project file, and nothing else.
+#
+# Collected generically rather than listed one COPY per project. Listing them was
+# the earlier shape, and it quietly made "adding a module is one line in
+# ModuleCatalog" untrue: Phase 3 added three modules and the container build
+# broke on all three, in a file nobody thinks to look in. This stage is cheap and
+# rebuilds every time — what matters is that the archive it produces only
+# *changes* when a project file does, and that is what the restore layer is keyed
+# on. migrator.Dockerfile does the same thing for the same reason.
+FROM mcr.microsoft.com/dotnet/sdk:10.0-noble AS projects
+WORKDIR /ctx
+COPY backend/ ./
+RUN find . -path ./tests -prune -o \
+        \( -name '*.csproj' -o -name 'Directory.*.props' \) -print \
+    | tar -cf /projects.tar --files-from -
+
 FROM mcr.microsoft.com/dotnet/sdk:10.0-noble AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
@@ -12,13 +28,8 @@ WORKDIR /src
 # sharing=shared, and compose builds this image and the migrator concurrently —
 # two `dotnet restore` processes writing one global-packages folder corrupt each
 # other's temp extractions. Locking serialises them while still sharing the cache.
-COPY backend/Directory.Build.props backend/Directory.Packages.props ./
-COPY backend/src/Countflow.Api/Countflow.Api.csproj                                   src/Countflow.Api/
-COPY backend/src/Countflow.Bootstrap/Countflow.Bootstrap.csproj                       src/Countflow.Bootstrap/
-COPY backend/src/Countflow.SharedKernel/Countflow.SharedKernel.csproj                 src/Countflow.SharedKernel/
-COPY backend/src/Modules/Countflow.Modules.Identity/Countflow.Modules.Identity.csproj     src/Modules/Countflow.Modules.Identity/
-COPY backend/src/Modules/Countflow.Modules.Inventory/Countflow.Modules.Inventory.csproj   src/Modules/Countflow.Modules.Inventory/
-COPY backend/src/Modules/Countflow.Modules.MasterData/Countflow.Modules.MasterData.csproj src/Modules/Countflow.Modules.MasterData/
+COPY --from=projects /projects.tar /tmp/projects.tar
+RUN tar -xf /tmp/projects.tar -C /src && rm /tmp/projects.tar
 
 RUN --mount=type=cache,target=/root/.nuget/packages,sharing=locked \
     dotnet restore src/Countflow.Api/Countflow.Api.csproj

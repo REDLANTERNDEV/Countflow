@@ -28,12 +28,23 @@ public sealed class CountflowApiFixture : WebApplicationFactory<Program>, IAsync
     {
         await _postgres.StartAsync();
 
-        // Apply migrations through the module contexts, exactly as the migrator
-        // does in production, so the tests exercise the real migration path.
+        // Apply migrations and then run the seeders through the module contexts,
+        // exactly as the migrator does in production, so the tests exercise the
+        // real path.
         using var scope = Services.CreateScope();
         foreach (var context in scope.ServiceProvider.GetServices<IModuleDbContext>())
         {
             await context.Database.MigrateAsync();
+        }
+
+        // Seeding is not optional here. Demo data stays off — Seed:DemoData is
+        // unset — but reference data a module cannot run without is exactly what
+        // seeders are for, and from Phase 3 that includes the putaway rule set. A
+        // fixture that skipped them would test a warehouse with no rules, which is
+        // a configuration production can never be in.
+        foreach (var seeder in scope.ServiceProvider.GetServices<IModuleSeeder>().OrderBy(s => s.Order))
+        {
+            await seeder.SeedAsync(CancellationToken.None);
         }
     }
 

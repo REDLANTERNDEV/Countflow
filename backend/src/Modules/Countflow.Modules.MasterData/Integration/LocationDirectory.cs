@@ -54,6 +54,123 @@ public sealed class LocationDirectory(MasterDataDbContext dbContext) : ILocation
             .SingleOrDefaultAsync(cancellationToken));
     }
 
+    public async Task<StorageLocationSnapshot?> FindStorageLocationByCodeAsync(
+        string code,
+        CancellationToken cancellationToken)
+    {
+        var row = await AsStorageRows(dbContext.Locations.Where(l => l.Code == code))
+            .SingleOrDefaultAsync(cancellationToken);
+
+        return row is null || VirtualTypes.Contains(row.Type) ? null : ToStorageSnapshot(row);
+    }
+
+    public async Task<IReadOnlyList<StorageLocationSnapshot>> FindStorageCandidatesAsync(
+        Guid warehouseId,
+        CancellationToken cancellationToken)
+    {
+        var rows = await AsStorageRows(
+                dbContext.Locations.Where(l => l.WarehouseId == warehouseId && !VirtualTypes.Contains(l.Type)))
+            .ToListAsync(cancellationToken);
+
+        return [.. rows.Select(ToStorageSnapshot)];
+    }
+
+    /// <summary>
+    /// The zone is joined rather than looked up per location: its temperature
+    /// class is the item's first hard constraint and its pick sequence sorts ahead
+    /// of the location's, so every candidate needs both and a query per candidate
+    /// would be two thousand round trips.
+    /// </summary>
+    private static IQueryable<StorageRow> AsStorageRows(IQueryable<Location> locations) =>
+        locations
+            .AsNoTracking()
+            .Select(l => new StorageRow(
+                l.Id,
+                l.WarehouseId,
+                l.Code,
+                l.ZoneId,
+                l.Zone == null ? null : l.Zone.Code,
+                l.Zone == null ? TemperatureClass.Ambient : l.Zone.TemperatureClass,
+                l.Type,
+                l.IsActive,
+                l.IsPickable,
+                l.IsReplenishable,
+                l.Zone == null ? 0 : l.Zone.PickSequence,
+                l.PickSequence,
+                l.MaxVolumeM3,
+                l.MaxWeightKg,
+                l.MaxDistinctItems));
+
+    private static StorageLocationSnapshot ToStorageSnapshot(StorageRow row) =>
+        new(
+            row.Id,
+            row.WarehouseId,
+            row.Code,
+            row.ZoneId,
+            row.ZoneCode,
+            ToBand(row.Temperature),
+            ToRole(row.Type),
+            row.IsActive,
+            row.IsPickable,
+            row.IsReplenishable,
+            row.ZonePickSequence,
+            row.PickSequence,
+            row.MaxVolumeM3,
+            row.MaxWeightKg,
+            row.MaxDistinctItems);
+
+    /// <summary>
+    /// Spelled out as data rather than as <c>!l.Type.IsVirtual()</c>, because the
+    /// extension method is a C# call EF cannot translate and the alternative —
+    /// fetching all two thousand locations and filtering in memory — is worse.
+    /// It is therefore a second copy of a definition that lives in
+    /// <see cref="LocationTypeExtensions.IsVirtual"/>, and the two are held in
+    /// step by test rather than by hope.
+    /// </summary>
+    private static readonly LocationType[] VirtualTypes =
+    [
+        LocationType.Supplier,
+        LocationType.Customer,
+        LocationType.Adjustment,
+        LocationType.Scrap,
+        LocationType.InTransit
+    ];
+
+    private sealed record StorageRow(
+        Guid Id,
+        Guid WarehouseId,
+        string Code,
+        Guid? ZoneId,
+        string? ZoneCode,
+        TemperatureClass Temperature,
+        LocationType Type,
+        bool IsActive,
+        bool IsPickable,
+        bool IsReplenishable,
+        int ZonePickSequence,
+        int PickSequence,
+        decimal? MaxVolumeM3,
+        decimal? MaxWeightKg,
+        int? MaxDistinctItems);
+
+    private static TemperatureBand ToBand(TemperatureClass temperature) => temperature switch
+    {
+        TemperatureClass.Chilled => TemperatureBand.Chilled,
+        TemperatureClass.Frozen => TemperatureBand.Frozen,
+        _ => TemperatureBand.Ambient
+    };
+
+    private static StorageRole ToRole(LocationType type) => type switch
+    {
+        LocationType.Bulk => StorageRole.Reserve,
+        LocationType.PickFace => StorageRole.Forward,
+        LocationType.Staging => StorageRole.Staging,
+        LocationType.Quarantine => StorageRole.Hold,
+        LocationType.ReceivingDock or LocationType.ShippingDock => StorageRole.Dock,
+        LocationType.Packing => StorageRole.Bench,
+        _ => StorageRole.None
+    };
+
     /// <summary>
     /// Reads only the columns the contract exposes, then maps in memory so
     /// <see cref="LocationTypeExtensions"/> stays the single definition of what a

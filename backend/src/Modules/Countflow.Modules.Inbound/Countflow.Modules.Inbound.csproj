@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <!-- SharedKernel only. The inbound loop receives through IStockPosting, asks
+         IPutawayAdvisor where the pallet should go and raises work through
+         IWorkQueue; it has no project reference to any of those modules, so the
+         orchestration cannot quietly become a reimplementation (ADR 0002). -->
+    <ProjectReference Include="../../Countflow.SharedKernel/Countflow.SharedKernel.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+  </ItemGroup>
+
+</Project>
