@@ -1,16 +1,23 @@
 import type { components } from '@countflow/api-client';
-import { currentLocale, formatNumber, useTranslation } from '@countflow/i18n';
+import { currentLocale, formatDateTime, formatNumber, useTranslation } from '@countflow/i18n';
 import { Badge, Button, Code, Field, Input, Numeric, ScanField, Spinner } from '@countflow/ui';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import { WhyHere } from '../components/WhyHere.js';
 import { newIdempotencyKey } from '../lib/idempotency.js';
+import { unanswered } from '../lib/outbox/dispatch.js';
+import { categorise, needsSupervisor } from '../lib/outbox/refusals.js';
+import type { CommandSummary, QueuedCommand } from '../lib/outbox/types.js';
+import { outbox } from '../outbox.js';
+import { recallTask, rememberTask, type TaskDetail } from '../tasks.js';
+import { useOutbox } from '../useOutbox.js';
 
-type TaskDetail = components['schemas']['WorkTaskDetailResponse'];
 type CountOutcome = components['schemas']['CountOutcome'];
+type CompleteResponse = components['schemas']['CompleteWorkTaskResponse'];
 
 interface TaskScreenProps {
   taskId: string;
+  ownerUserId: string;
   onDone: () => void;
 }
 
@@ -36,12 +43,22 @@ interface TaskScreenProps {
  * becomes an expensive way of confirming what was already believed. It is
  * available, because an operator who has counted eight and is looking at a
  * suspiciously round variance deserves to see it — but they have to ask.
+ *
+ * <b>Phase 8 changed how the confirmation leaves, and not what it says.</b> It
+ * goes to the device's outbox rather than to `fetch`, online or not, and the
+ * screen then has three endings rather than one: the warehouse took it, the
+ * warehouse refused it, or the device is holding it. The third is emphatically
+ * not shown as success — an operator told "done" for work the warehouse has
+ * never heard of has been lied to, and will find out at the worst possible
+ * moment, which is when somebody asks them about a pallet a week later.
  */
-export function TaskScreen({ taskId, onDone }: TaskScreenProps) {
+export function TaskScreen({ taskId, ownerUserId, onDone }: TaskScreenProps) {
   const { t } = useTranslation();
   const locale = currentLocale();
+  const { commands } = useOutbox();
 
   const [detail, setDetail] = useState<TaskDetail | null>(null);
+  const [staleSince, setStaleSince] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [showWhy, setShowWhy] = useState(false);
   const [confirmed, setConfirmed] = useState('');
@@ -50,27 +67,63 @@ export function TaskScreen({ taskId, onDone }: TaskScreenProps) {
   const [revealBook, setRevealBook] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errorCode, setErrorCode] = useState<string | null>(null);
-  const [completed, setCompleted] = useState<string | null>(null);
-  const [outcome, setOutcome] = useState<CountOutcome | null>(null);
 
+  // One key per intent, minted once and never again — including across the
+  // reload a service-worker update or a flat battery causes, because from the
+  // moment it is submitted the key lives in IndexedDB as the command's own
+  // identity rather than in this ref.
   const idempotencyKey = useRef(newIdempotencyKey());
+
+  /** This task's confirmation, wherever it has got to. */
+  const command: QueuedCommand | undefined = commands.find(
+    (c) => c.kind === 'work.complete' && (c.request as { taskId: string }).taskId === taskId,
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
 
-    const { data, error } = await api.GET('/api/v1/work/tasks/{id}', {
-      params: { path: { id: taskId } },
-    });
+    // A job the device was already given is workable out of signal; a job it has
+    // never seen is not, and there is no honest way around that — see ADR 0008.
+    const fromCache = async () => {
+      const cached = await recallTask(taskId);
 
-    setLoading(false);
+      if (!cached) {
+        setErrorCode('offline');
+        return;
+      }
 
-    if (error || !data) {
-      setErrorCode((error as { code?: string } | undefined)?.code ?? 'unknown');
-      return;
+      setDetail(cached.detail);
+      setStaleSince(cached.fetchedAt);
+    };
+
+    try {
+      const { data, error, response } = await api.GET('/api/v1/work/tasks/{id}', {
+        params: { path: { id: taskId } },
+      });
+
+      outbox.noteReachable(!unanswered(response.status));
+
+      if (error || !data) {
+        // 502 from the proxy in front of a stopped API is "nobody answered", not
+        // "no such task". Deciding that by catching an exception was a defect.
+        if (unanswered(response.status)) {
+          await fromCache();
+        } else {
+          setErrorCode((error as { code?: string } | undefined)?.code ?? 'unknown');
+        }
+        return;
+      }
+
+      await rememberTask(data, ownerUserId);
+      setDetail(data);
+      setStaleSince(null);
+    } catch {
+      outbox.noteReachable(false);
+      await fromCache();
+    } finally {
+      setLoading(false);
     }
-
-    setDetail(data);
-  }, [taskId]);
+  }, [taskId, ownerUserId]);
 
   useEffect(() => {
     void load();
@@ -79,49 +132,93 @@ export function TaskScreen({ taskId, onDone }: TaskScreenProps) {
   // Claiming is separate from opening, so a supervisor can look at a job on the
   // console without taking it out of somebody's queue.
   const claim = useCallback(async () => {
-    const { data } = await api.POST('/api/v1/work/tasks/{id}/claim', {
-      params: { path: { id: taskId } },
-    });
+    try {
+      const { data, error, response } = await api.POST('/api/v1/work/tasks/{id}/claim', {
+        params: { path: { id: taskId } },
+      });
 
-    if (data) setDetail(data);
-  }, [taskId]);
+      outbox.noteReachable(!unanswered(response.status));
+
+      if (data) {
+        await rememberTask(data, ownerUserId);
+        setDetail(data);
+        return;
+      }
+
+      // Claiming is not queueable — it asks the warehouse to decide something
+      // rather than telling it what happened (ADR 0008) — so a failure here is
+      // shown rather than saved.
+      setErrorCode(
+        unanswered(response.status)
+          ? 'offline'
+          : (error as { code?: string } | undefined)?.code ?? 'unknown',
+      );
+    } catch {
+      outbox.noteReachable(false);
+      setErrorCode('offline');
+    }
+  }, [taskId, ownerUserId]);
 
   async function complete() {
+    if (!detail) return;
+
     setSubmitting(true);
     setErrorCode(null);
 
-    const { data, error } = await api.POST('/api/v1/work/tasks/{id}/complete', {
-      params: {
-        path: { id: taskId },
-        header: { 'Idempotency-Key': idempotencyKey.current },
+    const task = detail.task;
+    const isCount = task.kind === 'CycleCount';
+    const at = confirmed.trim().toUpperCase();
+    const reason = overrideReason.trim();
+    const found = counted.trim();
+
+    const summary: CommandSummary = {
+      headline: `work.kind.${task.kind}`,
+      sku: task.sku,
+      description: task.description,
+      quantity: task.quantity,
+      uom: task.baseUom,
+      fromLocationCode: task.fromLocationCode,
+      atLocationCode: at,
+      ...(task.lotNumber ? { lotNumber: task.lotNumber } : {}),
+      ...(task.sscc ? { sscc: task.sscc } : {}),
+      ...(task.sourceReference ? { reference: task.sourceReference } : {}),
+      ...(isCount && found ? { countedQuantity: Number(found) } : {}),
+    };
+
+    await outbox.submit({
+      kind: 'work.complete',
+      key: idempotencyKey.current,
+      request: {
+        taskId,
+        toLocationCode: at,
+        ...(reason ? { overrideReason: reason } : {}),
+        ...(isCount && found ? { countedQuantity: Number(found) } : {}),
       },
-      body: {
-        toLocationCode: confirmed.trim(),
-        ...(overrideReason.trim() ? { overrideReason: overrideReason.trim() } : {}),
-        ...(counted.trim() ? { countedQuantity: Number(counted) } : {}),
-      },
+      summary,
     });
 
     setSubmitting(false);
-
-    if (error || !data) {
-      setErrorCode((error as { code?: string } | undefined)?.code ?? 'unknown');
-      return;
-    }
-
-    setOutcome(data.count ?? null);
-    setCompleted(data.task.completedAtLocationCode ?? confirmed.trim());
   }
 
   if (loading && !detail) {
     return <Spinner label={t('common.loading')} />;
   }
 
+  // A confirmation that has already been made is shown in whatever state it
+  // reached, even if this screen was closed and reopened in between.
+  if (command) {
+    return (
+      <ConfirmationOutcome command={command} onDone={onDone} />
+    );
+  }
+
   if (!detail) {
     return (
       <div className="flex flex-col gap-[var(--space-4)]">
         <p className="m-0 text-[var(--color-danger)]">
-          {t([`errors.${errorCode ?? 'unknown'}`, 'errors.unknown'])}
+          {errorCode === 'offline'
+            ? t('queue.noCachedTasks')
+            : t([`errors.${errorCode ?? 'unknown'}`, 'errors.unknown'])}
         </p>
         <Button onClick={onDone}>{t('common.cancel')}</Button>
       </div>
@@ -129,42 +226,6 @@ export function TaskScreen({ taskId, onDone }: TaskScreenProps) {
   }
 
   const task = detail.task;
-
-  if (completed) {
-    return (
-      <div className="flex flex-col gap-[var(--space-4)]">
-        <Badge tone="success" className="self-start">
-          {t('work.status.Completed')}
-        </Badge>
-        <p className="m-0 text-[length:var(--text-lg)]">
-          {t('work.doneAt', { location: completed })}
-        </p>
-
-        {/* A count's result is the sentence, because there is often no movement
-            to point at. "You and the system agree" is the whole answer, and it
-            is the answer most of the time. */}
-        {outcome ? (
-          <p className="m-0 text-[length:var(--text-lg)]">
-            {outcome.variance === 0
-              ? t('work.countAgrees', { quantity: formatNumber(outcome.countedQuantity, locale) })
-              : t(outcome.variance > 0 ? 'work.countOver' : 'work.countShort', {
-                  variance: formatNumber(Math.abs(outcome.variance), locale),
-                })}
-          </p>
-        ) : null}
-
-        {task.wasOverridden ? (
-          <Badge tone="warning" className="self-start">
-            {t('work.wasOverridden')}
-          </Badge>
-        ) : null}
-        <Button variant="primary" onClick={onDone}>
-          {t('work.nextJob')}
-        </Button>
-      </div>
-    );
-  }
-
   const suggestion = task.suggestedLocationCode;
   const scanned = confirmed.trim().toUpperCase();
   const isPick = task.kind === 'Pick';
@@ -186,6 +247,16 @@ export function TaskScreen({ taskId, onDone }: TaskScreenProps) {
           {t(`work.status.${task.status}`)}
         </Badge>
       </div>
+
+      {/* Shown from the device rather than the warehouse, and said so. The claim
+          may have been released while this device was away, and there is no way
+          to find out until the confirmation is sent — which is precisely what
+          the reconciliation screen exists to tell them. */}
+      {staleSince ? (
+        <Badge tone="warning" className="self-start">
+          {t('queue.cachedAt', { time: formatDateTime(staleSince, locale) })}
+        </Badge>
+      ) : null}
 
       {/* What to move. The largest thing on the screen, because an operator
           glances at this from arm's length with a pallet in the way. */}
@@ -376,7 +447,9 @@ export function TaskScreen({ taskId, onDone }: TaskScreenProps) {
 
       {errorCode ? (
         <p className="m-0 text-[var(--color-danger)]">
-          {t([`errors.${errorCode}`, 'errors.unknown'])}
+          {errorCode === 'offline'
+            ? t('queue.offlineNoNewWork')
+            : t([`errors.${errorCode}`, 'errors.unknown'])}
         </p>
       ) : null}
 
@@ -394,6 +467,134 @@ export function TaskScreen({ taskId, onDone }: TaskScreenProps) {
 
       <Button variant="ghost" onClick={onDone}>
         {t('common.cancel')}
+      </Button>
+    </div>
+  );
+}
+
+/**
+ * The three endings.
+ *
+ * Rendered from the queued command rather than from a response, so it survives a
+ * reload and reads the same whether the confirmation went in a millisecond ago
+ * or has been sitting on the device since the last aisle. The distinction the
+ * operator has to be able to make at a glance is between "the warehouse has
+ * this" and "this device has this", and it is carried by tone, badge and words
+ * all three — colour is never the only signal.
+ */
+function ConfirmationOutcome({
+  command,
+  onDone,
+}: {
+  command: QueuedCommand;
+  onDone: () => void;
+}) {
+  const { t } = useTranslation();
+  const locale = currentLocale();
+
+  if (command.state === 'settled') {
+    const response = command.result as CompleteResponse | undefined;
+    const outcome: CountOutcome | null = response?.count ?? null;
+    const at = response?.task.completedAtLocationCode ?? command.summary.atLocationCode ?? '';
+
+    return (
+      <div className="flex flex-col gap-[var(--space-4)]">
+        <Badge tone="success" className="self-start">
+          {t('work.status.Completed')}
+        </Badge>
+        <p className="m-0 text-[length:var(--text-lg)]">{t('work.doneAt', { location: at })}</p>
+
+        {/* A count's result is the sentence, because there is often no movement
+            to point at. "You and the system agree" is the whole answer, and it
+            is the answer most of the time. */}
+        {outcome ? (
+          <p className="m-0 text-[length:var(--text-lg)]">
+            {outcome.variance === 0
+              ? t('work.countAgrees', { quantity: formatNumber(outcome.countedQuantity, locale) })
+              : t(outcome.variance > 0 ? 'work.countOver' : 'work.countShort', {
+                  variance: formatNumber(Math.abs(outcome.variance), locale),
+                })}
+          </p>
+        ) : null}
+
+        {response?.task.wasOverridden ? (
+          <Badge tone="warning" className="self-start">
+            {t('work.wasOverridden')}
+          </Badge>
+        ) : null}
+
+        <Button variant="primary" onClick={onDone}>
+          {t('work.nextJob')}
+        </Button>
+      </div>
+    );
+  }
+
+  if (command.state === 'refused' || command.state === 'stalled') {
+    const category = command.state === 'stalled' ? 'stalled' : categorise(command.refusal?.code);
+    const location = command.summary.atLocationCode ?? command.summary.fromLocationCode ?? '';
+
+    return (
+      <div className="flex flex-col gap-[var(--space-4)]">
+        <Badge tone="danger" className="self-start">
+          {t('queue.needsYouHeading')}
+        </Badge>
+
+        <div className="flex flex-col gap-[var(--space-1)]">
+          <span className="text-[length:var(--text-sm)] text-[var(--color-text-secondary)]">
+            {t('queue.said')}
+          </span>
+          <p className="m-0 text-[length:var(--text-lg)]">{t(`queue.cause.${category}`)}</p>
+        </div>
+
+        <div className="flex flex-col gap-[var(--space-1)]">
+          <span className="text-[length:var(--text-sm)] text-[var(--color-text-secondary)]">
+            {t('queue.doNow')}
+          </span>
+          <p
+            className={
+              needsSupervisor(category)
+                ? 'm-0 text-[length:var(--text-lg)] text-[var(--color-danger)]'
+                : 'm-0 text-[length:var(--text-lg)]'
+            }
+          >
+            {t(`queue.advice.${category}`, { location })}
+          </p>
+        </div>
+
+        {command.refusal ? (
+          <p className="m-0 text-[length:var(--text-xs)] text-[var(--color-text-tertiary)]">
+            {t('queue.code')}{' '}
+            <Code className="text-[length:var(--text-xs)]">{command.refusal.code}</Code>
+          </p>
+        ) : null}
+
+        <Button
+          variant="primary"
+          onClick={() => {
+            void outbox.acknowledge(command.id);
+            onDone();
+          }}
+        >
+          {t('queue.acknowledge')}
+        </Button>
+      </div>
+    );
+  }
+
+  // Saved, not sent. Never dressed as success.
+  return (
+    <div className="flex flex-col gap-[var(--space-4)]">
+      <Badge tone="warning" className="self-start">
+        {t('queue.queuedTitle')}
+      </Badge>
+      <p className="m-0 text-[length:var(--text-lg)]">
+        {t('work.doneAt', { location: command.summary.atLocationCode ?? '' })}
+      </p>
+      <p className="m-0 text-[var(--color-text-secondary)]">{t('queue.queuedBlurb')}</p>
+
+      <Button variant="primary" onClick={onDone}>
+        {t('work.nextJob')}
       </Button>
     </div>
   );

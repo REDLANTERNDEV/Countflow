@@ -68,6 +68,13 @@ jobs:
         working-directory: frontend
         run: pnpm typecheck
 
+      # The catalogue-parity checks and the handheld outbox's driver tests. Both
+      # run on `node --test` with no build step, which is why they can gate every
+      # push rather than being something somebody remembers to run.
+      - name: Test
+        working-directory: frontend
+        run: pnpm test
+
       - name: Build
         working-directory: frontend
         run: pnpm build

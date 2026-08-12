@@ -10,7 +10,14 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // 'prompt', not 'autoUpdate' — and nothing prompts anybody. From Phase 8
+      // the app holds the operator's unsent work, so the moment a new build
+      // takes the page over is a decision rather than a default. `src/
+      // serviceWorker.ts` applies it when the device is quiet; that file has
+      // the argument, including why a reload mid-queue would have been *safe*
+      // and still not something to do to somebody typing a count.
+      registerType: 'prompt',
+      injectRegister: null,
       includeAssets: ['favicon.svg'],
       manifest: {
         name: 'Countflow Handheld',
@@ -32,8 +39,9 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         // The app shell is cached so a device in a dead zone still starts.
         // API traffic is deliberately never cached: stale stock figures are
-        // worse than no figures. Phase 3 adds the IndexedDB command queue for
-        // writes made while offline.
+        // worse than no figures. Writes made while offline go to the IndexedDB
+        // command queue in `src/lib/outbox/` — never to a cached response that
+        // would let the device pretend the warehouse had answered.
         navigateFallback: '/handheld/index.html',
         runtimeCaching: [
           {

@@ -404,6 +404,86 @@ export const en = {
     },
   },
 
+  // The handheld's outbox. Written for somebody holding a scanner at the eighth
+  // hour of a shift, so: short sentences, no jargon, and every refusal followed
+  // by what to do about it. A screen that told an operator their scan was
+  // rejected and stopped there would be a worse place to put the news than
+  // nowhere, because they would learn to ignore it.
+  queue: {
+    title: 'On this device',
+    open: 'On this device',
+    toSend: '{{count}} to send',
+    needsYou: '{{count}} need you',
+    sending: 'Sending…',
+    sent: '{{count}} sent',
+    sentAndRefused: '{{sent}} sent · {{refused}} refused',
+    notDurable: 'This device cannot store work safely — stay in signal',
+    empty: 'Nothing waiting. Everything you have scanned has reached the warehouse.',
+
+    needsYouHeading: 'Needs you',
+    needsYouBlurb: 'The warehouse could not accept these. Read what happened before you clear them.',
+    waitingHeading: 'Waiting to send',
+    waitingBlurb: 'Saved here. They go as soon as there is a signal.',
+    sentHeading: 'Sent',
+    sentBlurb: 'The warehouse has these.',
+    strandedHeading: 'Waiting for {{operator}}',
+    strandedBlurb:
+      'Scanned on this device by somebody else. Only they can send it — it is their name the warehouse records against the movement.',
+
+    kind: {
+      receipt: 'Booking in',
+    },
+
+    at: 'Confirmed at {{location}}',
+    from: 'From {{location}}',
+    counted: 'Counted {{quantity}}',
+    scannedAt: 'Scanned {{time}}',
+    attempts: 'Tried {{count}} times',
+    acknowledge: 'Got it',
+    said: 'The warehouse says',
+    doNow: 'What to do',
+    code: 'Code',
+
+    // What happened, keyed by what kind of news it is rather than by the error
+    // code. Several codes mean the same thing to somebody standing in an aisle.
+    cause: {
+      stock_missing: 'There was no stock there to move.',
+      already_done: 'Somebody else confirmed this job before yours reached us.',
+      claim_spent: 'The order this stock was promised to has let it go.',
+      not_recognised: 'The warehouse does not recognise something this scan named. Nothing was recorded.',
+      not_allowed: 'Your account was not allowed to do this.',
+      stalled: 'The warehouse could not be reached, after several tries.',
+      unknown: 'The warehouse refused this, and this device does not understand the reason.',
+    },
+    advice: {
+      stock_missing:
+        'The goods you moved are real and the record is not. Count {{location}} and tell your supervisor.',
+      already_done:
+        'The goods may have been moved twice. Check {{location}}, and tell your supervisor what you find.',
+      claim_spent:
+        'The stock is off the shelf and nobody is waiting for it now. Ask your supervisor before you put it back.',
+      not_recognised: 'Nothing was posted. Do it again with the right code.',
+      not_allowed: 'Sign in again. If it still refuses, your account cannot do this job.',
+      stalled: 'It is still saved here. Show a supervisor if it has not gone by the end of the shift.',
+      unknown: 'Show this to your supervisor, with the code below.',
+    },
+
+    signOutBlocked: '{{count}} scans have not reached the warehouse.',
+    signOutBlockedHint:
+      'They stay on this device until you send them, and nobody else can send them for you. Get a signal if you can.',
+    signOutAnyway: 'Sign out anyway',
+    sendNow: 'Send them now',
+
+    offlineNoNewWork: 'A new job comes from the warehouse, so it needs a signal.',
+    myTasks: 'Jobs on this device',
+    noCachedTasks: 'This device is not holding any jobs.',
+    cachedAt: 'Read {{time}}',
+    queuedTitle: 'Saved on this device',
+    queuedBlurb:
+      'It has not reached the warehouse yet. It goes as soon as there is a signal — carry on.',
+    alreadyConfirmed: 'You have already confirmed this job. It is waiting to be sent.',
+  },
+
   rules: {
     title: 'Rules',
     subtitle: 'What the system decides on an operator’s behalf, and why.',

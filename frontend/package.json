@@ -10,6 +10,7 @@
     "dev": "pnpm --parallel --filter \"./apps/*\" dev",
     "build": "pnpm --recursive build",
     "typecheck": "pnpm --recursive typecheck",
+    "test": "node --test packages/i18n/test/*.mjs && node --import ./apps/handheld/test/register.mjs --test apps/handheld/test/*.test.ts",
     "export:openapi": "dotnet run --project ../backend/src/Countflow.Api -- --export-openapi \"$PWD/openapi.json\"",
     "generate:api": "pnpm --filter @countflow/api-client generate",
     "verify:api-client": "pnpm generate:api && git diff --exit-code -- packages/api-client/src/schema.d.ts openapi.json"

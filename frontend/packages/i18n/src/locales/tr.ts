@@ -402,6 +402,78 @@ export const tr: Catalogue = {
     },
   },
 
+  queue: {
+    title: 'Bu cihazda',
+    open: 'Bu cihazda',
+    toSend: 'Gönderilecek {{count}}',
+    needsYou: '{{count}} tanesi sizi bekliyor',
+    sending: 'Gönderiliyor…',
+    sent: '{{count}} gönderildi',
+    sentAndRefused: '{{sent}} gönderildi · {{refused}} reddedildi',
+    notDurable: 'Bu cihaz işi güvenle saklayamıyor — sinyalde kalın',
+    empty: 'Bekleyen bir şey yok. Okuttuğunuz her şey depoya ulaştı.',
+
+    needsYouHeading: 'Sizi bekliyor',
+    needsYouBlurb: 'Depo bunları kabul edemedi. Kaldırmadan önce ne olduğunu okuyun.',
+    waitingHeading: 'Gönderilmeyi bekliyor',
+    waitingBlurb: 'Burada kayıtlı. Sinyal gelir gelmez gidecekler.',
+    sentHeading: 'Gönderildi',
+    sentBlurb: 'Bunlar depoya ulaştı.',
+    strandedHeading: '{{operator}} bekleniyor',
+    strandedBlurb:
+      'Bu cihazda başka biri tarafından okutuldu. Yalnızca o gönderebilir — hareketin altına depo onun adını yazar.',
+
+    kind: {
+      receipt: 'Mal kabul',
+    },
+
+    at: '{{location}} noktasında onaylandı',
+    from: '{{location}} noktasından',
+    counted: 'Sayılan {{quantity}}',
+    scannedAt: '{{time}} okutuldu',
+    attempts: '{{count}} kez denendi',
+    acknowledge: 'Anladım',
+    said: 'Deponun cevabı',
+    doNow: 'Ne yapmalı',
+    code: 'Kod',
+
+    cause: {
+      stock_missing: 'Orada taşınacak stok yoktu.',
+      already_done: 'Sizinki bize ulaşmadan önce bu işi başka biri onaylamış.',
+      claim_spent: 'Bu stoğun sözü verildiği sipariş ondan vazgeçmiş.',
+      not_recognised: 'Bu okutmanın belirttiği bir şeyi depo tanımıyor. Hiçbir kayıt oluşmadı.',
+      not_allowed: 'Hesabınızın buna izni yoktu.',
+      stalled: 'Birkaç denemeye rağmen depoya ulaşılamadı.',
+      unknown: 'Depo bunu reddetti ve gerekçeyi bu cihaz anlamıyor.',
+    },
+    advice: {
+      stock_missing:
+        'Taşıdığınız mal gerçek, kayıt değil. {{location}} noktasını sayın ve amirinize söyleyin.',
+      already_done:
+        'Mal iki kez taşınmış olabilir. {{location}} noktasını kontrol edin ve gördüğünüzü amirinize söyleyin.',
+      claim_spent:
+        'Stok raftan indi ve artık bekleyen yok. Geri koymadan önce amirinize danışın.',
+      not_recognised: 'Hiçbir kayıt oluşmadı. Doğru kodla yeniden yapın.',
+      not_allowed: 'Yeniden giriş yapın. Yine reddediyorsa hesabınız bu işi yapamıyor demektir.',
+      stalled: 'Hâlâ burada kayıtlı. Vardiya sonuna kadar gitmezse bir amire gösterin.',
+      unknown: 'Aşağıdaki kodla birlikte amirinize gösterin.',
+    },
+
+    signOutBlocked: '{{count}} okutma depoya ulaşmadı.',
+    signOutBlockedHint:
+      'Siz gönderene kadar bu cihazda kalırlar ve sizin yerinize kimse gönderemez. Mümkünse sinyal alın.',
+    signOutAnyway: 'Yine de çıkış yap',
+    sendNow: 'Şimdi gönder',
+
+    offlineNoNewWork: 'Yeni iş depodan gelir, bunun için sinyal gerekir.',
+    myTasks: 'Bu cihazdaki işler',
+    noCachedTasks: 'Bu cihazda bekleyen iş yok.',
+    cachedAt: '{{time}} okundu',
+    queuedTitle: 'Bu cihaza kaydedildi',
+    queuedBlurb: 'Henüz depoya ulaşmadı. Sinyal gelir gelmez gidecek — devam edebilirsiniz.',
+    alreadyConfirmed: 'Bu işi zaten onayladınız. Gönderilmeyi bekliyor.',
+  },
+
   rules: {
     title: 'Kurallar',
     subtitle: 'Sistemin operatör adına verdiği kararlar ve gerekçeleri.',
