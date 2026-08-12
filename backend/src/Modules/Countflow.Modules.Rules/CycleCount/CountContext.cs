@@ -3,6 +3,35 @@ using Countflow.SharedKernel.Contracts;
 namespace Countflow.Modules.Rules.CycleCount;
 
 /// <summary>
+/// What a travel preference measures its distances against.
+/// <para>
+/// <b>This is a settled question for counting, and it is a parameter anyway.</b>
+/// <see cref="Building"/> is right and <see cref="Field"/> is the mistake Phase 5
+/// shipped and a container run caught — see
+/// <see cref="CountContext.NormalisedDistance"/> for the whole argument. It is
+/// exposed as configuration for one reason: a wrong rule that cannot be written
+/// down cannot be replayed, and Phase 6's entire claim is that a rule change can be
+/// tested against real history before anybody runs it. The known-bad choice is
+/// expressible so that the machine can be shown catching it, and the influence
+/// report flags it when it is chosen.
+/// </para>
+/// </summary>
+public enum TravelScale
+{
+    /// <summary>
+    /// The whole warehouse. The front of the building is 0, the far end is 1.
+    /// Correct here, and the default.
+    /// </summary>
+    Building = 0,
+
+    /// <summary>
+    /// The candidates in front of this decision. The nearest is 0 and the furthest
+    /// is 1, however close together they really are.
+    /// </summary>
+    Field = 1
+}
+
+/// <summary>
 /// Everything the counting rules are allowed to know, gathered once before
 /// evaluation starts.
 /// <para>
@@ -25,11 +54,15 @@ namespace Countflow.Modules.Rules.CycleCount;
 /// rule because a preference that summed the field would be a rule that knew about
 /// the other candidates.
 /// </param>
-/// <param name="FurthestPickSequence">
-/// The largest route position <b>in the warehouse</b>, exactly as
-/// <c>PutawayContext</c> uses. Not the largest among the candidates — see
-/// <see cref="NormalisedDistance"/>, where that distinction is load-bearing and
-/// was got wrong once already.
+/// <param name="Building">
+/// The whole warehouse, as a scale to measure travel against. The right one — see
+/// <see cref="NormalisedDistance"/>, where the distinction is load-bearing and was
+/// got wrong once already.
+/// </param>
+/// <param name="Field">
+/// The candidates, as a scale. Carried only so that <see cref="TravelScale.Field"/>
+/// is expressible, which it is only so that the known-bad choice can be replayed
+/// and shown to be bad.
 /// </param>
 public sealed record CountContext(
     DateTimeOffset Now,
@@ -37,7 +70,8 @@ public sealed record CountContext(
     IReadOnlyDictionary<Guid, StorageLocationSnapshot> Locations,
     IReadOnlySet<Guid> AlreadyScheduled,
     IReadOnlyDictionary<Guid, decimal> OnHandByItem,
-    long FurthestPickSequence)
+    RouteScale Building,
+    RouteScale? Field = null)
 {
     public ItemSnapshot? ItemOf(CountCandidate candidate) =>
         Items.GetValueOrDefault(candidate.ItemId);
@@ -126,15 +160,8 @@ public sealed record CountContext(
     /// sets disagreed about that would send counters against the traffic.
     /// </para>
     /// </summary>
-    public decimal NormalisedDistance(StorageLocationSnapshot location)
-    {
-        if (FurthestPickSequence <= 0)
-        {
-            return 0m;
-        }
-
-        var position = ((long)location.ZonePickSequence * 1_000_000) + location.PickSequence;
-
-        return Math.Clamp((decimal)position / FurthestPickSequence, 0m, 1m);
-    }
+    public decimal NormalisedDistance(StorageLocationSnapshot location, TravelScale scale = TravelScale.Building) =>
+        scale == TravelScale.Field
+            ? (Field ?? Building).Normalise(location)
+            : Building.Normalise(location);
 }

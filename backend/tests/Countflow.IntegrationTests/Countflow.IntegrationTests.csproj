@@ -9,6 +9,11 @@
          types in scope and make WebApplicationFactory<Program> ambiguous; the
          tests apply migrations through IModuleDbContext anyway. -->
     <ProjectReference Include="../../src/Countflow.Api/Countflow.Api.csproj" />
+    <!-- The simulator, because Phase 6's acceptance test is "build a realistic
+         warehouse and show the machine catching the class of bug three container
+         runs caught by hand". It has no top-level statements, so it brings no
+         second `Program` into scope. -->
+    <ProjectReference Include="../../src/Countflow.Simulator/Countflow.Simulator.csproj" />
   </ItemGroup>
 
   <ItemGroup>

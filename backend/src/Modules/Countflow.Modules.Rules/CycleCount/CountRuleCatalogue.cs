@@ -113,8 +113,15 @@ public static class CountRuleCatalogue
                     break;
 
                 case CountPreferences.TravelDistance.RuleCode:
-                    preferences.Add(new CountPreferences.TravelDistance(rule.Weight));
+                {
+                    var parameters = Read<TravelDistanceParameters>(rule);
+                    if (parameters.IsFailure) return Result.Failure<CountRuleSet>(parameters.Error);
+
+                    preferences.Add(new CountPreferences.TravelDistance(
+                        rule.Weight,
+                        parameters.Value?.Scale ?? CountPreferences.TravelDistance.DefaultScale));
                     break;
+                }
 
                 default:
                     // Fatal, never skipped — the same rule as the other two
@@ -162,4 +169,11 @@ public static class CountRuleCatalogue
     private sealed record SettledStockParameters(int? QuietPeriodHours);
 
     private sealed record NotRecentlyCountedParameters(int? MinimumDaysBetweenCounts);
+
+    /// <summary>
+    /// Which scale travel is measured against. Absent means
+    /// <see cref="TravelScale.Building"/>, which is the correct answer for counting
+    /// — see <see cref="TravelScale"/> for why the wrong one is writable at all.
+    /// </summary>
+    private sealed record TravelDistanceParameters(TravelScale? Scale);
 }

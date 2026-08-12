@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <!-- SharedKernel only, exactly as Inbound, Outbound and Counting. A replay run
+         asks IShadowReplay what a candidate rule set would have done and keeps the
+         answer; the traces, the rule sets, the ledger history and the master data
+         behind that answer all belong to other modules and are reached through
+         published contracts. There is a project reference to none of them, so this
+         cannot quietly become a second copy of the rules engine (ADR 0002). -->
+    <ProjectReference Include="../../Countflow.SharedKernel/Countflow.SharedKernel.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+  </ItemGroup>
+
+</Project>

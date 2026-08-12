@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <!-- Named explicitly because there are no top-level statements here; see the
+         note on SimulatorProgram for why the integration tests could not have it
+         any other way. -->
+    <StartupObject>Countflow.Simulator.SimulatorProgram</StartupObject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- No project references at all, and that is the point.
+         The simulator is a *client* of the API, not a part of it. It signs in,
+         reads the catalogue, books deliveries, does the jobs, ships the orders and
+         counts the racking through exactly the endpoints a handheld and a console
+         use — so it cannot reach past a module boundary even by accident, and
+         anything it manages to do is by definition something a real operator could
+         have done. A simulator implemented as a module would have needed a project
+         reference to Inbound, Outbound and Counting, none of which publishes
+         anything (ADR 0002), and would have been the first thing in the codebase
+         allowed to sidestep the rule. -->
+  </ItemGroup>
+
+</Project>

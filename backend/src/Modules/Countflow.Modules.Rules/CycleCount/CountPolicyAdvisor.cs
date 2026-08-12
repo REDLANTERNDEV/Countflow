@@ -1,5 +1,6 @@
 using Countflow.Modules.Rules.Domain;
 using Countflow.Modules.Rules.Persistence;
+using Countflow.Modules.Rules.Replay;
 using Countflow.SharedKernel.Contracts;
 using Countflow.SharedKernel.Results;
 using Countflow.SharedKernel.Rules;
@@ -176,10 +177,6 @@ public sealed class CountPolicyAdvisor(
 
         var locationsById = storage.ToDictionary(location => location.Id);
 
-        var furthest = storage.Count == 0
-            ? 0L
-            : storage.Max(l => ((long)l.ZonePickSequence * 1_000_000) + l.PickSequence);
-
         // Everything the warehouse holds of each item, across every candidate
         // including the ones the constraints will refuse. That is the right
         // denominator: the exposure a wrong number represents is a fraction of the
@@ -188,13 +185,22 @@ public sealed class CountPolicyAdvisor(
             .GroupBy(c => c.ItemId)
             .ToDictionary(group => group.Key, group => group.Sum(c => c.OnHandQuantity));
 
+        // The route window across the candidates, which the shipped rule set does
+        // not use and TravelScale.Field does. Computed from what has already been
+        // fetched rather than from a second query, so carrying it costs nothing.
+        var field = candidates
+            .Select(candidate => locationsById.GetValueOrDefault(candidate.LocationId))
+            .Where(location => location is not null)
+            .Select(location => location!);
+
         return new CountContext(
             clock.GetUtcNow(),
             itemsById,
             locationsById,
             query.AlreadyScheduledBalanceIds.ToHashSet(),
             onHandByItem,
-            furthest);
+            RouteScale.Of(storage),
+            RouteScale.Of(field));
     }
 
     /// <summary>
@@ -220,22 +226,8 @@ public sealed class CountPolicyAdvisor(
         return sets.FirstOrDefault(r => r.WarehouseId == warehouseId) ?? sets.FirstOrDefault();
     }
 
-    /// <summary>
-    /// What was asked, stored on the trace for Phase 6.
-    /// <para>
-    /// Thinner than the other two vocabularies' inputs, and for an interesting
-    /// reason: almost every input to a counting decision is derivable from the
-    /// ledger and the count history, both of which are append-only, so replaying
-    /// last month's policy against last month's warehouse needs nothing but the
-    /// clock. The one exception is the scheduled-holdings list, which is current
-    /// state — the same wrinkle reservations give allocation, and recorded here as
-    /// a count rather than a list because what a replay needs to know is that the
-    /// exclusion existed, not which bays it named.
-    /// </para>
-    /// </summary>
-    private sealed record CountPolicyInputs(
-        Guid WarehouseId,
-        int MaxTasks,
-        int AlreadyScheduledCount,
-        DateTimeOffset EvaluatedAt);
+    // The shape moved to Replay/DecisionInputs.cs, where the reason it is the
+    // thinnest of the three is set out: almost every input to a counting decision is
+    // derivable from two append-only histories, so replaying last month's policy
+    // needs little more than the clock.
 }

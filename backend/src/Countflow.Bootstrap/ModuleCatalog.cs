@@ -4,6 +4,7 @@ using Countflow.Modules.Inbound;
 using Countflow.Modules.Inventory;
 using Countflow.Modules.MasterData;
 using Countflow.Modules.Outbound;
+using Countflow.Modules.Replay;
 using Countflow.Modules.Rules;
 using Countflow.Modules.Work;
 using Countflow.SharedKernel.Modules;
@@ -41,6 +42,10 @@ public static class ModuleCatalog
         // Phase 5. The same three again, for the question the other two never ask:
         // not where stock should go or come from, but which of the numbers already
         // published are worth doubting.
-        new CountingModule()
+        new CountingModule(),
+        // Phase 6. The first module that asks nothing of the warehouse at all: it
+        // reads decisions Rules has already made and history Inventory has already
+        // written, and asks what a different rule set would have done with them.
+        new ReplayModule()
     ];
 }

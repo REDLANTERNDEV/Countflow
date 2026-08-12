@@ -36,7 +36,7 @@ public sealed class StockQuery(InventoryDbContext dbContext, IItemDirectory item
         var rows = await dbContext.StockBalances
             .AsNoTracking()
             .Where(b => ids.Contains(b.LocationId) && b.Quantity > 0)
-            .Select(b => new Row(b.LocationId, b.ItemId, b.LotId, b.Quantity))
+            .Select(b => new OccupancyLine(b.LocationId, b.ItemId, b.LotId, b.Quantity))
             .ToListAsync(cancellationToken);
 
         if (rows.Count == 0)
@@ -51,9 +51,9 @@ public sealed class StockQuery(InventoryDbContext dbContext, IItemDirectory item
         var itemsById = await items.FindManyAsync(
             [.. rows.Select(r => r.ItemId).Distinct()], cancellationToken);
 
-        return rows
-            .GroupBy(r => r.LocationId)
-            .ToDictionary(group => group.Key, group => Summarise(group, itemsById, subjectItemId, subjectLotId));
+        // The fold itself lives on the contract, so that shadow replay describing
+        // this bay as it stood in March describes it in exactly these terms.
+        return LocationOccupancy.Summarise(rows, itemsById, subjectItemId, subjectLotId);
     }
 
     public async Task<IReadOnlyList<PlateLine>> PlateContentsAsync(
@@ -119,48 +119,6 @@ public sealed class StockQuery(InventoryDbContext dbContext, IItemDirectory item
             .AsNoTracking()
             .Where(p => ids.Contains(p.Id))
             .ToDictionaryAsync(p => p.Id, p => p.Sscc, cancellationToken);
-    }
-
-    private sealed record Row(Guid LocationId, Guid ItemId, Guid? LotId, decimal Quantity);
-
-    private static LocationOccupancy Summarise(
-        IEnumerable<Row> rows,
-        IReadOnlyDictionary<Guid, ItemSnapshot> itemsById,
-        Guid subjectItemId,
-        Guid? subjectLotId)
-    {
-        var held = rows.ToList();
-
-        decimal? volume = 0m;
-        decimal? weight = 0m;
-
-        foreach (var row in held)
-        {
-            var item = itemsById.GetValueOrDefault(row.ItemId);
-
-            // One item without dimensions poisons the whole location's figure, and
-            // that is the honest answer: a partial sum understates how full the bay
-            // is, and understating it is the direction that breaks racking.
-            volume = volume is null || item?.UnitVolumeM3 is not { } unitVolume
-                ? null
-                : volume + (unitVolume * row.Quantity);
-
-            weight = weight is null || item?.UnitWeightKg is not { } unitWeight
-                ? null
-                : weight + (unitWeight * row.Quantity);
-        }
-
-        var subject = held.Where(r => r.ItemId == subjectItemId).ToList();
-
-        return new LocationOccupancy(
-            held[0].LocationId,
-            DistinctItems: held.Select(r => r.ItemId).Distinct().Count(),
-            TotalUnits: held.Sum(r => r.Quantity),
-            OccupiedVolumeM3: volume,
-            OccupiedWeightKg: weight,
-            SubjectItemUnits: subject.Sum(r => r.Quantity),
-            HoldsSubjectLot: subject.Any(r => r.LotId == subjectLotId),
-            HoldsOtherLotOfSubjectItem: subject.Any(r => r.LotId != subjectLotId));
     }
 
     private static StockCondition ToCondition(InventoryStatus status) => status switch

@@ -1,5 +1,6 @@
 using Countflow.Modules.Rules.Domain;
 using Countflow.Modules.Rules.Persistence;
+using Countflow.Modules.Rules.Replay;
 using Countflow.SharedKernel.Contracts;
 using Countflow.SharedKernel.Results;
 using Countflow.SharedKernel.Rules;
@@ -244,23 +245,8 @@ public sealed class AllocationAdvisor(
         return sets.FirstOrDefault(r => r.WarehouseId == warehouseId) ?? sets.FirstOrDefault();
     }
 
-    /// <summary>
-    /// What was asked, stored on the trace for Phase 6. The holdings the rules saw
-    /// are not stored, for the same reason putaway does not store occupancy: the
-    /// ledger is a complete history and the stock as of <c>DecidedAt</c> is
-    /// replayable exactly (ADR 0001).
-    /// <para>
-    /// Reservations are the one input that is <i>not</i> replayable that way —
-    /// they are current state, not an append-only history — which is the price of
-    /// the choice made in <c>StockReservation</c>, and the first thing Phase 6 will
-    /// have to reckon with when it replays an allocation rather than a putaway.
-    /// </para>
-    /// </summary>
-    private sealed record AllocationInputs(
-        Guid WarehouseId,
-        Guid ItemId,
-        string Sku,
-        Guid? RequiredLotId,
-        decimal Quantity,
-        DateOnly ShipOn);
+    // The shape moved to Replay/DecisionInputs.cs. Phase 4 recorded here that
+    // reservations were the one input a replay could not reconstruct; Phase 6 found
+    // that a claim carries CreatedAt and a set-once ClosedAt and is therefore
+    // recoverable after all — see WarehouseAsOf.ReservedByBalance.
 }

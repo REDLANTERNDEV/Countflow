@@ -201,10 +201,12 @@ internal static class CountPreferences
     /// and a preference that tried would be judgement the trace could not explain.
     /// </para>
     /// </summary>
-    internal sealed class TravelDistance(decimal weight)
+    internal sealed class TravelDistance(decimal weight, TravelScale scale)
         : IPreferenceRule<CountCandidate, CountContext>
     {
         public const string RuleCode = "count.travel_distance";
+
+        public const TravelScale DefaultScale = TravelScale.Building;
 
         public string Code => RuleCode;
 
@@ -219,7 +221,7 @@ internal static class CountPreferences
                 return ScoreContribution.Of(0m, "rules.count.location_unknown");
             }
 
-            var distance = context.NormalisedDistance(location);
+            var distance = context.NormalisedDistance(location, scale);
 
             return new ScoreContribution(
                 1m - distance,

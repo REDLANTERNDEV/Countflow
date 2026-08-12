@@ -4,6 +4,7 @@
     <Project Path="src/Countflow.Bootstrap/Countflow.Bootstrap.csproj" />
     <Project Path="src/Countflow.Migrator/Countflow.Migrator.csproj" />
     <Project Path="src/Countflow.SharedKernel/Countflow.SharedKernel.csproj" />
+    <Project Path="src/Countflow.Simulator/Countflow.Simulator.csproj" />
   </Folder>
   <Folder Name="/src/Modules/">
     <Project Path="src/Modules/Countflow.Modules.Counting/Countflow.Modules.Counting.csproj" />
@@ -12,6 +13,7 @@
     <Project Path="src/Modules/Countflow.Modules.Inventory/Countflow.Modules.Inventory.csproj" />
     <Project Path="src/Modules/Countflow.Modules.MasterData/Countflow.Modules.MasterData.csproj" />
     <Project Path="src/Modules/Countflow.Modules.Outbound/Countflow.Modules.Outbound.csproj" />
+    <Project Path="src/Modules/Countflow.Modules.Replay/Countflow.Modules.Replay.csproj" />
     <Project Path="src/Modules/Countflow.Modules.Rules/Countflow.Modules.Rules.csproj" />
     <Project Path="src/Modules/Countflow.Modules.Work/Countflow.Modules.Work.csproj" />
   </Folder>

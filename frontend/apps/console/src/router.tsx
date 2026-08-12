@@ -8,6 +8,7 @@ import { LedgerPage } from './routes/LedgerPage.js';
 import { LocationsPage } from './routes/LocationsPage.js';
 import { OutboundPage } from './routes/OutboundPage.js';
 import { RootLayout } from './routes/RootLayout.js';
+import { ReplayPage } from './routes/ReplayPage.js';
 import { RulesPage } from './routes/RulesPage.js';
 import { ScanPage } from './routes/ScanPage.js';
 import { StockPage } from './routes/StockPage.js';
@@ -90,6 +91,12 @@ const rulesRoute = createRoute({
   component: RulesPage,
 });
 
+const replayRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/replay',
+  component: ReplayPage,
+});
+
 const scanRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/scan',
@@ -109,6 +116,7 @@ const routeTree = rootRoute.addChildren([
   accuracyRoute,
   workRoute,
   rulesRoute,
+  replayRoute,
   scanRoute,
 ]);
 

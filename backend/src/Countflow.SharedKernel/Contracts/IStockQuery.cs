@@ -25,7 +25,78 @@ public sealed record LocationOccupancy(
     decimal? OccupiedWeightKg,
     decimal SubjectItemUnits,
     bool HoldsSubjectLot,
-    bool HoldsOtherLotOfSubjectItem);
+    bool HoldsOtherLotOfSubjectItem)
+{
+    /// <summary>
+    /// Folds raw holdings into per-location occupancy.
+    /// <para>
+    /// Published here rather than kept inside Inventory because Phase 6 gave it a
+    /// second caller: shadow replay describes the warehouse as it stood at some
+    /// past instant, from the ledger, and has to describe it in exactly the terms
+    /// the live query would have used. Two implementations of this fold would be
+    /// two ways to answer "how full was that bay", and a replay that disagreed
+    /// with the decision it is auditing would be worse than no replay — it would
+    /// report differences the rule change did not cause.
+    /// </para>
+    /// </summary>
+    /// <param name="itemsById">
+    /// Dimensions for every item present. Items missing from this map poison their
+    /// location's volume and weight to null, which is the honest answer: a partial
+    /// sum understates how full a bay is, and understating it is the direction
+    /// that breaks racking.
+    /// </param>
+    public static IReadOnlyDictionary<Guid, LocationOccupancy> Summarise(
+        IEnumerable<OccupancyLine> lines,
+        IReadOnlyDictionary<Guid, ItemSnapshot> itemsById,
+        Guid subjectItemId,
+        Guid? subjectLotId)
+    {
+        return lines
+            .GroupBy(line => line.LocationId)
+            .ToDictionary(
+                group => group.Key,
+                group => Fold(group.Key, [.. group], itemsById, subjectItemId, subjectLotId));
+    }
+
+    private static LocationOccupancy Fold(
+        Guid locationId,
+        IReadOnlyList<OccupancyLine> held,
+        IReadOnlyDictionary<Guid, ItemSnapshot> itemsById,
+        Guid subjectItemId,
+        Guid? subjectLotId)
+    {
+        decimal? volume = 0m;
+        decimal? weight = 0m;
+
+        foreach (var line in held)
+        {
+            var item = itemsById.GetValueOrDefault(line.ItemId);
+
+            volume = volume is null || item?.UnitVolumeM3 is not { } unitVolume
+                ? null
+                : volume + (unitVolume * line.Quantity);
+
+            weight = weight is null || item?.UnitWeightKg is not { } unitWeight
+                ? null
+                : weight + (unitWeight * line.Quantity);
+        }
+
+        var subject = held.Where(line => line.ItemId == subjectItemId).ToList();
+
+        return new LocationOccupancy(
+            locationId,
+            DistinctItems: held.Select(line => line.ItemId).Distinct().Count(),
+            TotalUnits: held.Sum(line => line.Quantity),
+            OccupiedVolumeM3: volume,
+            OccupiedWeightKg: weight,
+            SubjectItemUnits: subject.Sum(line => line.Quantity),
+            HoldsSubjectLot: subject.Any(line => line.LotId == subjectLotId),
+            HoldsOtherLotOfSubjectItem: subject.Any(line => line.LotId != subjectLotId));
+    }
+}
+
+/// <summary>One holding, reduced to what an occupancy fold needs of it.</summary>
+public sealed record OccupancyLine(Guid LocationId, Guid ItemId, Guid? LotId, decimal Quantity);
 
 /// <summary>One item and lot sitting on a licence plate.</summary>
 public sealed record PlateLine(Guid ItemId, Guid? LotId, StockCondition Condition, decimal Quantity);

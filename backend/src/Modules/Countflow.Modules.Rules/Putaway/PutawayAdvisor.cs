@@ -1,5 +1,6 @@
 using Countflow.Modules.Rules.Domain;
 using Countflow.Modules.Rules.Persistence;
+using Countflow.Modules.Rules.Replay;
 using Countflow.SharedKernel.Contracts;
 using Countflow.SharedKernel.Results;
 using Countflow.SharedKernel.Rules;
@@ -86,7 +87,7 @@ public sealed class PutawayAdvisor(
             occupancy,
             RequiredVolumeM3: item.UnitVolumeM3 * query.Quantity,
             RequiredWeightKg: item.UnitWeightKg * query.Quantity,
-            FurthestPickSequence: candidates.Max(c => ((long)c.ZonePickSequence * 1_000_000) + c.PickSequence));
+            Route: RouteScale.Of(candidates));
 
         var decision = RuleEngine.Evaluate(
             DecisionKind.Putaway,
@@ -161,19 +162,8 @@ public sealed class PutawayAdvisor(
         return sets.FirstOrDefault(r => r.WarehouseId == warehouseId) ?? sets.FirstOrDefault();
     }
 
-    /// <summary>
-    /// What was asked, stored on the trace so Phase 6 can ask it again of a
-    /// candidate rule set. The warehouse <i>state</i> is not stored here — the
-    /// ledger already is one, and occupancy as of the trace's timestamp is
-    /// replayable exactly (ADR 0001).
-    /// </summary>
-    private sealed record PutawayInputs(
-        Guid WarehouseId,
-        Guid ItemId,
-        string Sku,
-        Guid? LotId,
-        decimal Quantity,
-        StockCondition Condition,
-        Guid FromLocationId,
-        Guid? LicensePlateId);
+    // What was asked is stored on the trace so Phase 6 can ask it again of a
+    // candidate rule set. The shape moved to Replay/DecisionInputs.cs when replay
+    // became its second reader; the warehouse state is still not stored, because the
+    // ledger already is one (ADR 0001).
 }

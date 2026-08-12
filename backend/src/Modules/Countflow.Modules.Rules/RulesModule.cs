@@ -8,6 +8,7 @@ using Countflow.Modules.Rules.Features.Traces;
 using Countflow.Modules.Rules.Integration;
 using Countflow.Modules.Rules.Persistence;
 using Countflow.Modules.Rules.Putaway;
+using Countflow.Modules.Rules.Replay;
 using Countflow.SharedKernel.Contracts;
 using Countflow.SharedKernel.Modules;
 using Microsoft.AspNetCore.Routing;
@@ -39,6 +40,7 @@ public sealed class RulesModule : ICountflowModule
         services.AddScoped<IModuleSeeder, RulesSeeder>();
 
         services.AddScoped<DecisionJournal>();
+        services.AddScoped<RuleSetEditor>();
         services.AddScoped<PutawayAdvisor>();
         services.AddScoped<AllocationAdvisor>();
         services.AddScoped<CountPolicyAdvisor>();
@@ -53,12 +55,22 @@ public sealed class RulesModule : ICountflowModule
         services.AddScoped<ICountPolicy>(sp => sp.GetRequiredService<CountPolicyAdvisor>());
         services.AddScoped<IDecisionTraceReader, DecisionTraceReader>();
 
+        // Phase 6's, and published for the same reason the advisors are: the module
+        // that runs an experiment and keeps its results is not this one. Rules knows
+        // how to ask a question again — it owns the vocabularies and the traces —
+        // and what became of the answer belongs to whoever asked.
+        services.AddScoped<IShadowReplay, ShadowReplay>();
+
         services.TryAddSingleton(TimeProvider.System);
     }
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints)
     {
         GetRuleSets.Map(endpoints);
+        CreateRuleSet.Map(endpoints);
+        ReplaceRuleSet.Map(endpoints);
+        PromoteRuleSet.Map(endpoints);
+        ArchiveRuleSet.Map(endpoints);
         GetDecisionTrace.Map(endpoints);
         PreviewPutaway.Map(endpoints);
         PreviewAllocation.Map(endpoints);

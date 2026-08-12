@@ -1,7 +1,5 @@
-using Countflow.Modules.Rules.Allocation;
 using Countflow.Modules.Rules.Domain;
 using Countflow.Modules.Rules.Persistence;
-using Countflow.Modules.Rules.Putaway;
 using Countflow.SharedKernel.Rules;
 using Countflow.SharedKernel.Security;
 using Microsoft.AspNetCore.Builder;
@@ -29,7 +27,25 @@ public sealed record RuleSetResponse(
     string? Notes,
     DateTimeOffset CreatedAt,
     DateTimeOffset? ActivatedAt,
-    IReadOnlyList<RuleResponse> Rules);
+    IReadOnlyList<RuleResponse> Rules)
+{
+    public static RuleSetResponse Of(RuleSet set) =>
+        new(set.Id,
+            set.Kind,
+            set.Name,
+            set.Version,
+            set.Status,
+            set.WarehouseId,
+            set.Notes,
+            set.CreatedAt,
+            set.ActivatedAt,
+            [
+                .. set.Rules
+                    .OrderBy(rule => rule.Order)
+                    .Select(rule => new RuleResponse(
+                        rule.Code, rule.Role, rule.Order, rule.Weight, rule.Parameters, rule.IsEnabled))
+            ]);
+}
 
 /// <summary>
 /// Rule codes this build can run, for one decision kind.
@@ -79,33 +95,17 @@ public static class GetRuleSets
                     .ToListAsync(cancellationToken);
 
                 return Results.Ok(new RuleSetsResponse(
+                    [.. sets.Select(RuleSetResponse.Of)],
+                    // Every kind this build has a vocabulary for, from the one place
+                    // that knows. Listing them by hand here is how CycleCount was
+                    // missing from this response for the whole of Phase 5 — the
+                    // console could show a supervisor the counting rule set and not
+                    // one rule they were allowed to add to it.
                     [
-                        .. sets.Select(set => new RuleSetResponse(
-                            set.Id,
-                            set.Kind,
-                            set.Name,
-                            set.Version,
-                            set.Status,
-                            set.WarehouseId,
-                            set.Notes,
-                            set.CreatedAt,
-                            set.ActivatedAt,
-                            [
-                                .. set.Rules
-                                    .OrderBy(r => r.Order)
-                                    .Select(r => new RuleResponse(
-                                        r.Code, r.Role, r.Order, r.Weight, r.Parameters, r.IsEnabled))
-                            ]))
-                    ],
-                    [
-                        new RuleVocabularyResponse(
-                            DecisionKind.Putaway,
-                            PutawayRuleCatalogue.ConstraintCodes,
-                            PutawayRuleCatalogue.PreferenceCodes),
-                        new RuleVocabularyResponse(
-                            DecisionKind.Allocation,
-                            AllocationRuleCatalogue.ConstraintCodes,
-                            AllocationRuleCatalogue.PreferenceCodes)
+                        .. RuleVocabulary.Kinds.Select(kind => new RuleVocabularyResponse(
+                            kind,
+                            RuleVocabulary.ConstraintCodes(kind),
+                            RuleVocabulary.PreferenceCodes(kind)))
                     ]));
             })
             .RequireAuthorization(policy => policy.RequireRole(Roles.Admin, Roles.Supervisor))

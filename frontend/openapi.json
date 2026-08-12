@@ -1243,6 +1243,271 @@
             }
           }
         }
+      },
+      "post": {
+        "tags": [
+          "Rules"
+        ],
+        "summary": "Create a draft rule set, optionally cloned from an existing one.",
+        "operationId": "CreateRuleSet",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRuleSetRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleSetResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rules/sets/{id}": {
+      "put": {
+        "tags": [
+          "Rules"
+        ],
+        "summary": "Replace a draft rule set\u0027s rules.",
+        "operationId": "ReplaceRuleSet",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplaceRuleSetRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleSetResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rules/sets/{id}/promote": {
+      "post": {
+        "tags": [
+          "Rules"
+        ],
+        "summary": "Activate a draft rule set, archiving the one it replaces.",
+        "operationId": "PromoteRuleSet",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleSetResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/rules/sets/{id}/archive": {
+      "post": {
+        "tags": [
+          "Rules"
+        ],
+        "summary": "Archive a rule set without deleting it.",
+        "operationId": "ArchiveRuleSet",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleSetResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/rules/traces/{id}": {
@@ -2928,6 +3193,188 @@
         }
       }
     },
+    "/api/replay/runs": {
+      "post": {
+        "tags": [
+          "Replay"
+        ],
+        "summary": "Replay a candidate rule set against real historical decisions.",
+        "operationId": "CreateReplayRun",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateReplayRunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplayRunResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Replay"
+        ],
+        "summary": "List replay runs, newest first.",
+        "operationId": "GetReplayRuns",
+        "parameters": [
+          {
+            "name": "warehouseId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/DecisionKind"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplayRunPage"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/replay/runs/{id}": {
+      "get": {
+        "tags": [
+          "Replay"
+        ],
+        "summary": "One replay run and the decisions it compared.",
+        "operationId": "GetReplayRun",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "outcome",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/ReplayOutcome"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplayRunResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/auth/login": {
       "post": {
         "tags": [
@@ -4139,6 +4586,91 @@
           }
         }
       },
+      "CreateReplayRunRequest": {
+        "required": [
+          "warehouseCode",
+          "kind",
+          "candidateRuleSetId",
+          "from",
+          "to"
+        ],
+        "type": "object",
+        "properties": {
+          "warehouseCode": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/DecisionKind"
+          },
+          "candidateRuleSetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "maxDecisions": {
+            "type": "integer",
+            "format": "int32",
+            "default": 200
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "CreateRuleSetRequest": {
+        "required": [
+          "kind",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/DecisionKind"
+          },
+          "name": {
+            "type": "string"
+          },
+          "warehouseId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "cloneFromRuleSetId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "rules": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/RuleDraftRequest"
+            }
+          }
+        }
+      },
       "CreateWaveRequest": {
         "required": [
           "warehouseCode",
@@ -4479,6 +5011,68 @@
           },
           "hasIssues": {
             "type": "boolean"
+          }
+        }
+      },
+      "InfluenceLine": {
+        "required": [
+          "ruleCode",
+          "weight",
+          "lowestValue",
+          "highestValue",
+          "realisedSwing",
+          "realisedShare",
+          "nominalShare",
+          "marginContribution",
+          "distinctValues",
+          "findings"
+        ],
+        "type": "object",
+        "properties": {
+          "ruleCode": {
+            "type": "string"
+          },
+          "weight": {
+            "type": "number",
+            "format": "double"
+          },
+          "lowestValue": {
+            "type": "number",
+            "format": "double"
+          },
+          "highestValue": {
+            "type": "number",
+            "format": "double"
+          },
+          "realisedSwing": {
+            "type": "number",
+            "format": "double"
+          },
+          "realisedShare": {
+            "type": "number",
+            "format": "double"
+          },
+          "nominalShare": {
+            "type": "number",
+            "format": "double"
+          },
+          "marginContribution": {
+            "type": "number",
+            "format": "double"
+          },
+          "distinctValues": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "findings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "valueSpread": {
+            "type": "number",
+            "format": "double"
           }
         }
       },
@@ -5733,6 +6327,318 @@
           }
         }
       },
+      "ReplaceRuleSetRequest": {
+        "required": [
+          "rules"
+        ],
+        "type": "object",
+        "properties": {
+          "rules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RuleDraftRequest"
+            }
+          },
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ReplayDecisionResponse": {
+        "required": [
+          "decisionTraceId",
+          "decidedAt",
+          "subject",
+          "fidelity",
+          "fidelityNote",
+          "outcome",
+          "recordedKey",
+          "baselineKey",
+          "candidateKey",
+          "baselineScore",
+          "candidateScore",
+          "candidateRankUnderBaseline",
+          "baselineRankUnderCandidate",
+          "consideredCount",
+          "baselineAdmissibleCount",
+          "candidateAdmissibleCount",
+          "baselineInfluence",
+          "candidateInfluence"
+        ],
+        "type": "object",
+        "properties": {
+          "decisionTraceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "decidedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "fidelity": {
+            "$ref": "#/components/schemas/ReplayFidelity"
+          },
+          "fidelityNote": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "outcome": {
+            "$ref": "#/components/schemas/ReplayOutcome"
+          },
+          "recordedKey": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "baselineKey": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "candidateKey": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "baselineScore": {
+            "type": "number",
+            "format": "double"
+          },
+          "candidateScore": {
+            "type": "number",
+            "format": "double"
+          },
+          "candidateRankUnderBaseline": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "baselineRankUnderCandidate": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "consideredCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "baselineAdmissibleCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "candidateAdmissibleCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "baselineInfluence": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InfluenceLine"
+            }
+          },
+          "candidateInfluence": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InfluenceLine"
+            }
+          }
+        }
+      },
+      "ReplayFidelity": {
+        "enum": [
+          "Exact",
+          "Approximate",
+          "Unreplayable"
+        ],
+        "type": "string"
+      },
+      "ReplayOutcome": {
+        "enum": [
+          "Unchanged",
+          "Reordered",
+          "Changed",
+          "Gained",
+          "Lost"
+        ],
+        "type": "string"
+      },
+      "ReplayRunPage": {
+        "required": [
+          "items",
+          "total",
+          "page",
+          "pageSize"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReplayRunResponse"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "ReplayRunResponse": {
+        "required": [
+          "id",
+          "reference",
+          "warehouseId",
+          "kind",
+          "candidateRuleSetId",
+          "candidateRuleSetName",
+          "candidateRuleSetVersion",
+          "baselineRuleSetName",
+          "baselineRuleSetVersion",
+          "from",
+          "to",
+          "replayedCount",
+          "exactCount",
+          "approximateCount",
+          "unreplayableCount",
+          "changedCount",
+          "reorderedCount",
+          "gainedCount",
+          "lostCount",
+          "elapsedMilliseconds",
+          "influence",
+          "requestedByUserName",
+          "createdAt",
+          "notes",
+          "decisions"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "warehouseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/DecisionKind"
+          },
+          "candidateRuleSetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "candidateRuleSetName": {
+            "type": "string"
+          },
+          "candidateRuleSetVersion": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "baselineRuleSetName": {
+            "type": "string"
+          },
+          "baselineRuleSetVersion": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "replayedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "exactCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "approximateCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "unreplayableCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "changedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "reorderedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "gainedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "lostCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "elapsedMilliseconds": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "influence": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RuleInfluenceSummary"
+            }
+          },
+          "requestedByUserName": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "decisions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReplayDecisionResponse"
+            }
+          }
+        }
+      },
       "ResolveScanRequest": {
         "required": [
           "barcode"
@@ -5752,6 +6658,76 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "RuleDraftRequest": {
+        "required": [
+          "code",
+          "order"
+        ],
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "order": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "weight": {
+            "type": "number",
+            "format": "double",
+            "default": 0
+          },
+          "parameters": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "isEnabled": {
+            "type": "boolean",
+            "default": true
+          }
+        }
+      },
+      "RuleInfluenceSummary": {
+        "required": [
+          "ruleCode",
+          "weight",
+          "meanRealisedShare",
+          "meanNominalShare",
+          "meanValueSpread",
+          "flags"
+        ],
+        "type": "object",
+        "properties": {
+          "ruleCode": {
+            "type": "string"
+          },
+          "weight": {
+            "type": "number",
+            "format": "double"
+          },
+          "meanRealisedShare": {
+            "type": "number",
+            "format": "double"
+          },
+          "meanNominalShare": {
+            "type": "number",
+            "format": "double"
+          },
+          "meanValueSpread": {
+            "type": "number",
+            "format": "double"
+          },
+          "flags": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer",
+              "format": "int32"
+            }
           }
         }
       },
@@ -7220,6 +8196,9 @@
     },
     {
       "name": "Counting"
+    },
+    {
+      "name": "Replay"
     },
     {
       "name": "Authentication"

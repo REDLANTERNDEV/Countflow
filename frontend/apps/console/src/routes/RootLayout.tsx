@@ -69,6 +69,9 @@ export function RootLayout() {
           <Link to="/rules" className={navLink} activeProps={{ className: navLinkActive }}>
             {t('nav.rules')}
           </Link>
+          <Link to="/replay" className={navLink} activeProps={{ className: navLinkActive }}>
+            {t('nav.replay')}
+          </Link>
           <Link to="/scan" className={navLink} activeProps={{ className: navLinkActive }}>
             {t('nav.scanTest')}
           </Link>

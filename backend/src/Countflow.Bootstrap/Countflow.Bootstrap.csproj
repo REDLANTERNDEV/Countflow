@@ -8,6 +8,7 @@
     <ProjectReference Include="../Modules/Countflow.Modules.Inventory/Countflow.Modules.Inventory.csproj" />
     <ProjectReference Include="../Modules/Countflow.Modules.MasterData/Countflow.Modules.MasterData.csproj" />
     <ProjectReference Include="../Modules/Countflow.Modules.Outbound/Countflow.Modules.Outbound.csproj" />
+    <ProjectReference Include="../Modules/Countflow.Modules.Replay/Countflow.Modules.Replay.csproj" />
     <ProjectReference Include="../Modules/Countflow.Modules.Rules/Countflow.Modules.Rules.csproj" />
     <ProjectReference Include="../Modules/Countflow.Modules.Work/Countflow.Modules.Work.csproj" />
   </ItemGroup>

@@ -69,6 +69,13 @@ public sealed class InventoryModule : ICountflowModule
         services.AddScoped<IStockReservations, StockReservations>();
         services.AddScoped<IStockCounts, StockCounts>();
 
+        // Phase 6's, and the one that finally cashes the cheque ADR 0001 wrote in
+        // Phase 2. Everything above answers a question about now; this answers the
+        // same questions about then, by folding the ledger forward rather than by
+        // remembering anything — which is only possible because the ledger is
+        // complete and immutable.
+        services.AddScoped<IStockHistory, StockHistory>();
+
         // TryAdd, because a clock is host-wide and every module that posts
         // timestamps will want the same one — including a test host that has
         // already substituted a fake.

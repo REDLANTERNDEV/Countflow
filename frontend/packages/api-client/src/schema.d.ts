@@ -337,7 +337,59 @@ export interface paths {
         /** Rule sets and the rule vocabulary this build can run. */
         get: operations["GetRuleSets"];
         put?: never;
+        /** Create a draft rule set, optionally cloned from an existing one. */
+        post: operations["CreateRuleSet"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/rules/sets/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace a draft rule set's rules. */
+        put: operations["ReplaceRuleSet"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/rules/sets/{id}/promote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Activate a draft rule set, archiving the one it replaces. */
+        post: operations["PromoteRuleSet"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/rules/sets/{id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Archive a rule set without deleting it. */
+        post: operations["ArchiveRuleSet"];
         delete?: never;
         options?: never;
         head?: never;
@@ -773,6 +825,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/replay/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List replay runs, newest first. */
+        get: operations["GetReplayRuns"];
+        put?: never;
+        /** Replay a candidate rule set against real historical decisions. */
+        post: operations["CreateReplayRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/replay/runs/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One replay run and the decisions it compared. */
+        get: operations["GetReplayRun"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/login": {
         parameters: {
             query?: never;
@@ -1139,6 +1226,32 @@ export interface components {
             priority?: null | number;
             notes?: null | string;
         };
+        CreateReplayRunRequest: {
+            warehouseCode: string;
+            kind: components["schemas"]["DecisionKind"];
+            /** Format: uuid */
+            candidateRuleSetId: string;
+            /** Format: date-time */
+            from: string;
+            /** Format: date-time */
+            to: string;
+            /**
+             * Format: int32
+             * @default 200
+             */
+            maxDecisions: number;
+            notes?: null | string;
+        };
+        CreateRuleSetRequest: {
+            kind: components["schemas"]["DecisionKind"];
+            name: string;
+            /** Format: uuid */
+            warehouseId?: null | string;
+            notes?: null | string;
+            /** Format: uuid */
+            cloneFromRuleSetId?: null | string;
+            rules?: null | components["schemas"]["RuleDraftRequest"][];
+        };
         CreateWaveRequest: {
             warehouseCode: string;
             reference: string;
@@ -1224,6 +1337,28 @@ export interface components {
             unchanged: number;
             issues: components["schemas"]["ImportIssue"][];
             hasIssues?: boolean;
+        };
+        InfluenceLine: {
+            ruleCode: string;
+            /** Format: double */
+            weight: number;
+            /** Format: double */
+            lowestValue: number;
+            /** Format: double */
+            highestValue: number;
+            /** Format: double */
+            realisedSwing: number;
+            /** Format: double */
+            realisedShare: number;
+            /** Format: double */
+            nominalShare: number;
+            /** Format: double */
+            marginContribution: number;
+            /** Format: int32 */
+            distinctValues: number;
+            findings: string[];
+            /** Format: double */
+            valueSpread?: number;
         };
         InventoryPageOfStockMovementResponse: {
             items: components["schemas"]["StockMovementResponse"][];
@@ -1568,11 +1703,129 @@ export interface components {
             /** Format: double */
             shortfallQuantity: number;
         };
+        ReplaceRuleSetRequest: {
+            rules: components["schemas"]["RuleDraftRequest"][];
+            name?: null | string;
+            notes?: null | string;
+        };
+        ReplayDecisionResponse: {
+            /** Format: uuid */
+            decisionTraceId: string;
+            /** Format: date-time */
+            decidedAt: string;
+            subject: string;
+            fidelity: components["schemas"]["ReplayFidelity"];
+            fidelityNote: null | string;
+            outcome: components["schemas"]["ReplayOutcome"];
+            recordedKey: null | string;
+            baselineKey: null | string;
+            candidateKey: null | string;
+            /** Format: double */
+            baselineScore: number;
+            /** Format: double */
+            candidateScore: number;
+            /** Format: int32 */
+            candidateRankUnderBaseline: number;
+            /** Format: int32 */
+            baselineRankUnderCandidate: number;
+            /** Format: int32 */
+            consideredCount: number;
+            /** Format: int32 */
+            baselineAdmissibleCount: number;
+            /** Format: int32 */
+            candidateAdmissibleCount: number;
+            baselineInfluence: components["schemas"]["InfluenceLine"][];
+            candidateInfluence: components["schemas"]["InfluenceLine"][];
+        };
+        /** @enum {string} */
+        ReplayFidelity: "Exact" | "Approximate" | "Unreplayable";
+        /** @enum {string} */
+        ReplayOutcome: "Unchanged" | "Reordered" | "Changed" | "Gained" | "Lost";
+        ReplayRunPage: {
+            items: components["schemas"]["ReplayRunResponse"][];
+            /** Format: int32 */
+            total: number;
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            pageSize: number;
+        };
+        ReplayRunResponse: {
+            /** Format: uuid */
+            id: string;
+            reference: string;
+            /** Format: uuid */
+            warehouseId: string;
+            kind: components["schemas"]["DecisionKind"];
+            /** Format: uuid */
+            candidateRuleSetId: string;
+            candidateRuleSetName: string;
+            /** Format: int32 */
+            candidateRuleSetVersion: number;
+            baselineRuleSetName: string;
+            /** Format: int32 */
+            baselineRuleSetVersion: number;
+            /** Format: date-time */
+            from: string;
+            /** Format: date-time */
+            to: string;
+            /** Format: int32 */
+            replayedCount: number;
+            /** Format: int32 */
+            exactCount: number;
+            /** Format: int32 */
+            approximateCount: number;
+            /** Format: int32 */
+            unreplayableCount: number;
+            /** Format: int32 */
+            changedCount: number;
+            /** Format: int32 */
+            reorderedCount: number;
+            /** Format: int32 */
+            gainedCount: number;
+            /** Format: int32 */
+            lostCount: number;
+            /** Format: int64 */
+            elapsedMilliseconds: number;
+            influence: components["schemas"]["RuleInfluenceSummary"][];
+            requestedByUserName: string;
+            /** Format: date-time */
+            createdAt: string;
+            notes: null | string;
+            decisions: components["schemas"]["ReplayDecisionResponse"][];
+        };
         ResolveScanRequest: {
             barcode: string;
         };
         ReverseMovementRequest: {
             notes?: null | string;
+        };
+        RuleDraftRequest: {
+            code: string;
+            /** Format: int32 */
+            order: number;
+            /**
+             * Format: double
+             * @default 0
+             */
+            weight: number;
+            parameters?: null | string;
+            /** @default true */
+            isEnabled: boolean;
+        };
+        RuleInfluenceSummary: {
+            ruleCode: string;
+            /** Format: double */
+            weight: number;
+            /** Format: double */
+            meanRealisedShare: number;
+            /** Format: double */
+            meanNominalShare: number;
+            /** Format: double */
+            meanValueSpread: number;
+            flags: {
+                [key: string]: number;
+            };
         };
         RuleNote: {
             code: string;
@@ -2736,6 +2989,217 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RuleSetsResponse"];
+                };
+            };
+        };
+    };
+    CreateRuleSet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateRuleSetRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuleSetResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ReplaceRuleSet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReplaceRuleSetRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuleSetResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    PromoteRuleSet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuleSetResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ArchiveRuleSet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuleSetResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
         };
@@ -3906,6 +4370,133 @@ export interface operations {
             };
             /** @description Conflict */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetReplayRuns: {
+        parameters: {
+            query?: {
+                warehouseId?: string;
+                kind?: components["schemas"]["DecisionKind"];
+                page?: number;
+                pageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReplayRunPage"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CreateReplayRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateReplayRunRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReplayRunResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetReplayRun: {
+        parameters: {
+            query?: {
+                outcome?: components["schemas"]["ReplayOutcome"];
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReplayRunResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
