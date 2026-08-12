@@ -1,6 +1,8 @@
 using System.Text.Json.Serialization;
+using Countflow.Api.Errors;
 using Countflow.Api.Observability;
 using Countflow.Api.OpenApi;
+using Countflow.Api.RateLimiting;
 using Countflow.Bootstrap;
 using Countflow.Modules.Identity;
 using Countflow.SharedKernel.Modules;
@@ -34,12 +36,15 @@ builder.AddCountflowLogging();
 builder.AddCountflowTelemetry();
 
 builder.Services.AddCountflowModules(builder.Configuration, ModuleCatalog.All);
-builder.Services.AddCountflowJwtBearer(builder.Configuration);
+builder.Services.AddCountflowAuthentication(builder.Configuration);
+builder.Services.AddCountflowRateLimiting(builder.Configuration);
 
 builder.Services.AddOpenApi(options =>
 {
     options.AddSchemaTransformer(OpenApiSchemaTransformers.EnumsAsStrings);
     options.AddSchemaTransformer(OpenApiSchemaTransformers.NumbersAreNotStrings);
+    options.AddDocumentTransformer(OpenApiDocumentTransformers.DescribeTheSurface);
+    options.AddDocumentTransformer(OpenApiDocumentTransformers.DescribeSecurity);
 });
 
 // Enums travel as names on the wire, matching what the OpenAPI document now
@@ -47,7 +52,11 @@ builder.Services.AddOpenApi(options =>
 builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
-builder.Services.AddProblemDetails();
+// Every problem document this host emits carries a `code`, including the ones the
+// framework writes for itself — a bad credential, a missing role, a mistyped path.
+// See TransportErrorCodes for why that turned out to matter.
+builder.Services.AddProblemDetails(options =>
+    options.CustomizeProblemDetails = TransportErrorCodes.Apply);
 
 // Readiness reports whether the API can actually serve: it can only do that
 // once every module's schema is reachable. Liveness stays trivially cheap so a
@@ -82,6 +91,16 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors();
+
+// Before authentication, deliberately. The limiter partitions on the credential a
+// caller *presented* rather than on the identity it turned out to belong to, so a
+// flood of forged API keys is throttled without any of them reaching the database
+// — see RateLimitingExtensions.Credential.
+if (builder.Configuration.GetValue($"{RateLimitingOptions.SectionName}:Enabled", defaultValue: true))
+{
+    app.UseRateLimiter();
+}
+
 app.UseAuthentication();
 app.UseAuthorization();
 

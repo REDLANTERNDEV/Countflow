@@ -44,7 +44,105 @@ export const en = {
     work: 'Work queue',
     rules: 'Rules',
     replay: 'Replay',
+    integrations: 'Integrations',
+    tour: 'Tour',
     scanTest: 'Scan test',
+  },
+
+  demo: {
+    badge: 'Live demo',
+    headline: 'A warehouse that can explain itself',
+    blurb:
+      'This instance was filled by a client driving the public API — the same endpoints an integrator gets. Sign in as anybody below and look around.',
+    signInAs: 'Sign in as',
+    resetWarning: 'Shared and public. Anything you change here, everybody sees.',
+    tourHint: 'Once you are in, the Tour link in the top bar walks through what each screen is for.',
+  },
+
+  tour: {
+    title: 'What this is',
+    intro:
+      'Countflow is a warehouse management system built around one idea: a system that directs work should be able to say why. Three things carry that, and everything else is built on them.',
+    pillar: 'Pillar',
+    stops: {
+      ledger: {
+        title: 'An append-only stock ledger',
+        body: 'Every movement is a double-entry line that is never edited or deleted. Corrections are compensating entries, balances are a projection, and the stock at any past instant is a sum rather than a memory.',
+      },
+      rules: {
+        title: 'Decisions that carry their reasoning',
+        body: 'Putaway, allocation and counting are decided by rule sets held as data. A decision cannot exist without the trace behind it — every candidate, the constraint that excluded each loser, and the score behind the winner.',
+      },
+      replay: {
+        title: 'Shadow replay over real history',
+        body: 'Rebuild the warehouse as it stood at a past decision, run a candidate rule set over it, and see what would have changed. Fidelity is measured on every run rather than asserted.',
+      },
+      inbound: {
+        title: 'The inbound loop',
+        body: 'An advice note, a dock receipt, and a directed putaway an operator confirms on a handheld — with “why here?” available at the rack.',
+      },
+      outbound: {
+        title: 'The outbound loop',
+        body: 'An order released, allocated by rule, picked, packed and despatched. A pick names the reservation it discharges, so picking stock nobody promised is not expressible.',
+      },
+      counting: {
+        title: 'Cycle counting',
+        body: 'Counts raised by policy rather than by a schedule somebody maintains. A count that finds what was expected posts nothing at all, and is still on the record.',
+      },
+      accuracy: {
+        title: 'Accuracy, measured',
+        body: 'Count accuracy by zone and class, override rates, reconciliation drift and stranded commitments. An accuracy claim nobody measures is a marketing claim.',
+      },
+      integrations: {
+        title: 'Machine credentials',
+        body: 'Service accounts hold API keys and are judged by the same roles a person is. There is no second permission vocabulary to learn.',
+      },
+    },
+    integrate: {
+      title: 'Integrating with it',
+      body: 'The API below is the whole surface — the console you are reading and the handheld on the floor are clients of exactly these endpoints. To keep an external system in step, walk the ledger forwards from a cursor:',
+    },
+  },
+
+  integrations: {
+    title: 'Integrations',
+    subtitle:
+      'Accounts that are software rather than people. A key carries the roles its account holds and is judged by the same checks a person is — there is no separate scope vocabulary.',
+    empty: 'No integrations yet.',
+    liveKeys: '{{count}} live',
+    role: {
+      Admin: 'Admin',
+      Supervisor: 'Supervisor',
+      Operator: 'Operator',
+    },
+    create: {
+      title: 'New integration',
+      hint: 'Give it the least it needs. An integration that only reads stock has no business releasing a wave.',
+      name: 'Account name',
+      displayName: 'What it is for',
+      role: 'Role',
+      submit: 'Create',
+    },
+    issued: {
+      title: 'The key, once',
+      onlyOnce:
+        'Copy it now. Only its hash is stored, so this is the only time this value exists anywhere but your clipboard. If you lose it, revoke it and issue another.',
+      copy: 'Copy',
+      dismiss: 'Done',
+    },
+    keys: {
+      name: 'Name',
+      namePlaceholder: 'What this key is for',
+      prefix: 'Key',
+      created: 'Created',
+      lastUsed: 'Last used',
+      never: 'Never',
+      state: 'State',
+      live: 'Live',
+      revoked: 'Revoked',
+      issue: 'Issue a key',
+      revoke: 'Revoke',
+    },
   },
 
   auth: {
@@ -355,6 +453,23 @@ export const en = {
       sampled: 'A sample of the locations that were ruled out, one for each reason.',
       empty: 'No candidates were recorded.',
       notFound: 'That decision trace no longer exists.',
+    },
+
+    draft: {
+      clone: 'Clone to a draft',
+      copyOf: 'Copy of {{name}}',
+      edit: 'Edit',
+      save: 'Save draft',
+      saving: 'Saving…',
+      promote: 'Put on the floor',
+      promoteNeedsAdmin: 'Only an administrator can put a rule set on the floor.',
+      archive: 'Archive',
+      remove: 'Remove',
+      add: 'Add a rule…',
+      addRule: 'Add',
+      name: 'Name',
+      parametersPlaceholder: 'Settings, as JSON',
+      hint: 'Order decides which refusal an operator is shown — evaluation stops at the first constraint that fails. Weights only mean anything relative to each other. Nothing here reaches the floor until it is promoted.',
     },
 
     preview: {
@@ -809,6 +924,33 @@ export const en = {
     'auth.unknown_actor': 'Your session does not identify a user. Please sign in again.',
     'auth.invalid_refresh_token': 'Your session has expired. Please sign in again.',
     'auth.user_not_found': 'That user no longer exists.',
+
+    'identity.service_account_not_found': 'No integration with that identifier.',
+    'identity.api_key_not_found': 'No key with that identifier.',
+    'identity.not_a_service_account':
+      'API keys belong to integrations. That account signs in with a password.',
+    'identity.account_name_taken': 'An account with that name already exists.',
+    'identity.unknown_role': 'That role does not exist.',
+    'identity.no_roles': 'An integration with no roles could not do anything.',
+    'identity.name_required': 'An integration needs a name and a description.',
+    'identity.key_name_required': 'Name the key, so somebody can tell later what it is for.',
+    'identity.account_inactive': 'That integration is disabled.',
+    'identity.account_rejected': 'The account was refused.',
+    'identity.human_credential_required':
+      'Issuing credentials is done by a signed-in administrator, not by an API key.',
+
+    'rate_limit.exceeded': 'Too many requests. Wait a moment and try again.',
+
+    'auth.credential_required': 'Please sign in again.',
+    'auth.role_required': 'Your account does not have permission to do that.',
+    'http.not_found': 'That address does not exist.',
+    'http.method_not_allowed': 'That address does not accept this kind of request.',
+    'http.malformed_request': 'The request could not be read.',
+    'http.unsupported_media_type': 'The request was sent in a format the server does not accept.',
+    'http.payload_too_large': 'That request was too large.',
+    'http.request_timeout': 'The request took too long.',
+    'http.not_acceptable': 'The server cannot answer in the format requested.',
+    'http.unexpected_error': 'Something went wrong at our end.',
     'item.not_found': 'No item with that SKU.',
     'warehouse.not_found': 'No warehouse with that code.',
     'gs1.empty': 'Nothing was scanned.',

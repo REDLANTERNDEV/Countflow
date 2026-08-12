@@ -440,6 +440,56 @@ public sealed class ReplayTests(CountflowApiFixture fixture)
     }
 
     [Fact]
+    public async Task A_draft_can_actually_be_saved()
+    {
+        // Embarrassingly late, and worth the paragraph. Every other test of this
+        // endpoint asserts a *refusal* — the wrong kind, an active set, an
+        // unrecognised rule — and every refusal returns before SaveChangesAsync is
+        // reached. So the whole happy path of the editor was untested, and it 500'd
+        // the first time somebody pressed Save in the console: EF infers Modified,
+        // not Added, for a new child reached through a *tracked* parent's
+        // navigation when its key is already set, which is every key here.
+        //
+        // The reason it survived so long is that nothing else takes this path.
+        // Creating a draft adds children to a *new* parent, which is fine, and the
+        // simulator clones with the rules inline — so the one caller that exercises
+        // it is a person with a mouse.
+        var active = await ActiveRuleSetAsync("Putaway");
+
+        var draft = await Read<RuleSetBody>(await PostAsync(_supervisor, "/api/v1/rules/sets", new
+        {
+            kind = "Putaway",
+            name = "Editable draft",
+            cloneFromRuleSetId = active.Id
+        }));
+
+        var reweighted = draft.Rules
+            .Select(rule => new
+            {
+                code = rule.Code,
+                order = rule.Order,
+                weight = rule.Code == "putaway.travel_distance" ? 0.4m : rule.Weight,
+                parameters = rule.Parameters,
+                isEnabled = rule.IsEnabled
+            })
+            .ToArray();
+
+        var response = await _supervisor.PutAsJsonAsync(
+            $"/api/v1/rules/sets/{draft.Id}",
+            new { name = "Edited draft", rules = reweighted });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        // Read back through the API rather than trusting the response body: the
+        // failure this guards against was a write that never happened.
+        var saved = await FindRuleSetAsync(draft.Id);
+
+        Assert.Equal("Edited draft", saved.Name);
+        Assert.Equal(draft.Rules.Count, saved.Rules.Count);
+        Assert.Equal(0.4m, saved.Rules.Single(rule => rule.Code == "putaway.travel_distance").Weight);
+    }
+
+    [Fact]
     public async Task Promoting_a_draft_archives_what_it_replaces_and_takes_the_next_version()
     {
         var active = await ActiveRuleSetAsync("Allocation");

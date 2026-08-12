@@ -69,5 +69,13 @@ public sealed class CountflowApiFixture : WebApplicationFactory<Program>, IAsync
         builder.UseSetting("Jwt:SigningKey", "countflow-integration-test-signing-key-32-bytes-min");
         builder.UseSetting("Observability:SeqUrl", string.Empty);
         builder.UseSetting("Observability:OtlpEndpoint", string.Empty);
+
+        // Off here, and only here. The whole suite runs as a handful of credentials
+        // against one host as fast as it can, which is precisely the traffic shape
+        // the limiter exists to refuse — leaving it on would make an unrelated test
+        // fail whenever somebody added a few more. What the limiter itself does is
+        // covered by IntegrationSurfaceTests, which stands up its own host with it
+        // enabled and turned down to a handful of permits.
+        builder.UseSetting("RateLimiting:Enabled", "false");
     }
 }

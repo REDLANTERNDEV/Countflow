@@ -2,13 +2,16 @@ using System.Text;
 using Countflow.Modules.Identity.Authentication;
 using Countflow.Modules.Identity.Domain;
 using Countflow.Modules.Identity.Features.Authentication;
+using Countflow.Modules.Identity.Features.ServiceAccounts;
 using Countflow.Modules.Identity.Persistence;
 using Countflow.SharedKernel.Modules;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Tokens;
 
 namespace Countflow.Modules.Identity;
@@ -53,20 +56,44 @@ public sealed class IdentityModule : ICountflowModule
 
         services.AddScoped<TokenService>();
         services.AddScoped<AuthService>();
+        services.AddScoped<ServiceAccountService>();
         services.AddScoped<IModuleSeeder, IdentitySeeder>();
+
+        // TryAdd for the same reason Inventory does it: a clock is host-wide, and a
+        // test host may already have substituted a fake.
+        services.TryAddSingleton(TimeProvider.System);
     }
 
-    public void MapEndpoints(IEndpointRouteBuilder endpoints) => AuthEndpoints.Map(endpoints);
+    public void MapEndpoints(IEndpointRouteBuilder endpoints)
+    {
+        AuthEndpoints.Map(endpoints);
+        ServiceAccountEndpoints.Map(endpoints);
+    }
 }
 
 public static class IdentityModuleExtensions
 {
     /// <summary>
-    /// Wires JWT bearer validation for the whole host. Authentication is
-    /// cross-cutting, so the host opts in explicitly rather than having a module
-    /// silently install an authentication handler behind its back.
+    /// Wires authentication for the whole host. Authentication is cross-cutting, so
+    /// the host opts in explicitly rather than having a module silently install an
+    /// authentication handler behind its back.
+    /// <para>
+    /// <b>Two credentials, one authorization vocabulary.</b> A person presents a
+    /// bearer token and an integration presents <c>X-Api-Key</c>; a policy scheme
+    /// picks the handler on the presence of that header, and both handlers produce
+    /// the same shape of principal. Every <c>RequireRole</c> already written on
+    /// every endpoint therefore covers both, and there is no scope vocabulary
+    /// sitting beside the role one waiting to drift out of step with it.
+    /// </para>
+    /// <para>
+    /// The forwarder is what makes that true structurally rather than by
+    /// convention. The alternative — accepting both schemes on each endpoint's
+    /// authorization policy — would be a line every endpoint author has to
+    /// remember, and the one they forget is a public endpoint an integration
+    /// silently cannot reach.
+    /// </para>
     /// </summary>
-    public static IServiceCollection AddCountflowJwtBearer(
+    public static IServiceCollection AddCountflowAuthentication(
         this IServiceCollection services,
         IConfiguration configuration)
     {
@@ -79,7 +106,16 @@ public static class IdentityModuleExtensions
             ?? throw new InvalidOperationException("Jwt configuration section is missing.");
 
         services
-            .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+            .AddAuthentication(CountflowAuthenticationSchemes.Selector)
+            .AddPolicyScheme(CountflowAuthenticationSchemes.Selector, "Bearer token or API key", options =>
+            {
+                options.ForwardDefaultSelector = context =>
+                    context.Request.Headers.ContainsKey(CountflowAuthenticationSchemes.ApiKeyHeader)
+                        ? CountflowAuthenticationSchemes.ApiKey
+                        : JwtBearerDefaults.AuthenticationScheme;
+            })
+            .AddScheme<AuthenticationSchemeOptions, ApiKeyAuthenticationHandler>(
+                CountflowAuthenticationSchemes.ApiKey, configureOptions: null)
             .AddJwtBearer(options =>
             {
                 options.TokenValidationParameters = new TokenValidationParameters

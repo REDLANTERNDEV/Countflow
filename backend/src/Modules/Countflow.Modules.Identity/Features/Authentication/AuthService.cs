@@ -33,6 +33,16 @@ public sealed class AuthService(
             return Result.Failure<AuthResponse>(InvalidCredentials);
         }
 
+        // Half of "a credential belongs to exactly one kind of principal". A
+        // service account is created with no password hash at all, so this refusal
+        // is belt to that braces — but it is the half that states the rule, and it
+        // returns the same opaque error for the same anti-enumeration reason.
+        if (user.IsServiceAccount)
+        {
+            logger.LogWarning("Password login attempted against service account {UserId}", user.Id);
+            return Result.Failure<AuthResponse>(InvalidCredentials);
+        }
+
         if (!await userManager.CheckPasswordAsync(user, request.Password))
         {
             logger.LogWarning("Failed login attempt for user {UserId}", user.Id);
@@ -150,5 +160,11 @@ public sealed class AuthService(
             .ExecuteUpdateAsync(t => t.SetProperty(x => x.RevokedAt, DateTimeOffset.UtcNow), cancellationToken);
 
     private static UserInfo ToUserInfo(CountflowUser user, IEnumerable<string> roles) =>
-        new(user.Id, user.UserName ?? string.Empty, user.DisplayName, user.OperatorCode, [.. roles]);
+        new(
+            user.Id,
+            user.UserName ?? string.Empty,
+            user.DisplayName,
+            user.OperatorCode,
+            [.. roles],
+            user.IsServiceAccount);
 }

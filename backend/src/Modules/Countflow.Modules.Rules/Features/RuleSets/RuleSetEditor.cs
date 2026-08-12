@@ -253,8 +253,26 @@ public sealed class RuleSetEditor(RulesDbContext dbContext, TimeProvider clock)
     /// silently outvote every other rule in the set while looking like a typo,
     /// because it is one.
     /// </para>
+    /// <para>
+    /// <b>Rules are added through the <c>DbSet</c>, never through
+    /// <c>ruleSet.Rules</c>.</b> This is the Phase 4 trap for the third time, and
+    /// the first time it has bitten a path a person drives rather than a machine:
+    /// EF infers <c>Modified</c>, not <c>Added</c>, for a new entity reached through
+    /// a <i>tracked</i> parent's navigation when its key is already set, and every
+    /// key here is a client-generated UUIDv7. Adding to the navigation therefore
+    /// emits an <c>UPDATE</c> against a row that does not exist and dies with a
+    /// <c>DbUpdateConcurrencyException</c> about affecting 0 rows.
+    /// </para>
+    /// <para>
+    /// It never showed up because it cannot: on <see cref="CreateDraftAsync"/> the
+    /// parent is new, and adding children to a new parent is fine. Only
+    /// <see cref="ReplaceAsync"/> has a tracked one — and every test of that method
+    /// asserted a <i>refusal</i>, which returns before <c>SaveChangesAsync</c> is
+    /// ever reached. The whole happy path went to production untested and 500'd the
+    /// first time somebody pressed Save in the console.
+    /// </para>
     /// </summary>
-    private static Result Apply(RuleSet ruleSet, IReadOnlyList<RuleDraft> rules)
+    private Result Apply(RuleSet ruleSet, IReadOnlyList<RuleDraft> rules)
     {
         if (rules.Count == 0)
         {
@@ -264,6 +282,7 @@ public sealed class RuleSetEditor(RulesDbContext dbContext, TimeProvider clock)
         var constraints = RuleVocabulary.ConstraintCodes(ruleSet.Kind);
         var preferences = RuleVocabulary.PreferenceCodes(ruleSet.Kind);
         var seen = new HashSet<string>(StringComparer.Ordinal);
+        var definitions = new List<RuleDefinition>(rules.Count);
 
         foreach (var rule in rules)
         {
@@ -287,7 +306,7 @@ public sealed class RuleSetEditor(RulesDbContext dbContext, TimeProvider clock)
                 return Result.Failure(RulesErrors.WeightOutOfRange(code));
             }
 
-            ruleSet.Rules.Add(new RuleDefinition
+            var definition = new RuleDefinition
             {
                 RuleSetId = ruleSet.Id,
                 Code = code,
@@ -299,7 +318,25 @@ public sealed class RuleSetEditor(RulesDbContext dbContext, TimeProvider clock)
                 Weight = isConstraint ? 0m : rule.Weight,
                 Parameters = string.IsNullOrWhiteSpace(rule.Parameters) ? null : rule.Parameters,
                 IsEnabled = rule.IsEnabled
-            });
+            };
+
+            // Through the DbSet first — see the note on this method. Putting it in
+            // the navigation afterwards is then harmless, because EF only infers a
+            // state for an entity it is not already tracking, and this one is now
+            // Added. Doing it explicitly rather than leaning on fixup keeps the
+            // check below reading exactly the rules that were just supplied: the
+            // ones this call deleted still carry a foreign key pointing here, and
+            // relying on fixup to leave them out is a subtlety nobody should have
+            // to know to read the next line.
+            definitions.Add(definition);
+            dbContext.RuleDefinitions.Add(definition);
+        }
+
+        ruleSet.Rules.Clear();
+
+        foreach (var definition in definitions)
+        {
+            ruleSet.Rules.Add(definition);
         }
 
         // And finally the real thing: would this build? Parameters are checked here

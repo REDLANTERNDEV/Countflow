@@ -72,8 +72,21 @@ export function RootLayout() {
           <Link to="/replay" className={navLink} activeProps={{ className: navLinkActive }}>
             {t('nav.replay')}
           </Link>
+          <Link to="/integrations" className={navLink} activeProps={{ className: navLinkActive }}>
+            {t('nav.integrations')}
+          </Link>
           <Link to="/scan" className={navLink} activeProps={{ className: navLinkActive }}>
             {t('nav.scanTest')}
+          </Link>
+          {/* Last, and set apart: a tour is the one link in this bar that is for
+              somebody who has not used the product before, and putting it first
+              would give every returning supervisor a signpost they do not need. */}
+          <Link
+            to="/tour"
+            className={`${navLink} ml-auto`}
+            activeProps={{ className: navLinkActive }}
+          >
+            {t('nav.tour')}
           </Link>
         </nav>
 

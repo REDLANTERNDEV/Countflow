@@ -148,7 +148,17 @@ public static class GetStockMovements
             .ProducesProblem(StatusCodes.Status404NotFound);
     }
 
-    private static async Task<List<StockMovementResponse>> DescribeAsync(
+    /// <summary>
+    /// Turns raw ledger rows into the published shape, resolving SKUs, location
+    /// codes, lot numbers and plates in batches across the module boundary.
+    /// <para>
+    /// Shared with the change feed rather than written twice. The feed and this
+    /// enquiry differ in how they <i>choose</i> rows — a cursor versus a page — and
+    /// not at all in what a row means, and two descriptions of one movement is how
+    /// an integrator ends up reconciling against a field the console does not have.
+    /// </para>
+    /// </summary>
+    internal static async Task<List<StockMovementResponse>> DescribeAsync(
         InventoryDbContext dbContext,
         IItemDirectory items,
         ILocationDirectory locations,

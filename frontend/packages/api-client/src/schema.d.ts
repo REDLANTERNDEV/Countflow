@@ -72,6 +72,59 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/service-accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the integration accounts and how many live keys each holds. */
+        get: operations["GetServiceAccounts"];
+        put?: never;
+        /** Create an integration account that authenticates with an API key. */
+        post: operations["CreateServiceAccount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/service-accounts/{id}/keys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List an account's keys, live and revoked. Never their secrets. */
+        get: operations["GetApiKeys"];
+        put?: never;
+        /** Mint an API key. The secret is returned once and cannot be read back. */
+        post: operations["CreateApiKey"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/service-accounts/keys/{keyId}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revoke a key. Keys are never deleted — the audit trail points at them. */
+        post: operations["RevokeApiKey"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/warehouses": {
         parameters: {
             query?: never;
@@ -319,6 +372,23 @@ export interface paths {
         };
         /** Read the stock ledger, filtered and paged. */
         get: operations["GetStockMovements"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/inventory/changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read the stock ledger forwards from a cursor — every change, in order, exactly once. */
+        get: operations["GetLedgerChanges"];
         put?: never;
         post?: never;
         delete?: never;
@@ -958,6 +1028,22 @@ export interface components {
             status?: null | components["schemas"]["InventoryStatus"];
             notes?: null | string;
         };
+        ApiKeyResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            serviceAccountId: string;
+            name: string;
+            prefix: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            expiresAt: null | string;
+            /** Format: date-time */
+            lastUsedAt: null | string;
+            /** Format: date-time */
+            revokedAt: null | string;
+        };
         AsnLineProgress: {
             reference: string;
             /** Format: int32 */
@@ -1181,6 +1267,11 @@ export interface components {
             createdAt: string;
             createdByUserName: string;
         };
+        CreateApiKeyRequest: {
+            name: string;
+            /** Format: int32 */
+            expiresInDays?: null | number;
+        };
         CreateAsnLineRequest: {
             sku: string;
             /** Format: double */
@@ -1252,11 +1343,20 @@ export interface components {
             cloneFromRuleSetId?: null | string;
             rules?: null | components["schemas"]["RuleDraftRequest"][];
         };
+        CreateServiceAccountRequest: {
+            name: string;
+            displayName: string;
+            roles: string[];
+        };
         CreateWaveRequest: {
             warehouseCode: string;
             reference: string;
             orderIds: string[];
             notes?: null | string;
+        };
+        CreatedApiKeyResponse: {
+            key: components["schemas"]["ApiKeyResponse"];
+            secret: string;
         };
         /** @enum {string} */
         DecisionKind: "Putaway" | "Allocation" | "Waving" | "TaskAssignment" | "CycleCount";
@@ -1387,6 +1487,14 @@ export interface components {
             isHazardous: boolean;
             isActive: boolean;
             packConfigurations: components["schemas"]["PackConfigurationResponse"][];
+        };
+        LedgerChangePage: {
+            changes: components["schemas"]["StockMovementResponse"][];
+            /** Format: int64 */
+            nextCursor: number;
+            hasMore: boolean;
+            /** Format: int64 */
+            watermark: number;
         };
         LocationResponse: {
             /** Format: uuid */
@@ -1973,6 +2081,18 @@ export interface components {
             sscc?: null | string;
             status?: null | components["schemas"]["InventoryStatus"];
         };
+        ServiceAccountResponse: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            displayName: string;
+            roles: string[];
+            isActive: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: int32 */
+            activeKeyCount: number;
+        };
         StockBalanceResponse: {
             sku: string;
             description: string;
@@ -2091,6 +2211,8 @@ export interface components {
             displayName: string;
             operatorCode: string;
             roles: string[];
+            /** @default false */
+            isServiceAccount: boolean;
         };
         WarehouseResponse: {
             /** Format: uuid */
@@ -2305,6 +2427,228 @@ export interface operations {
             };
             /** @description Unauthorized */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetServiceAccounts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceAccountResponse"][];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CreateServiceAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateServiceAccountRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServiceAccountResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetApiKeys: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiKeyResponse"][];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CreateApiKey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateApiKeyRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreatedApiKeyResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    RevokeApiKey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                keyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiKeyResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2962,6 +3306,29 @@ export interface operations {
                 };
                 content: {
                     "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetLedgerChanges: {
+        parameters: {
+            query?: {
+                afterSequence?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LedgerChangePage"];
                 };
             };
         };

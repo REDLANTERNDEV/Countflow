@@ -57,4 +57,10 @@ public static class CountflowClaims
 {
     public const string DisplayName = "countflow:display_name";
     public const string OperatorCode = "countflow:operator_code";
+
+    /// <summary>Present only on a principal authenticated by an API key.</summary>
+    public const string ApiKeyId = "countflow:api_key_id";
+
+    /// <summary>Present only on a principal authenticated by an API key.</summary>
+    public const string ApiKeyPrefix = "countflow:api_key_prefix";
 }

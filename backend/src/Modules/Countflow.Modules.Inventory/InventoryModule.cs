@@ -105,6 +105,10 @@ public sealed class InventoryModule : ICountflowModule
         ReverseMovement.Map(endpoints);
         GetStockBalances.Map(endpoints);
         GetStockMovements.Map(endpoints);
+
+        // The integration surface's read (Phase 7). Beside the movements enquiry
+        // rather than inside it: same rows, opposite direction, different contract.
+        GetLedgerChanges.Map(endpoints);
         RunReconciliation.Map(endpoints);
         GetReconciliationHistory.Map(endpoints);
 

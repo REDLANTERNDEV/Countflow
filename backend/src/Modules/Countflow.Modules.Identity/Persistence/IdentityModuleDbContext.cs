@@ -12,6 +12,8 @@ public sealed class IdentityModuleDbContext(DbContextOptions<IdentityModuleDbCon
 
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
+    public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -35,6 +37,26 @@ public sealed class IdentityModuleDbContext(DbContextOptions<IdentityModuleDbCon
             token.HasOne<CountflowUser>()
                 .WithMany()
                 .HasForeignKey(t => t.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<ApiKey>(key =>
+        {
+            key.HasKey(k => k.Id);
+            key.Property(k => k.Name).HasMaxLength(200).IsRequired();
+            key.Property(k => k.SecretHash).HasMaxLength(128).IsRequired();
+            key.Property(k => k.Prefix).HasMaxLength(32).IsRequired();
+
+            // The whole of authentication is this lookup, so it is unique and
+            // indexed. Unique also makes a hash collision — or, far likelier, the
+            // same supplied demo secret registered twice — a loud failure at the
+            // moment of writing rather than an ambiguous principal at read time.
+            key.HasIndex(k => k.SecretHash).IsUnique();
+            key.HasIndex(k => k.UserId);
+
+            key.HasOne<CountflowUser>()
+                .WithMany()
+                .HasForeignKey(k => k.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }

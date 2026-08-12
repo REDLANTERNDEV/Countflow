@@ -50,7 +50,105 @@ export const tr: Catalogue = {
     work: 'İş kuyruğu',
     rules: 'Kurallar',
     replay: 'Tekrar',
+    integrations: 'Entegrasyonlar',
+    tour: 'Tanıtım',
     scanTest: 'Okutma testi',
+  },
+
+  demo: {
+    badge: 'Canlı demo',
+    headline: 'Kendini anlatabilen bir depo',
+    blurb:
+      'Bu örnek, genel API’yi kullanan bir istemci tarafından dolduruldu — bir entegratörün eline geçen uçların aynısı. Aşağıdakilerden biriyle girip dolaşın.',
+    signInAs: 'Şu kullanıcıyla gir',
+    resetWarning: 'Ortak ve herkese açık. Burada değiştirdiğiniz her şeyi herkes görür.',
+    tourHint: 'Girdikten sonra üst çubuktaki Tanıtım bağlantısı her ekranın ne işe yaradığını anlatır.',
+  },
+
+  tour: {
+    title: 'Bu nedir',
+    intro:
+      'Countflow, tek bir fikir üzerine kurulmuş bir depo yönetim sistemidir: iş yönlendiren bir sistem, nedenini de söyleyebilmelidir. Bunu üç şey taşır; geri kalan her şey onların üzerine kuruludur.',
+    pillar: 'Temel',
+    stops: {
+      ledger: {
+        title: 'Yalnızca eklenen stok defteri',
+        body: 'Her hareket, hiçbir zaman düzeltilmeyen veya silinmeyen çift taraflı bir kayıttır. Düzeltmeler karşıt kayıtlardır, bakiyeler bir izdüşümdür ve geçmişteki herhangi bir andaki stok, hatırlanan değil hesaplanan bir toplamdır.',
+      },
+      rules: {
+        title: 'Gerekçesini taşıyan kararlar',
+        body: 'Yerleştirme, tahsis ve sayım, veri olarak tutulan kural setleriyle karara bağlanır. Bir karar, arkasındaki iz olmadan var olamaz: her aday, her eleneni eleyen kısıt ve kazananın puan dökümü.',
+      },
+      replay: {
+        title: 'Gerçek geçmiş üzerinde gölge tekrar',
+        body: 'Geçmiş bir kararın gördüğü depoyu yeniden kurun, aday kural setini onun üzerinde çalıştırın ve neyin değişeceğini görün. Sadakat her koşuda iddia edilmez, ölçülür.',
+      },
+      inbound: {
+        title: 'Mal kabul döngüsü',
+        body: 'Bir irsaliye, rampa kabulü ve operatörün el terminalinde onayladığı yönlendirilmiş bir yerleştirme — rafın önünde “neden burası?” sorusunun yanıtıyla birlikte.',
+      },
+      outbound: {
+        title: 'Sevkiyat döngüsü',
+        body: 'Serbest bırakılan, kuralla tahsis edilen, toplanan, paketlenen ve sevk edilen bir sipariş. Bir toplama, kapattığı rezervasyonu adıyla anar; kimseye söz verilmemiş stoğu toplamak ifade edilemez.',
+      },
+      counting: {
+        title: 'Döngüsel sayım',
+        body: 'Birinin elle sürdürdüğü bir takvimle değil, politikayla açılan sayımlar. Beklenen miktarı bulan bir sayım hiçbir hareket yazmaz ve yine de kayıtta kalır.',
+      },
+      accuracy: {
+        title: 'Ölçülen doğruluk',
+        body: 'Bölge ve sınıf bazında sayım doğruluğu, sapma oranları, mutabakat farkları ve boşta kalan taahhütler. Kimsenin ölçmediği bir doğruluk iddiası bir pazarlama iddiasıdır.',
+      },
+      integrations: {
+        title: 'Makine kimlik bilgileri',
+        body: 'Servis hesapları API anahtarı tutar ve bir kişiyle aynı rollere göre değerlendirilir. Öğrenilecek ikinci bir yetki sözlüğü yoktur.',
+      },
+    },
+    integrate: {
+      title: 'Entegrasyon',
+      body: 'Aşağıdaki API yüzeyin tamamıdır — okuduğunuz konsol da sahadaki el terminali de tam olarak bu uçların istemcisidir. Dış bir sistemi eşzamanlı tutmak için defteri bir imleçten ileri doğru yürütün:',
+    },
+  },
+
+  integrations: {
+    title: 'Entegrasyonlar',
+    subtitle:
+      'Kişi değil yazılım olan hesaplar. Bir anahtar, ait olduğu hesabın rollerini taşır ve bir kişiyle aynı denetimlerden geçer — ayrı bir kapsam sözlüğü yoktur.',
+    empty: 'Henüz entegrasyon yok.',
+    liveKeys: '{{count}} etkin',
+    role: {
+      Admin: 'Yönetici',
+      Supervisor: 'Şef',
+      Operator: 'Operatör',
+    },
+    create: {
+      title: 'Yeni entegrasyon',
+      hint: 'En az gerekeni verin. Yalnızca stok okuyan bir entegrasyonun dalga serbest bırakmakla işi yoktur.',
+      name: 'Hesap adı',
+      displayName: 'Ne için',
+      role: 'Rol',
+      submit: 'Oluştur',
+    },
+    issued: {
+      title: 'Anahtar, bir kereliğine',
+      onlyOnce:
+        'Şimdi kopyalayın. Yalnızca özeti saklanır; bu değer panonuzun dışında bir daha hiçbir yerde bulunmayacak. Kaybederseniz iptal edip yenisini üretin.',
+      copy: 'Kopyala',
+      dismiss: 'Tamam',
+    },
+    keys: {
+      name: 'Ad',
+      namePlaceholder: 'Bu anahtar ne için',
+      prefix: 'Anahtar',
+      created: 'Oluşturuldu',
+      lastUsed: 'Son kullanım',
+      never: 'Hiç',
+      state: 'Durum',
+      live: 'Etkin',
+      revoked: 'İptal edildi',
+      issue: 'Anahtar üret',
+      revoke: 'İptal et',
+    },
   },
 
   auth: {
@@ -350,6 +448,23 @@ export const tr: Catalogue = {
       sampled: 'Elenen rafların her gerekçeden birer örnek içeren listesi.',
       empty: 'Kayıtlı aday yok.',
       notFound: 'Bu karar kaydı artık mevcut değil.',
+    },
+
+    draft: {
+      clone: 'Taslağa kopyala',
+      copyOf: '{{name}} kopyası',
+      edit: 'Düzenle',
+      save: 'Taslağı kaydet',
+      saving: 'Kaydediliyor…',
+      promote: 'Sahaya al',
+      promoteNeedsAdmin: 'Bir kural setini sahaya yalnızca yönetici alabilir.',
+      archive: 'Arşivle',
+      remove: 'Kaldır',
+      add: 'Kural ekle…',
+      addRule: 'Ekle',
+      name: 'Ad',
+      parametersPlaceholder: 'Ayarlar, JSON olarak',
+      hint: 'Sıra, operatöre hangi gerekçenin gösterileceğini belirler — değerlendirme başarısız olan ilk kısıtta durur. Ağırlıklar yalnızca birbirlerine göre anlam taşır. Buradaki hiçbir şey sahaya alınmadan sahaya ulaşmaz.',
     },
 
     preview: {
@@ -797,6 +912,33 @@ export const tr: Catalogue = {
     'auth.unknown_actor': 'Oturumunuz bir kullanıcı tanımlamıyor. Lütfen tekrar giriş yapın.',
     'auth.invalid_refresh_token': 'Oturumunuz sona erdi. Lütfen tekrar giriş yapın.',
     'auth.user_not_found': 'Bu kullanıcı artık mevcut değil.',
+
+    'identity.service_account_not_found': 'Bu tanımlayıcıya sahip bir entegrasyon yok.',
+    'identity.api_key_not_found': 'Bu tanımlayıcıya sahip bir anahtar yok.',
+    'identity.not_a_service_account':
+      'API anahtarları entegrasyonlara aittir. Bu hesap parolayla giriş yapar.',
+    'identity.account_name_taken': 'Bu adda bir hesap zaten var.',
+    'identity.unknown_role': 'Böyle bir rol yok.',
+    'identity.no_roles': 'Rolü olmayan bir entegrasyon hiçbir şey yapamazdı.',
+    'identity.name_required': 'Bir entegrasyonun adı ve açıklaması gerekir.',
+    'identity.key_name_required': 'Anahtara ad verin ki sonradan ne işe yaradığı anlaşılsın.',
+    'identity.account_inactive': 'Bu entegrasyon devre dışı.',
+    'identity.account_rejected': 'Hesap reddedildi.',
+    'identity.human_credential_required':
+      'Kimlik bilgisi üretmeyi giriş yapmış bir yönetici yapar, API anahtarı değil.',
+
+    'rate_limit.exceeded': 'Çok fazla istek. Biraz bekleyip tekrar deneyin.',
+
+    'auth.credential_required': 'Lütfen tekrar giriş yapın.',
+    'auth.role_required': 'Hesabınızın bunu yapma yetkisi yok.',
+    'http.not_found': 'Böyle bir adres yok.',
+    'http.method_not_allowed': 'Bu adres bu tür bir isteği kabul etmiyor.',
+    'http.malformed_request': 'İstek okunamadı.',
+    'http.unsupported_media_type': 'İstek, sunucunun kabul etmediği bir biçimde gönderildi.',
+    'http.payload_too_large': 'Bu istek çok büyüktü.',
+    'http.request_timeout': 'İstek çok uzun sürdü.',
+    'http.not_acceptable': 'Sunucu istenen biçimde yanıt veremiyor.',
+    'http.unexpected_error': 'Bizim tarafımızda bir şeyler ters gitti.',
     'item.not_found': 'Bu stok koduna sahip ürün yok.',
     'warehouse.not_found': 'Bu koda sahip depo yok.',
     'gs1.empty': 'Hiçbir şey okutulmadı.',

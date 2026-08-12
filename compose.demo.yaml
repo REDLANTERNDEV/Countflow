@@ -1,0 +1,126 @@
+# The hosted demo.
+#
+#   ./scripts/demo.sh
+#
+# which generates secrets into .env.demo on first run and then does:
+#
+#   docker compose --env-file .env.demo -f compose.yaml -f compose.demo.yaml up -d --build
+#
+# Naming both files explicitly skips compose.override.yaml, so none of the
+# development conveniences — a published database port, a known signing key —
+# reach a public host by accident.
+#
+# What makes this overlay worth having rather than being "prod with demo data on":
+# the warehouse is built by the `simulator` service, a client that authenticates
+# with an API key and drives the published endpoints. Nothing here writes to the
+# database except through the API a visitor could call themselves (ADR 0006).
+#
+# Pointing it at a domain: set CADDY_SITE_ADDRESS to the hostname, point that
+# hostname's A record at the host, and open 80 and 443. Caddy provisions and
+# renews the certificate itself. See docs/api/hosting.md.
+
+# Its own project, and this line is load-bearing. Without it the overlay inherits
+# `name: countflow` from compose.yaml, and a demo brought up on a machine where
+# somebody has been developing would adopt the dev stack's containers *and its
+# database volume* — seeding demo users and three admin-role API keys into a
+# database that was never meant to be public. A separate name gives the demo its
+# own volumes, so the two run side by side and neither can reach the other.
+name: countflow-demo
+
+services:
+  postgres:
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+    restart: unless-stopped
+    # No published port: only the compose network reaches the database.
+
+  seq:
+    environment:
+      SEQ_FIRSTRUN_NOAUTHENTICATION: "false"
+      SEQ_FIRSTRUN_ADMINPASSWORD: ${SEQ_ADMIN_PASSWORD:?SEQ_ADMIN_PASSWORD must be set}
+    restart: unless-stopped
+
+  migrator:
+    environment:
+      Jwt__SigningKey: ${JWT_SIGNING_KEY:?JWT_SIGNING_KEY must be set}
+
+      # The catalogue and the topology are reference data: 2,245 locations and
+      # 500 SKUs are what a warehouse *is*, not what happened in it. Everything
+      # that happened — every receipt, putaway, pick, despatch and count — is the
+      # simulator's work, through the API.
+      Seed__DemoUsers: "true"
+      Seed__DemoData: "true"
+      Seed__DemoPassword: ${DEMO_PASSWORD:?DEMO_PASSWORD must be set}
+
+      # One machine credential per role, because promotion is admin-only,
+      # releasing a wave is supervisor-and-above and confirming a task is an
+      # operator's job. A single all-powerful integration would pass all three
+      # and notice nothing if one of those checks were wrong.
+      Seed__DemoApiKey__Admin: ${DEMO_ADMIN_API_KEY:?DEMO_ADMIN_API_KEY must be set}
+      Seed__DemoApiKey__Supervisor: ${DEMO_SUPERVISOR_API_KEY:?DEMO_SUPERVISOR_API_KEY must be set}
+      Seed__DemoApiKey__Operator: ${DEMO_OPERATOR_API_KEY:?DEMO_OPERATOR_API_KEY must be set}
+
+  api:
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      Jwt__SigningKey: ${JWT_SIGNING_KEY:?JWT_SIGNING_KEY must be set}
+
+      # Publicly reachable, so the limiter is on and tighter than the default.
+      # Generous enough that a person clicking around never meets it, and far
+      # short of what a script would want.
+      RateLimiting__Enabled: "true"
+      RateLimiting__CredentialPermitsPerWindow: ${DEMO_RATE_LIMIT:-300}
+      RateLimiting__AnonymousPermitsPerWindow: 30
+    restart: unless-stopped
+    # Not published: Caddy is the only way in.
+
+  simulator:
+    build:
+      context: .
+      dockerfile: docker/simulator.Dockerfile
+    environment:
+      COUNTFLOW_ADMIN_API_KEY: ${DEMO_ADMIN_API_KEY:?DEMO_ADMIN_API_KEY must be set}
+      COUNTFLOW_SUPERVISOR_API_KEY: ${DEMO_SUPERVISOR_API_KEY:?DEMO_SUPERVISOR_API_KEY must be set}
+      COUNTFLOW_OPERATOR_API_KEY: ${DEMO_OPERATOR_API_KEY:?DEMO_OPERATOR_API_KEY must be set}
+    command:
+      - "--url"
+      - "http://api:8080"
+      - "--warehouse"
+      - "${DEMO_WAREHOUSE:-WH1}"
+      - "--days"
+      - "${DEMO_DAYS:-4}"
+      # The same seed builds the same warehouse, so a demo somebody was shown
+      # last week and the one they come back to are the same building.
+      - "--seed"
+      - "${DEMO_SEED:-20260812}"
+    depends_on:
+      api:
+        condition: service_healthy
+    # Runs once and exits, like the migrator. Re-running it adds four more days
+    # to the same warehouse rather than starting over, which is what you want
+    # from a demo that has been up for a month — and why it is not `always`.
+    restart: "no"
+
+  web:
+    build:
+      args:
+        # Inlined by Vite at build time, which is why the demo hints live in a
+        # build argument rather than behind an API call: an endpoint answering
+        # "which credentials work here" would exist in every deployment and be
+        # one misconfiguration from answering it in production. A variable absent
+        # from the production build cannot.
+        VITE_DEMO_ACCOUNTS: "admin:${DEMO_PASSWORD:?DEMO_PASSWORD must be set},supervisor:${DEMO_PASSWORD},operator:${DEMO_PASSWORD}"
+    environment:
+      CADDY_SITE_ADDRESS: ${CADDY_SITE_ADDRESS:?CADDY_SITE_ADDRESS must be set}
+      API_UPSTREAM: api:8080
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - caddy-data:/data
+      - caddy-config:/config
+    restart: unless-stopped
+
+volumes:
+  caddy-data:
+  caddy-config:

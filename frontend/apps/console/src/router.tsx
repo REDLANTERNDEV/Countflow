@@ -2,6 +2,8 @@ import { createRootRoute, createRoute, createRouter } from '@tanstack/react-rout
 import { AccuracyPage } from './routes/AccuracyPage.js';
 import { CountingPage } from './routes/CountingPage.js';
 import { InboundPage } from './routes/InboundPage.js';
+import { IntegrationsPage } from './routes/IntegrationsPage.js';
+import { TourPage } from './routes/TourPage.js';
 import { ItemDetailPage } from './routes/ItemDetailPage.js';
 import { ItemsPage } from './routes/ItemsPage.js';
 import { LedgerPage } from './routes/LedgerPage.js';
@@ -97,6 +99,18 @@ const replayRoute = createRoute({
   component: ReplayPage,
 });
 
+const integrationsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/integrations',
+  component: IntegrationsPage,
+});
+
+const tourRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/tour',
+  component: TourPage,
+});
+
 const scanRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/scan',
@@ -117,6 +131,8 @@ const routeTree = rootRoute.addChildren([
   workRoute,
   rulesRoute,
   replayRoute,
+  integrationsRoute,
+  tourRoute,
   scanRoute,
 ]);
 

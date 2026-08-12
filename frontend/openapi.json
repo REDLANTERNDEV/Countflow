@@ -1,8 +1,12 @@
 {
   "openapi": "3.1.1",
   "info": {
-    "title": "Countflow.Api | v1",
-    "version": "1.0.0"
+    "title": "Countflow",
+    "description": "The warehouse management surface a Countflow deployment publishes. Every\npath below is mounted under \u0060/api/v1\u0060; there is no unversioned\nalias, and no private surface behind this one \u2014 the console and the\nhandheld are clients of exactly these endpoints.\n\n**Authenticating.** Two credentials, one set of permissions. A person\nexchanges a password at \u0060POST /api/v1/auth/login\u0060 for a bearer\ntoken; an integration sends a service account\u0027s key in the\n\u0060X-Api-Key\u0060 header. Both produce the\nsame principal, and every endpoint\u0027s role requirement applies to both\nidentically. There is no scope vocabulary to learn.\n\n**Writing safely.** Every command that changes stock carries a caller-supplied\nidempotency key. Retry a write that timed out with the same key and it posts\nonce; reuse a key for a different command and it is refused. Handhelds on a\nwarehouse wireless link depend on this, and so should you.\n\n**Following along.** \u0060GET /api/v1/inventory/changes\u0060 walks the\nstock ledger forwards from a cursor and hands out every change exactly once,\nin order. It is the intended way to keep an external system in step.\n\nSee \u0060docs/api/\u0060 in the repository for the compatibility policy, the error\ncode table, and both warehouse loops end to end with worked requests.",
+    "license": {
+      "name": "MIT"
+    },
+    "version": "v1"
   },
   "paths": {
     "/api/v1/auth/login": {
@@ -131,6 +135,286 @@
           },
           "401": {
             "description": "Unauthorized",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/service-accounts": {
+      "post": {
+        "tags": [
+          "Service accounts"
+        ],
+        "summary": "Create an integration account that authenticates with an API key.",
+        "operationId": "CreateServiceAccount",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateServiceAccountRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceAccountResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Service accounts"
+        ],
+        "summary": "List the integration accounts and how many live keys each holds.",
+        "operationId": "GetServiceAccounts",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ServiceAccountResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/service-accounts/{id}/keys": {
+      "post": {
+        "tags": [
+          "Service accounts"
+        ],
+        "summary": "Mint an API key. The secret is returned once and cannot be read back.",
+        "operationId": "CreateApiKey",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateApiKeyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedApiKeyResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Service accounts"
+        ],
+        "summary": "List an account\u0027s keys, live and revoked. Never their secrets.",
+        "operationId": "GetApiKeys",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ApiKeyResponse"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/service-accounts/keys/{keyId}/revoke": {
+      "post": {
+        "tags": [
+          "Service accounts"
+        ],
+        "summary": "Revoke a key. Keys are never deleted \u2014 the audit trail points at them.",
+        "operationId": "RevokeApiKey",
+        "parameters": [
+          {
+            "name": "keyId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiKeyResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
             "content": {
               "application/problem\u002Bjson": {
                 "schema": {
@@ -1178,6 +1462,47 @@
               "application/problem\u002Bjson": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inventory/changes": {
+      "get": {
+        "tags": [
+          "Inventory"
+        ],
+        "summary": "Read the stock ledger forwards from a cursor \u2014 every change, in order, exactly once.",
+        "operationId": "GetLedgerChanges",
+        "parameters": [
+          {
+            "name": "afterSequence",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "default": 0
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 200
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LedgerChangePage"
                 }
               }
             }
@@ -3613,6 +3938,60 @@
           }
         }
       },
+      "ApiKeyResponse": {
+        "required": [
+          "id",
+          "serviceAccountId",
+          "name",
+          "prefix",
+          "createdAt",
+          "expiresAt",
+          "lastUsedAt",
+          "revokedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "serviceAccountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "prefix": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "lastUsedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "revokedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
       "AsnLineProgress": {
         "required": [
           "reference",
@@ -4412,6 +4791,24 @@
           }
         }
       },
+      "CreateApiKeyRequest": {
+        "required": [
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "expiresInDays": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          }
+        }
+      },
       "CreateAsnLineRequest": {
         "required": [
           "sku",
@@ -4671,6 +5068,28 @@
           }
         }
       },
+      "CreateServiceAccountRequest": {
+        "required": [
+          "name",
+          "displayName",
+          "roles"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
       "CreateWaveRequest": {
         "required": [
           "warehouseCode",
@@ -4697,6 +5116,21 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "CreatedApiKeyResponse": {
+        "required": [
+          "key",
+          "secret"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "$ref": "#/components/schemas/ApiKeyResponse"
+          },
+          "secret": {
+            "type": "string"
           }
         }
       },
@@ -5179,6 +5613,34 @@
             "items": {
               "$ref": "#/components/schemas/PackConfigurationResponse"
             }
+          }
+        }
+      },
+      "LedgerChangePage": {
+        "required": [
+          "changes",
+          "nextCursor",
+          "hasMore",
+          "watermark"
+        ],
+        "type": "object",
+        "properties": {
+          "changes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StockMovementResponse"
+            }
+          },
+          "nextCursor": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "hasMore": {
+            "type": "boolean"
+          },
+          "watermark": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },
@@ -7313,6 +7775,47 @@
           }
         }
       },
+      "ServiceAccountResponse": {
+        "required": [
+          "id",
+          "name",
+          "displayName",
+          "roles",
+          "isActive",
+          "createdAt",
+          "activeKeyCount"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "activeKeyCount": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
       "StockBalanceResponse": {
         "required": [
           "sku",
@@ -7784,6 +8287,10 @@
             "items": {
               "type": "string"
             }
+          },
+          "isServiceAccount": {
+            "type": "boolean",
+            "default": false
           }
         }
       },
@@ -8167,11 +8674,36 @@
         ],
         "type": "string"
       }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "description": "A person\u0027s access token, from POST /auth/login. Expires; rotate it with POST /auth/refresh. Service accounts cannot obtain one.",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      },
+      "apiKey": {
+        "type": "apiKey",
+        "description": "A service account\u0027s machine credential. Issued once by an administrator and never readable afterwards; revocable at any time. Carries the roles its account holds, which are the same roles a person holds.",
+        "name": "X-Api-Key",
+        "in": "header"
+      }
     }
   },
+  "security": [
+    {
+      "bearerAuth": []
+    },
+    {
+      "apiKey": []
+    }
+  ],
   "tags": [
     {
       "name": "Authentication"
+    },
+    {
+      "name": "Service accounts"
     },
     {
       "name": "Master data"

@@ -19,6 +19,14 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
     pnpm install --frozen-lockfile
 
 COPY frontend/ ./
+
+# Empty on every build but the demo's. Vite inlines VITE_-prefixed values at
+# build time, so the demo image carries its sign-in hints and a production image
+# has no way to grow them — which is the point: the login screen of a real
+# deployment is a door, and a door does not list its own keys.
+ARG VITE_DEMO_ACCOUNTS=""
+ENV VITE_DEMO_ACCOUNTS=$VITE_DEMO_ACCOUNTS
+
 RUN pnpm --filter @countflow/console build && pnpm --filter @countflow/handheld build
 
 # No Node at runtime — the SPAs are static bundles. This is what the Vite

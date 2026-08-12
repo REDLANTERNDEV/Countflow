@@ -17,8 +17,10 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { api } from '../api.js';
+import { useAuth } from '../auth.js';
 import { DecisionTrace } from '../components/DecisionTrace.js';
 import { PageHead } from '../components/PageHead.js';
+import { RuleSetDraft } from '../components/RuleSetDraft.js';
 import type { components } from '@countflow/api-client';
 
 type Preview = components['schemas']['PreviewPutawayResponse'];
@@ -38,6 +40,12 @@ const statusTone = (status: string) =>
 export function RulesPage() {
   const { t } = useTranslation();
   const locale = currentLocale();
+  const { user } = useAuth();
+
+  // Promotion is admin-only on the server and the button says so rather than
+  // failing: it is the step that changes where every pallet in the building goes
+  // tonight, and a supervisor who drafted a set deserves to know who to ask.
+  const canPromote = user?.roles.includes('Admin') ?? false;
 
   const [sku, setSku] = useState('');
   const [quantity, setQuantity] = useState('48');
@@ -46,7 +54,7 @@ export function RulesPage() {
   const [running, setRunning] = useState(false);
   const [errorCode, setErrorCode] = useState<string | null>(null);
 
-  const { data, isPending, error } = useQuery({
+  const { data, isPending, error, refetch } = useQuery({
     queryKey: ['rule-sets'],
     queryFn: async () => {
       const { data, error } = await api.GET('/api/v1/rules/sets', {});
@@ -173,6 +181,15 @@ export function RulesPage() {
               {set.notes}
             </p>
           ) : null}
+
+          <div className="mb-[var(--space-3)]">
+            <RuleSetDraft
+              set={set}
+              vocabulary={data?.vocabulary.find((kind) => kind.kind === set.kind)}
+              canPromote={canPromote}
+              onChanged={() => void refetch()}
+            />
+          </div>
 
           <TableContainer>
             <Table>

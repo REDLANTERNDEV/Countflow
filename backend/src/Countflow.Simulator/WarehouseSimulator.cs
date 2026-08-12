@@ -62,7 +62,9 @@ public sealed class WarehouseSimulator(
     /// a v2 would leave this driving v1 until somebody here decided otherwise, which
     /// is the entire point of versioning the surface.
     /// </summary>
-    private const string Api = "/api/v1";
+    internal const string Surface = "/api/v1";
+
+    private const string Api = Surface;
 
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
     {
