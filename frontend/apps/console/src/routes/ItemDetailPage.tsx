@@ -23,7 +23,7 @@ export function ItemDetailPage() {
   const { data, isPending, error } = useQuery({
     queryKey: ['item', sku],
     queryFn: async () => {
-      const { data, error } = await api.GET('/api/items/{sku}', {
+      const { data, error } = await api.GET('/api/v1/items/{sku}', {
         params: { path: { sku } },
       });
 

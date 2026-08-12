@@ -62,7 +62,7 @@ export function CountingPage() {
   const warehouses = useQuery({
     queryKey: ['warehouses'],
     queryFn: async () => {
-      const { data, error } = await api.GET('/api/warehouses');
+      const { data, error } = await api.GET('/api/v1/warehouses');
       if (error) throw error;
       return data;
     },
@@ -74,7 +74,7 @@ export function CountingPage() {
     queryKey: ['count-plans', status, page],
     placeholderData: keepPreviousData,
     queryFn: async () => {
-      const { data, error } = await api.GET('/api/counting/plans', {
+      const { data, error } = await api.GET('/api/v1/counting/plans', {
         params: {
           query: {
             page,
@@ -92,7 +92,7 @@ export function CountingPage() {
     queryKey: ['count-plan', expanded],
     enabled: expanded !== null,
     queryFn: async () => {
-      const { data, error } = await api.GET('/api/counting/plans/{id}', {
+      const { data, error } = await api.GET('/api/v1/counting/plans/{id}', {
         params: { path: { id: expanded! } },
       });
       if (error) throw error;
@@ -104,7 +104,7 @@ export function CountingPage() {
     mutationFn: async () => {
       setErrorCode(null);
 
-      const { data, error } = await api.POST('/api/counting/plans', {
+      const { data, error } = await api.POST('/api/v1/counting/plans', {
         params: { header: { 'Idempotency-Key': newIdempotencyKey() } },
         body: {
           warehouseCode: selectedWarehouse,
@@ -128,7 +128,7 @@ export function CountingPage() {
 
   const cancel = useMutation({
     mutationFn: async (id: string) => {
-      const { data, error } = await api.POST('/api/counting/plans/{id}/cancel', {
+      const { data, error } = await api.POST('/api/v1/counting/plans/{id}/cancel', {
         params: { path: { id } },
         body: {},
       });
@@ -148,7 +148,7 @@ export function CountingPage() {
     queryKey: ['decision-trace', detail.data?.decisionTraceId],
     enabled: showTrace && detail.data !== undefined,
     queryFn: async () => {
-      const { data, error } = await api.GET('/api/rules/traces/{id}', {
+      const { data, error } = await api.GET('/api/v1/rules/traces/{id}', {
         params: { path: { id: detail.data!.decisionTraceId } },
       });
       if (error) throw error;

@@ -40,7 +40,7 @@ public static class CreateRuleSet
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapPost("/api/rules/sets", async (
+        endpoints.MapPost("/rules/sets", async (
                 CreateRuleSetRequest request,
                 RuleSetEditor editor,
                 CancellationToken cancellationToken) =>
@@ -82,7 +82,7 @@ public static class ReplaceRuleSet
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapPut("/api/rules/sets/{id:guid}", async (
+        endpoints.MapPut("/rules/sets/{id:guid}", async (
                 Guid id,
                 ReplaceRuleSetRequest request,
                 RuleSetEditor editor,
@@ -123,7 +123,7 @@ public static class PromoteRuleSet
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapPost("/api/rules/sets/{id:guid}/promote", async (
+        endpoints.MapPost("/rules/sets/{id:guid}/promote", async (
                 Guid id,
                 RuleSetEditor editor,
                 CancellationToken cancellationToken) =>
@@ -151,7 +151,7 @@ public static class ArchiveRuleSet
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapPost("/api/rules/sets/{id:guid}/archive", async (
+        endpoints.MapPost("/rules/sets/{id:guid}/archive", async (
                 Guid id,
                 RuleSetEditor editor,
                 CancellationToken cancellationToken) =>

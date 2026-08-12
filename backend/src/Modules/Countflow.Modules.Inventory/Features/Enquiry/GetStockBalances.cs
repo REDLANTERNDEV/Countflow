@@ -64,7 +64,7 @@ public static class GetStockBalances
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapGet("/api/inventory/balances", async (
+        endpoints.MapGet("/inventory/balances", async (
                 InventoryDbContext dbContext,
                 LedgerReplay replay,
                 ReservationLedger reservations,

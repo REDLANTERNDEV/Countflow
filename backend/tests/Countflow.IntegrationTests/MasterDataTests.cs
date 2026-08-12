@@ -57,14 +57,14 @@ public sealed class MasterDataTests(CountflowApiFixture fixture)
         }
 
         var client = fixture.CreateClient();
-        var response = await client.PostAsJsonAsync("/api/auth/login",
+        var response = await client.PostAsJsonAsync("/api/v1/auth/login",
             Credentials("admin", AdminSecret));
 
         if (response.StatusCode == HttpStatusCode.Unauthorized)
         {
             // The demo seeder is off in tests, so create the account we need.
             await CreateAdminAsync();
-            response = await client.PostAsJsonAsync("/api/auth/login",
+            response = await client.PostAsJsonAsync("/api/v1/auth/login",
                 Credentials("admin", AdminSecret));
         }
 
@@ -112,7 +112,7 @@ public sealed class MasterDataTests(CountflowApiFixture fixture)
         // halfway through building the ledger.
         foreach (var type in new[] { "Supplier", "Customer", "Adjustment", "Scrap", "InTransit" })
         {
-            var response = await client.GetFromJsonAsync<PagedLocations>($"/api/locations?type={type}");
+            var response = await client.GetFromJsonAsync<PagedLocations>($"/api/v1/locations?type={type}");
             Assert.NotNull(response);
             Assert.Equal(1, response.Total);
         }
@@ -124,7 +124,7 @@ public sealed class MasterDataTests(CountflowApiFixture fixture)
         using var client = AuthenticatedClient();
 
         var page = await client.GetFromJsonAsync<PagedLocations>(
-            "/api/locations?type=PickFace&pageSize=200");
+            "/api/v1/locations?type=PickFace&pageSize=200");
 
         Assert.NotNull(page);
         Assert.True(page.Total > 100);
@@ -140,7 +140,7 @@ public sealed class MasterDataTests(CountflowApiFixture fixture)
     {
         using var client = AuthenticatedClient();
 
-        var item = await client.GetFromJsonAsync<ItemBody>($"/api/items/{_sku}");
+        var item = await client.GetFromJsonAsync<ItemBody>($"/api/v1/items/{_sku}");
 
         Assert.NotNull(item);
 
@@ -175,7 +175,7 @@ public sealed class MasterDataTests(CountflowApiFixture fixture)
         using var client = AuthenticatedClient();
 
         var barcode = $"01{_caseGtin}10LOT-4711{GS}1727011537000012";
-        var response = await client.PostAsJsonAsync("/api/scan/resolve", new { barcode });
+        var response = await client.PostAsJsonAsync("/api/v1/scan/resolve", new { barcode });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var scan = await response.Content.ReadFromJsonAsync<ScanBody>();
@@ -195,7 +195,7 @@ public sealed class MasterDataTests(CountflowApiFixture fixture)
     {
         using var client = AuthenticatedClient();
 
-        var response = await client.PostAsJsonAsync("/api/scan/resolve",
+        var response = await client.PostAsJsonAsync("/api/v1/scan/resolve",
             new { barcode = "0109501101530003" });
 
         var scan = await response.Content.ReadFromJsonAsync<ScanBody>();
@@ -215,7 +215,7 @@ public sealed class MasterDataTests(CountflowApiFixture fixture)
     {
         using var client = AuthenticatedClient();
 
-        var response = await client.PostAsJsonAsync("/api/scan/resolve",
+        var response = await client.PostAsJsonAsync("/api/v1/scan/resolve",
             new { barcode = $"01{_caseGtin}17279999" });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -234,7 +234,7 @@ public sealed class MasterDataTests(CountflowApiFixture fixture)
             TEST-9001,Duplicate sku,B,,6
             """;
 
-        var response = await client.PostAsync("/api/import/items?dryRun=true",
+        var response = await client.PostAsync("/api/v1/import/items?dryRun=true",
             new StringContent(csv, Encoding.UTF8, "text/csv"));
 
         var result = await response.Content.ReadFromJsonAsync<ImportBody>();
@@ -260,7 +260,7 @@ public sealed class MasterDataTests(CountflowApiFixture fixture)
             TEST-9102,Bad barcode,A,05098769000099,12
             """;
 
-        var response = await client.PostAsync("/api/import/items?dryRun=false",
+        var response = await client.PostAsync("/api/v1/import/items?dryRun=false",
             new StringContent(csv, Encoding.UTF8, "text/csv"));
 
         var result = await response.Content.ReadFromJsonAsync<ImportBody>();
@@ -286,7 +286,7 @@ public sealed class MasterDataTests(CountflowApiFixture fixture)
 
         for (var attempt = 0; attempt < 2; attempt++)
         {
-            var response = await client.PostAsync("/api/import/items?dryRun=false",
+            var response = await client.PostAsync("/api/v1/import/items?dryRun=false",
                 new StringContent(csv, Encoding.UTF8, "text/csv"));
 
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);

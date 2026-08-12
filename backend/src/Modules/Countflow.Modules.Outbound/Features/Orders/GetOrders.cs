@@ -15,7 +15,7 @@ public static class GetOrders
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapGet("/api/outbound/orders", async (
+        endpoints.MapGet("/outbound/orders", async (
                 OutboundDbContext dbContext,
                 OrderDescriber describe,
                 CancellationToken cancellationToken,
@@ -62,7 +62,7 @@ public static class GetOrder
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapGet("/api/outbound/orders/{id:guid}", async (
+        endpoints.MapGet("/outbound/orders/{id:guid}", async (
                 Guid id,
                 OutboundDbContext dbContext,
                 OrderDescriber describe,

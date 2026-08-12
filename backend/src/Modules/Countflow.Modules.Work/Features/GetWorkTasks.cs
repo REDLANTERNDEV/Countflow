@@ -18,7 +18,7 @@ public static class GetWorkTasks
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapGet("/api/work/tasks", async (
+        endpoints.MapGet("/work/tasks", async (
                 WorkDbContext dbContext,
                 WorkTaskDescriber describe,
                 ClaimsPrincipal user,
@@ -79,7 +79,7 @@ public static class GetWorkTask
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapGet("/api/work/tasks/{id:guid}", async (
+        endpoints.MapGet("/work/tasks/{id:guid}", async (
                 Guid id,
                 WorkDbContext dbContext,
                 WorkTaskDescriber describe,

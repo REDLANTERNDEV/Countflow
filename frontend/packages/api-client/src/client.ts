@@ -11,7 +11,7 @@ export interface CountflowClientOptions {
 
 export type CountflowClient = ReturnType<typeof createClient<paths>>;
 
-const AUTH_FREE_PATHS = ['/api/auth/login', '/api/auth/refresh', '/api/auth/logout'];
+const AUTH_FREE_PATHS = ['/api/v1/auth/login', '/api/v1/auth/refresh', '/api/v1/auth/logout'];
 
 /**
  * Typed API client.

@@ -47,7 +47,7 @@ export function AccuracyPage() {
   const warehouses = useQuery({
     queryKey: ['warehouses'],
     queryFn: async () => {
-      const { data, error } = await api.GET('/api/warehouses');
+      const { data, error } = await api.GET('/api/v1/warehouses');
       if (error) throw error;
       return data;
     },
@@ -62,7 +62,7 @@ export function AccuracyPage() {
     queryKey: ['accuracy', selected],
     enabled: selected !== '',
     queryFn: async () => {
-      const { data, error } = await api.GET('/api/inventory/accuracy', {
+      const { data, error } = await api.GET('/api/v1/inventory/accuracy', {
         params: { query: { warehouseId: selected } },
       });
       if (error) throw error;
@@ -74,7 +74,7 @@ export function AccuracyPage() {
     queryKey: ['work-statistics', selected],
     enabled: selected !== '',
     queryFn: async () => {
-      const { data, error } = await api.GET('/api/work/statistics', {
+      const { data, error } = await api.GET('/api/v1/work/statistics', {
         params: { query: { warehouseId: selected } },
       });
       if (error) throw error;
@@ -85,7 +85,7 @@ export function AccuracyPage() {
   const drift = useQuery({
     queryKey: ['reconciliation-history'],
     queryFn: async () => {
-      const { data, error } = await api.GET('/api/inventory/reconciliation/history', {
+      const { data, error } = await api.GET('/api/v1/inventory/reconciliation/history', {
         params: { query: { limit: 20 } },
       });
       if (error) throw error;
@@ -96,7 +96,7 @@ export function AccuracyPage() {
   const stranded = useQuery({
     queryKey: ['stranded-reservations'],
     queryFn: async () => {
-      const { data, error } = await api.GET('/api/inventory/reservations/stranded');
+      const { data, error } = await api.GET('/api/v1/inventory/reservations/stranded');
       if (error) throw error;
       return data;
     },
@@ -104,7 +104,7 @@ export function AccuracyPage() {
 
   const reconcile = useMutation({
     mutationFn: async () => {
-      const { data, error } = await api.POST('/api/inventory/reconciliation');
+      const { data, error } = await api.POST('/api/v1/inventory/reconciliation');
       if (error) throw error;
       return data;
     },

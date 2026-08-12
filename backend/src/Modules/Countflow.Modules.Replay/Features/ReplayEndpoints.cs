@@ -140,7 +140,7 @@ public static class CreateReplayRun
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapPost("/api/replay/runs", async (
+        endpoints.MapPost("/replay/runs", async (
                 CreateReplayRunRequest request,
                 ClaimsPrincipal user,
                 ReplayRunner runner,
@@ -188,7 +188,7 @@ public static class GetReplayRuns
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapGet("/api/replay/runs", async (
+        endpoints.MapGet("/replay/runs", async (
                 Guid? warehouseId,
                 DecisionKind? kind,
                 int? page,
@@ -242,7 +242,7 @@ public static class GetReplayRun
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapGet("/api/replay/runs/{id:guid}", async (
+        endpoints.MapGet("/replay/runs/{id:guid}", async (
                 Guid id,
                 ReplayOutcome? outcome,
                 ReplayDbContext dbContext,

@@ -52,7 +52,7 @@ public static class ScrapStock
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapPost("/api/inventory/scrap", async (
+        endpoints.MapPost("/inventory/scrap", async (
                 ScrapStockRequest request,
                 ClaimsPrincipal user,
                 [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey,

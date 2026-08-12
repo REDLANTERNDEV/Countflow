@@ -95,7 +95,7 @@ public sealed class OutboundLoopTests(CountflowApiFixture fixture)
 
         // 2. Released: the rules choose the stock and the picks go into the queue.
         var released = await Read<ReleaseResult>(await PostAsync(
-            _supervisor, $"/api/outbound/orders/{order.Id}/release", new { stagingLocationCode = _bench }));
+            _supervisor, $"/api/v1/outbound/orders/{order.Id}/release", new { stagingLocationCode = _bench }));
 
         Assert.Equal("Released", released.Order.Status);
         Assert.Equal(1, released.AllocationsRaised);
@@ -118,7 +118,7 @@ public sealed class OutboundLoopTests(CountflowApiFixture fixture)
         // 3. The pick is an ordinary job on the ordinary queue, and it explains
         //    itself the same way a putaway does.
         var claimed = await Read<TaskDetail>(await PostAsync(
-            _operator, $"/api/work/tasks/{allocation.WorkTaskId}/claim", new { }));
+            _operator, $"/api/v1/work/tasks/{allocation.WorkTaskId}/claim", new { }));
 
         Assert.Equal("Pick", claimed.Task.Kind);
         Assert.Equal(bin, claimed.Task.FromLocationCode);
@@ -136,7 +136,7 @@ public sealed class OutboundLoopTests(CountflowApiFixture fixture)
 
         // 4. Confirmed at the bench — a scan, exactly as a putaway is.
         var completed = await Read<TaskCompletion>(await PostAsync(
-            _operator, $"/api/work/tasks/{claimed.Task.Id}/complete", new { toLocationCode = _bench }));
+            _operator, $"/api/v1/work/tasks/{claimed.Task.Id}/complete", new { toLocationCode = _bench }));
 
         Assert.Equal("Completed", completed.Task.Status);
         Assert.False(completed.Task.WasOverridden);
@@ -153,12 +153,12 @@ public sealed class OutboundLoopTests(CountflowApiFixture fixture)
 
         // 5. Packed, then despatched.
         var packed = await Read<OrderBody>(await PostAsync(
-            _supervisor, $"/api/outbound/orders/{order.Id}/pack", new { }));
+            _supervisor, $"/api/v1/outbound/orders/{order.Id}/pack", new { }));
 
         Assert.Equal("Packed", packed.Status);
 
         var despatched = await Read<DespatchResult>(await PostAsync(
-            _supervisor, $"/api/outbound/orders/{order.Id}/despatch", new { }));
+            _supervisor, $"/api/v1/outbound/orders/{order.Id}/despatch", new { }));
 
         Assert.Equal("Despatched", despatched.Order.Status);
         Assert.Single(despatched.Movements);
@@ -197,12 +197,12 @@ public sealed class OutboundLoopTests(CountflowApiFixture fixture)
         var second = await CreateOrderAsync(sku, 50m);
 
         var firstRelease = await Read<ReleaseResult>(await PostAsync(
-            _supervisor, $"/api/outbound/orders/{first.Id}/release", new { stagingLocationCode = _bench }));
+            _supervisor, $"/api/v1/outbound/orders/{first.Id}/release", new { stagingLocationCode = _bench }));
 
         Assert.Equal(0m, firstRelease.ShortfallQuantity);
 
         var secondRelease = await Read<ReleaseResult>(await PostAsync(
-            _supervisor, $"/api/outbound/orders/{second.Id}/release", new { stagingLocationCode = _bench }));
+            _supervisor, $"/api/v1/outbound/orders/{second.Id}/release", new { stagingLocationCode = _bench }));
 
         // Not an error. The stock is genuinely there and genuinely unavailable,
         // and a warehouse tells the difference between "we have none" and "it is
@@ -211,7 +211,7 @@ public sealed class OutboundLoopTests(CountflowApiFixture fixture)
         Assert.Empty(secondRelease.Order.Lines.Single().Allocations);
 
         var trace = await GetAsync<TraceView>(
-            $"/api/rules/traces/{await LastAllocationTraceAsync(sku)}");
+            $"/api/v1/rules/traces/{await LastAllocationTraceAsync(sku)}");
 
         var refused = trace.Candidates.Single(c => c.CandidateKey.StartsWith(bin, StringComparison.Ordinal));
         Assert.False(refused.IsAdmissible);
@@ -237,14 +237,14 @@ public sealed class OutboundLoopTests(CountflowApiFixture fixture)
         // stock. Only the reservation is serialised, and it is the only thing
         // that has to be.
         var releases = await Task.WhenAll(orders.Select(order => Read<ReleaseResult>(PostAsync(
-            _supervisor, $"/api/outbound/orders/{order.Id}/release", new { stagingLocationCode = _bench }))));
+            _supervisor, $"/api/v1/outbound/orders/{order.Id}/release", new { stagingLocationCode = _bench }))));
 
         Assert.Equal(1, releases.Count(r => r.AllocationsRaised == 1));
         Assert.Equal(1, releases.Count(r => r.ShortfallQuantity == 30m));
 
         // And the warehouse is committed to exactly one of them.
         var page = await GetAsync<BalancePage>(
-            $"/api/inventory/balances?sku={Uri.EscapeDataString(sku)}&status=Available");
+            $"/api/v1/inventory/balances?sku={Uri.EscapeDataString(sku)}&status=Available");
 
         Assert.Equal(30m, page.Items.Sum(r => r.ReservedQuantity ?? 0m));
     }
@@ -267,14 +267,14 @@ public sealed class OutboundLoopTests(CountflowApiFixture fixture)
         var order = await CreateOrderAsync(sku, 60m);
 
         var released = await Read<ReleaseResult>(await PostAsync(
-            _supervisor, $"/api/outbound/orders/{order.Id}/release", new { stagingLocationCode = _bench }));
+            _supervisor, $"/api/v1/outbound/orders/{order.Id}/release", new { stagingLocationCode = _bench }));
 
         var allocation = released.Order.Lines.Single().Allocations.Single();
         Assert.Equal(oldBin, allocation.LocationCode);
         Assert.Equal("LOT-OLD", allocation.LotNumber);
         Assert.NotEqual(youngBin, allocation.LocationCode);
 
-        var trace = await GetAsync<TraceView>($"/api/rules/traces/{allocation.DecisionTraceId}");
+        var trace = await GetAsync<TraceView>($"/api/v1/rules/traces/{allocation.DecisionTraceId}");
 
         var chosen = trace.Candidates.Single(c => c.Rank == 1);
         var rotation = chosen.Scores.Single(s => s.RuleCode == "allocation.fefo");
@@ -307,7 +307,7 @@ public sealed class OutboundLoopTests(CountflowApiFixture fixture)
         var order = await CreateOrderAsync(sku, 40m);
 
         var released = await Read<ReleaseResult>(await PostAsync(
-            _supervisor, $"/api/outbound/orders/{order.Id}/release", new { stagingLocationCode = _bench }));
+            _supervisor, $"/api/v1/outbound/orders/{order.Id}/release", new { stagingLocationCode = _bench }));
 
         var allocation = released.Order.Lines.Single().Allocations.Single();
 
@@ -316,7 +316,7 @@ public sealed class OutboundLoopTests(CountflowApiFixture fixture)
         // reason Item.MinimumRemainingShelfLifePercent exists.
         Assert.Equal(freshBin, allocation.LocationCode);
 
-        var trace = await GetAsync<TraceView>($"/api/rules/traces/{allocation.DecisionTraceId}");
+        var trace = await GetAsync<TraceView>($"/api/v1/rules/traces/{allocation.DecisionTraceId}");
 
         var refused = trace.Candidates.Single(
             c => !c.IsAdmissible && c.CandidateKey.StartsWith(shortBin, StringComparison.Ordinal));
@@ -336,12 +336,12 @@ public sealed class OutboundLoopTests(CountflowApiFixture fixture)
         var order = await CreateOrderAsync(sku, 25m);
 
         var released = await Read<ReleaseResult>(await PostAsync(
-            _supervisor, $"/api/outbound/orders/{order.Id}/release", new { stagingLocationCode = _bench }));
+            _supervisor, $"/api/v1/outbound/orders/{order.Id}/release", new { stagingLocationCode = _bench }));
 
         var allocation = released.Order.Lines.Single().Allocations.Single();
         Assert.Equal(25m, allocation.Quantity);
 
-        var trace = await GetAsync<TraceView>($"/api/rules/traces/{allocation.DecisionTraceId}");
+        var trace = await GetAsync<TraceView>($"/api/v1/rules/traces/{allocation.DecisionTraceId}");
 
         // The point is that it appears at all. Filtering held stock out of the
         // query would have been cheaper and would have made "there are twenty-five
@@ -370,16 +370,16 @@ public sealed class OutboundLoopTests(CountflowApiFixture fixture)
         // where it is and a picker sent to a dock door would be walking into a
         // truck.
         await Read<DockReceipt>(await PostAsync(
-            _operator, "/api/inbound/receipts", new { sku, quantity = 90m, toLocationCode = _dock }));
+            _operator, "/api/v1/inbound/receipts", new { sku, quantity = 90m, toLocationCode = _dock }));
 
         var order = await CreateOrderAsync(sku, 90m);
 
         var released = await Read<ReleaseResult>(await PostAsync(
-            _supervisor, $"/api/outbound/orders/{order.Id}/release", new { stagingLocationCode = _bench }));
+            _supervisor, $"/api/v1/outbound/orders/{order.Id}/release", new { stagingLocationCode = _bench }));
 
         Assert.Equal(90m, released.ShortfallQuantity);
 
-        var trace = await GetAsync<TraceView>($"/api/rules/traces/{await LastAllocationTraceAsync(sku)}");
+        var trace = await GetAsync<TraceView>($"/api/v1/rules/traces/{await LastAllocationTraceAsync(sku)}");
         var refused = trace.Candidates.Single(c => c.CandidateKey.StartsWith(_dock, StringComparison.Ordinal));
 
         Assert.Equal("rules.allocation.not_pickable", refused.ExcludedBy!.Code);
@@ -402,7 +402,7 @@ public sealed class OutboundLoopTests(CountflowApiFixture fixture)
         var order = await CreateOrderAsync(sku, 45m);
 
         var released = await Read<ReleaseResult>(await PostAsync(
-            _supervisor, $"/api/outbound/orders/{order.Id}/release", new { stagingLocationCode = _bench }));
+            _supervisor, $"/api/v1/outbound/orders/{order.Id}/release", new { stagingLocationCode = _bench }));
 
         // One decision, two lines, two jobs. The rules rank; the fill walks the
         // ranking taking what each holding has.
@@ -435,10 +435,10 @@ public sealed class OutboundLoopTests(CountflowApiFixture fixture)
         var key = Guid.CreateVersion7().ToString();
 
         var first = await Read<TaskCompletion>(await PostAsync(
-            _operator, $"/api/work/tasks/{taskId}/complete", new { toLocationCode = _bench }, key));
+            _operator, $"/api/v1/work/tasks/{taskId}/complete", new { toLocationCode = _bench }, key));
 
         var replay = await Read<TaskCompletion>(await PostAsync(
-            _operator, $"/api/work/tasks/{taskId}/complete", new { toLocationCode = _bench }, key));
+            _operator, $"/api/v1/work/tasks/{taskId}/complete", new { toLocationCode = _bench }, key));
 
         Assert.Equal("Completed", first.Task.Status);
         Assert.Equal("Completed", replay.Task.Status);
@@ -456,12 +456,12 @@ public sealed class OutboundLoopTests(CountflowApiFixture fixture)
         var (taskId, _) = await ReleaseAndClaimAsync(sku, 20m);
 
         await Read<TaskCompletion>(await PostAsync(
-            _operator, $"/api/work/tasks/{taskId}/complete", new { toLocationCode = _bench }));
+            _operator, $"/api/v1/work/tasks/{taskId}/complete", new { toLocationCode = _bench }));
 
         // A new key is a new intent, and honouring it would take the stock a
         // second time — against a commitment that no longer exists.
         var second = await PostAsync(
-            _operator, $"/api/work/tasks/{taskId}/complete", new { toLocationCode = _bench });
+            _operator, $"/api/v1/work/tasks/{taskId}/complete", new { toLocationCode = _bench });
 
         Assert.Equal(HttpStatusCode.Conflict, second.StatusCode);
         Assert.Single(await MovementsOfTypeAsync(sku, "Pick"));
@@ -475,17 +475,17 @@ public sealed class OutboundLoopTests(CountflowApiFixture fixture)
         var (taskId, orderId) = await ReleaseAndClaimAsync(sku, 15m);
 
         await Read<TaskCompletion>(await PostAsync(
-            _operator, $"/api/work/tasks/{taskId}/complete", new { toLocationCode = _bench }));
+            _operator, $"/api/v1/work/tasks/{taskId}/complete", new { toLocationCode = _bench }));
 
-        await PostAsync(_supervisor, $"/api/outbound/orders/{orderId}/pack", new { });
+        await PostAsync(_supervisor, $"/api/v1/outbound/orders/{orderId}/pack", new { });
 
         var key = Guid.CreateVersion7().ToString();
 
         var first = await Read<DespatchResult>(await PostAsync(
-            _supervisor, $"/api/outbound/orders/{orderId}/despatch", new { }, key));
+            _supervisor, $"/api/v1/outbound/orders/{orderId}/despatch", new { }, key));
 
         var replay = await Read<DespatchResult>(await PostAsync(
-            _supervisor, $"/api/outbound/orders/{orderId}/despatch", new { }, key));
+            _supervisor, $"/api/v1/outbound/orders/{orderId}/despatch", new { }, key));
 
         Assert.Single(first.Movements);
         Assert.Empty(replay.Movements);
@@ -496,7 +496,7 @@ public sealed class OutboundLoopTests(CountflowApiFixture fixture)
 
         // A second despatch under a different key is a second trailer, and is
         // refused rather than posted.
-        var again = await PostAsync(_supervisor, $"/api/outbound/orders/{orderId}/despatch", new { });
+        var again = await PostAsync(_supervisor, $"/api/v1/outbound/orders/{orderId}/despatch", new { });
         Assert.Equal(HttpStatusCode.Conflict, again.StatusCode);
     }
 
@@ -510,10 +510,10 @@ public sealed class OutboundLoopTests(CountflowApiFixture fixture)
         var key = Guid.CreateVersion7().ToString();
 
         var first = await Read<ReleaseResult>(await PostAsync(
-            _supervisor, $"/api/outbound/orders/{order.Id}/release", new { stagingLocationCode = _bench }, key));
+            _supervisor, $"/api/v1/outbound/orders/{order.Id}/release", new { stagingLocationCode = _bench }, key));
 
         var again = await Read<ReleaseResult>(await PostAsync(
-            _supervisor, $"/api/outbound/orders/{order.Id}/release", new { stagingLocationCode = _bench }, key));
+            _supervisor, $"/api/v1/outbound/orders/{order.Id}/release", new { stagingLocationCode = _bench }, key));
 
         Assert.Equal(1, first.AllocationsRaised);
         Assert.Equal(0, again.AllocationsRaised);
@@ -523,7 +523,7 @@ public sealed class OutboundLoopTests(CountflowApiFixture fixture)
         Assert.Equal(25m, again.Order.Lines.Single().AllocatedQuantity);
 
         var page = await GetAsync<BalancePage>(
-            $"/api/inventory/balances?sku={Uri.EscapeDataString(sku)}&status=Available");
+            $"/api/v1/inventory/balances?sku={Uri.EscapeDataString(sku)}&status=Available");
 
         Assert.Equal(25m, page.Items.Sum(r => r.ReservedQuantity ?? 0m));
     }
@@ -537,7 +537,7 @@ public sealed class OutboundLoopTests(CountflowApiFixture fixture)
         await ReceiveAndPutAwayAsync(sku, 12m);
         var (_, orderId) = await ReleaseAndClaimAsync(sku, 12m);
 
-        var response = await PostAsync(_supervisor, $"/api/outbound/orders/{orderId}/pack", new { });
+        var response = await PostAsync(_supervisor, $"/api/v1/outbound/orders/{orderId}/pack", new { });
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
     }
@@ -550,9 +550,9 @@ public sealed class OutboundLoopTests(CountflowApiFixture fixture)
         var (taskId, orderId) = await ReleaseAndClaimAsync(sku, 12m);
 
         await Read<TaskCompletion>(await PostAsync(
-            _operator, $"/api/work/tasks/{taskId}/complete", new { toLocationCode = _bench }));
+            _operator, $"/api/v1/work/tasks/{taskId}/complete", new { toLocationCode = _bench }));
 
-        var response = await PostAsync(_supervisor, $"/api/outbound/orders/{orderId}/despatch", new { });
+        var response = await PostAsync(_supervisor, $"/api/v1/outbound/orders/{orderId}/despatch", new { });
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         Assert.Empty(await MovementsOfTypeAsync(sku, "Despatch"));
@@ -567,13 +567,13 @@ public sealed class OutboundLoopTests(CountflowApiFixture fixture)
         var order = await CreateOrderAsync(sku, 40m);
 
         var released = await Read<ReleaseResult>(await PostAsync(
-            _supervisor, $"/api/outbound/orders/{order.Id}/release", new { stagingLocationCode = _bench }));
+            _supervisor, $"/api/v1/outbound/orders/{order.Id}/release", new { stagingLocationCode = _bench }));
 
         var taskId = released.Order.Lines.Single().Allocations.Single().WorkTaskId;
         Assert.Equal(40m, (await HoldingAsync(sku, bin)).ReservedQuantity);
 
         var cancelled = await Read<CancelResult>(await PostAsync(
-            _supervisor, $"/api/outbound/orders/{order.Id}/cancel", new { reason = "Customer withdrew" }));
+            _supervisor, $"/api/v1/outbound/orders/{order.Id}/cancel", new { reason = "Customer withdrew" }));
 
         Assert.Equal("Cancelled", cancelled.Order.Status);
         Assert.Equal(1, cancelled.ReservationsReleased);
@@ -588,7 +588,7 @@ public sealed class OutboundLoopTests(CountflowApiFixture fixture)
 
         Assert.Empty(await MovementsOfTypeAsync(sku, "Pick"));
 
-        var task = await GetAsync<TaskDetail>($"/api/work/tasks/{taskId}");
+        var task = await GetAsync<TaskDetail>($"/api/v1/work/tasks/{taskId}");
         Assert.Equal("Cancelled", task.Task.Status);
     }
 
@@ -600,7 +600,7 @@ public sealed class OutboundLoopTests(CountflowApiFixture fixture)
         var (_, orderId) = await ReleaseAndClaimAsync(sku, 18m);
 
         var response = await PostAsync(
-            _supervisor, $"/api/outbound/orders/{orderId}/cancel", new { reason = "Changed their mind" });
+            _supervisor, $"/api/v1/outbound/orders/{orderId}/cancel", new { reason = "Changed their mind" });
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
     }
@@ -613,7 +613,7 @@ public sealed class OutboundLoopTests(CountflowApiFixture fixture)
 
         var order = await CreateOrderAsync(sku, 10m, staging: null);
 
-        var response = await PostAsync(_supervisor, $"/api/outbound/orders/{order.Id}/release", new { });
+        var response = await PostAsync(_supervisor, $"/api/v1/outbound/orders/{order.Id}/release", new { });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -628,7 +628,7 @@ public sealed class OutboundLoopTests(CountflowApiFixture fixture)
         // where the next allocation would find it.
         var response = await PostAsync(
             _supervisor,
-            "/api/outbound/orders",
+            "/api/v1/outbound/orders",
             new
             {
                 warehouseCode = _warehouseCode,
@@ -650,7 +650,7 @@ public sealed class OutboundLoopTests(CountflowApiFixture fixture)
 
         var preview = await Read<PreviewResult>(await PostAsync(
             _supervisor,
-            "/api/rules/allocation/preview",
+            "/api/v1/rules/allocation/preview",
             new { warehouseCode = _warehouseCode, sku, quantity = 70m }));
 
         Assert.Equal(bin, preview.Lines.Single().LocationCode);
@@ -678,7 +678,7 @@ public sealed class OutboundLoopTests(CountflowApiFixture fixture)
 
         var wave = await Read<WaveBody>(await PostAsync(
             _supervisor,
-            "/api/outbound/waves",
+            "/api/v1/outbound/waves",
             new
             {
                 warehouseCode = _warehouseCode,
@@ -687,7 +687,7 @@ public sealed class OutboundLoopTests(CountflowApiFixture fixture)
             }));
 
         var released = await Read<ReleaseWaveResult>(await PostAsync(
-            _supervisor, $"/api/outbound/waves/{wave.Id}/release", new { stagingLocationCode = _bench }));
+            _supervisor, $"/api/v1/outbound/waves/{wave.Id}/release", new { stagingLocationCode = _bench }));
 
         Assert.Equal("Released", released.Wave.Status);
         Assert.Equal(2, released.OrdersReleased);
@@ -695,7 +695,7 @@ public sealed class OutboundLoopTests(CountflowApiFixture fixture)
         Assert.All(released.Wave.Orders, order => Assert.Equal("Released", order.Status));
 
         var page = await GetAsync<BalancePage>(
-            $"/api/inventory/balances?sku={Uri.EscapeDataString(sku)}&status=Available");
+            $"/api/v1/inventory/balances?sku={Uri.EscapeDataString(sku)}&status=Available");
 
         Assert.Equal(50m, page.Items.Sum(r => r.ReservedQuantity ?? 0m));
     }
@@ -717,7 +717,7 @@ public sealed class OutboundLoopTests(CountflowApiFixture fixture)
     {
         var received = await Read<DockReceipt>(await PostAsync(
             _operator,
-            "/api/inbound/receipts",
+            "/api/v1/inbound/receipts",
             new
             {
                 sku,
@@ -733,7 +733,7 @@ public sealed class OutboundLoopTests(CountflowApiFixture fixture)
 
         await Read<TaskCompletion>(await PostAsync(
             _operator,
-            $"/api/work/tasks/{received.WorkTaskId}/complete",
+            $"/api/v1/work/tasks/{received.WorkTaskId}/complete",
             new { toLocationCode = received.SuggestedLocationCode }));
 
         return received.SuggestedLocationCode!;
@@ -747,7 +747,7 @@ public sealed class OutboundLoopTests(CountflowApiFixture fixture)
     {
         return await Read<OrderBody>(await PostAsync(
             _supervisor,
-            "/api/outbound/orders",
+            "/api/v1/outbound/orders",
             new
             {
                 warehouseCode = _warehouseCode,
@@ -766,7 +766,7 @@ public sealed class OutboundLoopTests(CountflowApiFixture fixture)
     {
         var order = await Read<OrderBody>(await PostAsync(
             _supervisor,
-            "/api/outbound/orders",
+            "/api/v1/outbound/orders",
             new
             {
                 warehouseCode = _warehouseCode,
@@ -776,12 +776,12 @@ public sealed class OutboundLoopTests(CountflowApiFixture fixture)
             }));
 
         var released = await Read<ReleaseResult>(await PostAsync(
-            _supervisor, $"/api/outbound/orders/{order.Id}/release", new { }));
+            _supervisor, $"/api/v1/outbound/orders/{order.Id}/release", new { }));
 
         var allocation = released.Order.Lines.Single().Allocations.Single();
 
         await Read<TaskDetail>(await PostAsync(
-            _operator, $"/api/work/tasks/{allocation.WorkTaskId}/claim", new { }));
+            _operator, $"/api/v1/work/tasks/{allocation.WorkTaskId}/claim", new { }));
 
         return (allocation.WorkTaskId!.Value, order.Id);
     }
@@ -839,7 +839,7 @@ public sealed class OutboundLoopTests(CountflowApiFixture fixture)
     private async Task<BalanceRow> HoldingAsync(string sku, string locationCode)
     {
         var page = await GetAsync<BalancePage>(
-            $"/api/inventory/balances?sku={Uri.EscapeDataString(sku)}" +
+            $"/api/v1/inventory/balances?sku={Uri.EscapeDataString(sku)}" +
             $"&location={Uri.EscapeDataString(locationCode)}");
 
         return page.Items.Single();
@@ -848,7 +848,7 @@ public sealed class OutboundLoopTests(CountflowApiFixture fixture)
     private async Task<decimal> BalanceAsync(string sku, string locationCode)
     {
         var page = await GetAsync<BalancePage>(
-            $"/api/inventory/balances?sku={Uri.EscapeDataString(sku)}" +
+            $"/api/v1/inventory/balances?sku={Uri.EscapeDataString(sku)}" +
             $"&location={Uri.EscapeDataString(locationCode)}&status=Available");
 
         return page.Items.Sum(r => r.Quantity);
@@ -861,13 +861,13 @@ public sealed class OutboundLoopTests(CountflowApiFixture fixture)
     private async Task<decimal> EveryHoldingAsync(string sku)
     {
         var page = await GetAsync<BalancePage>(
-            $"/api/inventory/balances?sku={Uri.EscapeDataString(sku)}&includeEmpty=true&pageSize=500");
+            $"/api/v1/inventory/balances?sku={Uri.EscapeDataString(sku)}&includeEmpty=true&pageSize=500");
 
         return page.Items.Sum(r => r.Quantity);
     }
 
     private async Task<List<MovementRow>> MovementsAsync(string sku) =>
-        (await GetAsync<MovementPage>($"/api/inventory/movements?sku={Uri.EscapeDataString(sku)}")).Items;
+        (await GetAsync<MovementPage>($"/api/v1/inventory/movements?sku={Uri.EscapeDataString(sku)}")).Items;
 
     private async Task<List<MovementRow>> MovementsOfTypeAsync(string sku, string type) =>
         [.. (await MovementsAsync(sku)).Where(m => m.Type == type)];
@@ -979,7 +979,7 @@ public sealed class OutboundLoopTests(CountflowApiFixture fixture)
     {
         var client = fixture.CreateClient();
 
-        var response = await client.PostAsJsonAsync("/api/auth/login", Credentials(userName, Secret));
+        var response = await client.PostAsJsonAsync("/api/v1/auth/login", Credentials(userName, Secret));
         response.EnsureSuccessStatusCode();
 
         var body = (await response.Content.ReadFromJsonAsync<LoginResponse>())!;

@@ -44,7 +44,7 @@ public static class AdjustStock
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapPost("/api/inventory/adjustments", async (
+        endpoints.MapPost("/inventory/adjustments", async (
                 AdjustStockRequest request,
                 ClaimsPrincipal user,
                 [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey,

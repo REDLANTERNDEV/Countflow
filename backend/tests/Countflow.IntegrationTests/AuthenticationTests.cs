@@ -74,7 +74,7 @@ public sealed class AuthenticationTests(CountflowApiFixture fixture) : IClassFix
     {
         var client = fixture.CreateClient();
 
-        var response = await client.PostAsJsonAsync("/api/auth/login", Credentials(UserName, OperatorSecret));
+        var response = await client.PostAsJsonAsync("/api/v1/auth/login", Credentials(UserName, OperatorSecret));
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
@@ -91,7 +91,7 @@ public sealed class AuthenticationTests(CountflowApiFixture fixture) : IClassFix
     {
         var client = fixture.CreateClient();
 
-        var response = await client.PostAsJsonAsync("/api/auth/login", Credentials(OperatorCode, OperatorSecret));
+        var response = await client.PostAsJsonAsync("/api/v1/auth/login", Credentials(OperatorCode, OperatorSecret));
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
@@ -101,7 +101,7 @@ public sealed class AuthenticationTests(CountflowApiFixture fixture) : IClassFix
     {
         var client = fixture.CreateClient();
 
-        var response = await client.PostAsJsonAsync("/api/auth/login", Credentials(UserName, WrongSecret));
+        var response = await client.PostAsJsonAsync("/api/v1/auth/login", Credentials(UserName, WrongSecret));
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
@@ -111,8 +111,8 @@ public sealed class AuthenticationTests(CountflowApiFixture fixture) : IClassFix
     {
         var client = fixture.CreateClient();
 
-        var unknown = await client.PostAsJsonAsync("/api/auth/login", Credentials("does.not.exist", OperatorSecret));
-        var wrong = await client.PostAsJsonAsync("/api/auth/login", Credentials(UserName, WrongSecret));
+        var unknown = await client.PostAsJsonAsync("/api/v1/auth/login", Credentials("does.not.exist", OperatorSecret));
+        var wrong = await client.PostAsJsonAsync("/api/v1/auth/login", Credentials(UserName, WrongSecret));
 
         // Same status and same problem details, so the endpoint cannot be used
         // to enumerate which accounts exist. traceId is excluded deliberately:
@@ -139,7 +139,7 @@ public sealed class AuthenticationTests(CountflowApiFixture fixture) : IClassFix
     {
         var client = fixture.CreateClient();
 
-        var response = await client.GetAsync("/api/warehouses");
+        var response = await client.GetAsync("/api/v1/warehouses");
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
@@ -151,7 +151,7 @@ public sealed class AuthenticationTests(CountflowApiFixture fixture) : IClassFix
         var tokens = await SignInAsync(client);
 
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokens.AccessToken);
-        var response = await client.GetAsync("/api/warehouses");
+        var response = await client.GetAsync("/api/v1/warehouses");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
@@ -162,7 +162,7 @@ public sealed class AuthenticationTests(CountflowApiFixture fixture) : IClassFix
         var client = fixture.CreateClient();
         var original = await SignInAsync(client);
 
-        var refreshed = await client.PostAsJsonAsync("/api/auth/refresh", new { refreshToken = original.RefreshToken });
+        var refreshed = await client.PostAsJsonAsync("/api/v1/auth/refresh", new { refreshToken = original.RefreshToken });
         Assert.Equal(HttpStatusCode.OK, refreshed.StatusCode);
 
         var next = await refreshed.Content.ReadFromJsonAsync<AuthResponse>();
@@ -170,7 +170,7 @@ public sealed class AuthenticationTests(CountflowApiFixture fixture) : IClassFix
         Assert.NotEqual(original.RefreshToken, next.RefreshToken);
 
         // The rotated-away token must not be usable a second time.
-        var replay = await client.PostAsJsonAsync("/api/auth/refresh", new { refreshToken = original.RefreshToken });
+        var replay = await client.PostAsJsonAsync("/api/v1/auth/refresh", new { refreshToken = original.RefreshToken });
         Assert.Equal(HttpStatusCode.Unauthorized, replay.StatusCode);
     }
 
@@ -180,15 +180,15 @@ public sealed class AuthenticationTests(CountflowApiFixture fixture) : IClassFix
         var client = fixture.CreateClient();
         var original = await SignInAsync(client);
 
-        var refreshed = await client.PostAsJsonAsync("/api/auth/refresh", new { refreshToken = original.RefreshToken });
+        var refreshed = await client.PostAsJsonAsync("/api/v1/auth/refresh", new { refreshToken = original.RefreshToken });
         var current = await refreshed.Content.ReadFromJsonAsync<AuthResponse>();
         Assert.NotNull(current);
 
         // Presenting the retired token looks like theft, so every active token
         // for that user is revoked — including the one that is still valid.
-        await client.PostAsJsonAsync("/api/auth/refresh", new { refreshToken = original.RefreshToken });
+        await client.PostAsJsonAsync("/api/v1/auth/refresh", new { refreshToken = original.RefreshToken });
 
-        var afterTheft = await client.PostAsJsonAsync("/api/auth/refresh", new { refreshToken = current.RefreshToken });
+        var afterTheft = await client.PostAsJsonAsync("/api/v1/auth/refresh", new { refreshToken = current.RefreshToken });
         Assert.Equal(HttpStatusCode.Unauthorized, afterTheft.StatusCode);
     }
 
@@ -198,10 +198,10 @@ public sealed class AuthenticationTests(CountflowApiFixture fixture) : IClassFix
         var client = fixture.CreateClient();
         var tokens = await SignInAsync(client);
 
-        var logout = await client.PostAsJsonAsync("/api/auth/logout", new { refreshToken = tokens.RefreshToken });
+        var logout = await client.PostAsJsonAsync("/api/v1/auth/logout", new { refreshToken = tokens.RefreshToken });
         Assert.Equal(HttpStatusCode.NoContent, logout.StatusCode);
 
-        var afterLogout = await client.PostAsJsonAsync("/api/auth/refresh", new { refreshToken = tokens.RefreshToken });
+        var afterLogout = await client.PostAsJsonAsync("/api/v1/auth/refresh", new { refreshToken = tokens.RefreshToken });
         Assert.Equal(HttpStatusCode.Unauthorized, afterLogout.StatusCode);
     }
 
@@ -212,7 +212,7 @@ public sealed class AuthenticationTests(CountflowApiFixture fixture) : IClassFix
         var tokens = await SignInAsync(client);
 
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokens.AccessToken);
-        var me = await client.GetFromJsonAsync<UserInfo>("/api/auth/me");
+        var me = await client.GetFromJsonAsync<UserInfo>("/api/v1/auth/me");
 
         Assert.NotNull(me);
         Assert.Equal(UserName, me.UserName);
@@ -221,7 +221,7 @@ public sealed class AuthenticationTests(CountflowApiFixture fixture) : IClassFix
 
     private static async Task<AuthResponse> SignInAsync(HttpClient client)
     {
-        var response = await client.PostAsJsonAsync("/api/auth/login", Credentials(UserName, OperatorSecret));
+        var response = await client.PostAsJsonAsync("/api/v1/auth/login", Credentials(UserName, OperatorSecret));
         response.EnsureSuccessStatusCode();
 
         var body = await response.Content.ReadFromJsonAsync<AuthResponse>();

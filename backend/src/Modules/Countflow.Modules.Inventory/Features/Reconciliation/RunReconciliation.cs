@@ -49,7 +49,7 @@ public static class RunReconciliation
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapPost("/api/inventory/reconciliation", async (
+        endpoints.MapPost("/inventory/reconciliation", async (
                 LedgerReconciler reconciler,
                 ReconciliationJournal journal,
                 IItemDirectory items,

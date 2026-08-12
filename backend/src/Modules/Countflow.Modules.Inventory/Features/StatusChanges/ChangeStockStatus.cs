@@ -35,7 +35,7 @@ public static class ChangeStockStatus
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapPost("/api/inventory/status-changes", async (
+        endpoints.MapPost("/inventory/status-changes", async (
                 ChangeStockStatusRequest request,
                 ClaimsPrincipal user,
                 [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey,

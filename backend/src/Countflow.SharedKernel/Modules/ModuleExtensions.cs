@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Migrations;
@@ -57,11 +58,23 @@ public static class ModuleExtensions
         return services;
     }
 
+    /// <summary>
+    /// Mounts every module's endpoints under the published API prefix.
+    /// <para>
+    /// The one place the surface's version appears. Modules map relative paths and
+    /// are handed the versioned group rather than the raw route builder, so no
+    /// endpoint author can put an endpoint outside the version — and adding a v2
+    /// beside v1 is a second call here rather than an edit to every module. See
+    /// <see cref="ApiSurface"/>.
+    /// </para>
+    /// </summary>
     public static IEndpointRouteBuilder MapCountflowModules(this IEndpointRouteBuilder endpoints)
     {
+        var surface = endpoints.MapGroup(ApiSurface.Prefix);
+
         foreach (var module in endpoints.ServiceProvider.GetServices<ICountflowModule>())
         {
-            module.MapEndpoints(endpoints);
+            module.MapEndpoints(surface);
         }
 
         return endpoints;

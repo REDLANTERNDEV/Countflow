@@ -22,5 +22,15 @@ public interface ICountflowModule
 
     void RegisterServices(IServiceCollection services, IConfiguration configuration);
 
+    /// <summary>
+    /// Maps this module's endpoints.
+    /// <para>
+    /// <b>Paths here are relative to the published surface</b> — write
+    /// <c>/inventory/movements</c>, not <c>/api/v1/inventory/movements</c>. The
+    /// builder handed in is already mounted under <see cref="ApiSurface.Prefix"/>,
+    /// so the version is the host's business and cannot be got wrong one endpoint
+    /// at a time.
+    /// </para>
+    /// </summary>
     void MapEndpoints(IEndpointRouteBuilder endpoints);
 }

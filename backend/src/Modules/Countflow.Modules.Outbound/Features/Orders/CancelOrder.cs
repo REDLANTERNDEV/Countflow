@@ -38,7 +38,7 @@ public static class CancelOrder
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapPost("/api/outbound/orders/{id:guid}/cancel", async (
+        endpoints.MapPost("/outbound/orders/{id:guid}/cancel", async (
                 Guid id,
                 CancelOrderRequest request,
                 ClaimsPrincipal user,

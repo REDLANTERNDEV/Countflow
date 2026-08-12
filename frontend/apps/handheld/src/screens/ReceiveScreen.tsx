@@ -46,7 +46,7 @@ export function ReceiveScreen({ onBack, onOpenTask }: ReceiveScreenProps) {
     setSubmitting(true);
     setErrorCode(null);
 
-    const { data, error } = await api.POST('/api/inbound/receipts', {
+    const { data, error } = await api.POST('/api/v1/inbound/receipts', {
       params: { header: { 'Idempotency-Key': idempotencyKey.current } },
       body: {
         sku: sku.trim(),

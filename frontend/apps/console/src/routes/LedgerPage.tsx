@@ -55,7 +55,7 @@ export function LedgerPage() {
     queryKey: ['ledger', sku, location, lot, type, page],
     placeholderData: keepPreviousData,
     queryFn: async () => {
-      const { data, error } = await api.GET('/api/inventory/movements', {
+      const { data, error } = await api.GET('/api/v1/inventory/movements', {
         params: {
           query: {
             page,
@@ -77,7 +77,7 @@ export function LedgerPage() {
   // stored balances — the guarantee ADR 0001 makes, shown rather than asserted.
   const reconcile = useMutation({
     mutationFn: async () => {
-      const { data, error } = await api.POST('/api/inventory/reconciliation', {});
+      const { data, error } = await api.POST('/api/v1/inventory/reconciliation', {});
       if (error) throw error;
       return data;
     },
@@ -87,7 +87,7 @@ export function LedgerPage() {
     queryKey: ['decision-trace', openTraceId],
     enabled: openTraceId !== null,
     queryFn: async () => {
-      const { data, error } = await api.GET('/api/rules/traces/{id}', {
+      const { data, error } = await api.GET('/api/v1/rules/traces/{id}', {
         params: { path: { id: openTraceId! } },
       });
 

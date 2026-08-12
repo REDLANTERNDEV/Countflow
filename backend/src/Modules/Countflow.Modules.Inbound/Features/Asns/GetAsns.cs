@@ -14,7 +14,7 @@ public static class GetAsns
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapGet("/api/inbound/asns", async (
+        endpoints.MapGet("/inbound/asns", async (
                 InboundDbContext dbContext,
                 IItemDirectory items,
                 CancellationToken cancellationToken,
@@ -57,7 +57,7 @@ public static class GetAsns
             .WithSummary("Advance shipping notices and their receiving progress.")
             .Produces<AsnPage>();
 
-        endpoints.MapGet("/api/inbound/asns/{reference}", async (
+        endpoints.MapGet("/inbound/asns/{reference}", async (
                 string reference,
                 InboundDbContext dbContext,
                 IItemDirectory items,

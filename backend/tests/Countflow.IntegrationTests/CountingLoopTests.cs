@@ -103,7 +103,7 @@ public sealed class CountingLoopTests(CountflowApiFixture fixture)
         // 2. An ordinary job on the ordinary queue, and it explains itself the same
         //    way a putaway does. The bay is both where it starts and where it ends.
         var claimed = await Read<TaskDetail>(await PostAsync(
-            _operator, $"/api/work/tasks/{line.WorkTaskId}/claim", new { }));
+            _operator, $"/api/v1/work/tasks/{line.WorkTaskId}/claim", new { }));
 
         Assert.Equal("CycleCount", claimed.Task.Kind);
         Assert.Equal(bin, claimed.Task.FromLocationCode);
@@ -114,7 +114,7 @@ public sealed class CountingLoopTests(CountflowApiFixture fixture)
         // 3. The operator finds four fewer than the book says.
         var confirmed = await Read<TaskCompletion>(await PostAsync(
             _operator,
-            $"/api/work/tasks/{line.WorkTaskId}/complete",
+            $"/api/v1/work/tasks/{line.WorkTaskId}/complete",
             new { toLocationCode = bin, countedQuantity = 96m }));
 
         Assert.Equal("Completed", confirmed.Task.Status);
@@ -144,7 +144,7 @@ public sealed class CountingLoopTests(CountflowApiFixture fixture)
         Assert.Equal(0m, await EveryHoldingAsync(sku));
 
         // 6. And the console can report it.
-        var accuracy = await GetAsync<AccuracyBody>($"/api/inventory/accuracy?warehouseId={await WarehouseIdAsync()}");
+        var accuracy = await GetAsync<AccuracyBody>($"/api/v1/inventory/accuracy?warehouseId={await WarehouseIdAsync()}");
         Assert.True(accuracy.Overall.Counted >= 1);
         Assert.Contains(accuracy.ByClass, slice => slice.Counted > 0);
     }
@@ -162,7 +162,7 @@ public sealed class CountingLoopTests(CountflowApiFixture fixture)
 
         var confirmed = await Read<TaskCompletion>(await PostAsync(
             _operator,
-            $"/api/work/tasks/{line.WorkTaskId}/complete",
+            $"/api/v1/work/tasks/{line.WorkTaskId}/complete",
             new { toLocationCode = bin, countedQuantity = 40m }));
 
         // No ledger entry, and that empty list is the success. This is the whole
@@ -179,7 +179,7 @@ public sealed class CountingLoopTests(CountflowApiFixture fixture)
         Assert.Equal(40m, await BalanceAsync(sku, bin));
 
         // The count is nonetheless on the record, and the plan knows it happened.
-        var plan = await GetAsync<CountPlanBody>($"/api/counting/plans/{line.PlanId}");
+        var plan = await GetAsync<CountPlanBody>($"/api/v1/counting/plans/{line.PlanId}");
         var stored = Assert.Single(plan.Lines, l => l.LocationCode == bin);
         Assert.Equal(40m, stored.CountedQuantity);
         Assert.Equal(0m, stored.Variance);
@@ -202,7 +202,7 @@ public sealed class CountingLoopTests(CountflowApiFixture fixture)
         // the system is not.
         var confirmed = await Read<TaskCompletion>(await PostAsync(
             _operator,
-            $"/api/work/tasks/{line.WorkTaskId}/complete",
+            $"/api/v1/work/tasks/{line.WorkTaskId}/complete",
             new { toLocationCode = bin, countedQuantity = 15m }));
 
         Assert.Equal(3m, confirmed.Count!.Variance);
@@ -230,7 +230,7 @@ public sealed class CountingLoopTests(CountflowApiFixture fixture)
 
         var confirmed = await Read<TaskCompletion>(await PostAsync(
             _operator,
-            $"/api/work/tasks/{line.WorkTaskId}/complete",
+            $"/api/v1/work/tasks/{line.WorkTaskId}/complete",
             new { toLocationCode = bin, countedQuantity = 0m }));
 
         Assert.Equal(-6m, confirmed.Count!.Variance);
@@ -257,13 +257,13 @@ public sealed class CountingLoopTests(CountflowApiFixture fixture)
         // Ten units genuinely leave while the counter is walking over.
         await Read<object>(await PostAsync(
             _supervisor,
-            "/api/inventory/transfers",
+            "/api/v1/inventory/transfers",
             new { sku, quantity = 10m, fromLocationCode = bin, toLocationCode = _dock }));
 
         // The operator counts 22 — two more than the book now holds.
         var confirmed = await Read<TaskCompletion>(await PostAsync(
             _operator,
-            $"/api/work/tasks/{line.WorkTaskId}/complete",
+            $"/api/v1/work/tasks/{line.WorkTaskId}/complete",
             new { toLocationCode = bin, countedQuantity = 22m }));
 
         Assert.Equal(20m, confirmed.Count!.ExpectedQuantity);
@@ -288,15 +288,15 @@ public sealed class CountingLoopTests(CountflowApiFixture fixture)
         var body = new { toLocationCode = bin, countedQuantity = 47m };
 
         var first = await Read<TaskCompletion>(await PostAsync(
-            _operator, $"/api/work/tasks/{line.WorkTaskId}/complete", body, key));
+            _operator, $"/api/v1/work/tasks/{line.WorkTaskId}/complete", body, key));
 
         // The handheld never heard the answer and asked again.
-        var replay = await PostAsync(_operator, $"/api/work/tasks/{line.WorkTaskId}/complete", body, key);
+        var replay = await PostAsync(_operator, $"/api/v1/work/tasks/{line.WorkTaskId}/complete", body, key);
         Assert.True(replay.IsSuccessStatusCode);
 
         // A *different* key against a completed job is a second confirmation, which
         // would adjust the shelf twice.
-        var second = await PostAsync(_operator, $"/api/work/tasks/{line.WorkTaskId}/complete", body);
+        var second = await PostAsync(_operator, $"/api/v1/work/tasks/{line.WorkTaskId}/complete", body);
         Assert.Equal(HttpStatusCode.Conflict, second.StatusCode);
 
         Assert.Equal(-3m, first.Count!.Variance);
@@ -320,9 +320,9 @@ public sealed class CountingLoopTests(CountflowApiFixture fixture)
         var body = new { toLocationCode = bin, countedQuantity = 25m };
 
         await Read<TaskCompletion>(await PostAsync(
-            _operator, $"/api/work/tasks/{line.WorkTaskId}/complete", body, key));
+            _operator, $"/api/v1/work/tasks/{line.WorkTaskId}/complete", body, key));
 
-        var replay = await PostAsync(_operator, $"/api/work/tasks/{line.WorkTaskId}/complete", body, key);
+        var replay = await PostAsync(_operator, $"/api/v1/work/tasks/{line.WorkTaskId}/complete", body, key);
         Assert.True(replay.IsSuccessStatusCode);
 
         // Nothing posted either time, and the bay is counted once. A double-counted
@@ -345,13 +345,13 @@ public sealed class CountingLoopTests(CountflowApiFixture fixture)
         var line = await RaiseAndFindAsync(bin);
 
         var response = await PostAsync(
-            _operator, $"/api/work/tasks/{line.WorkTaskId}/complete", new { toLocationCode = bin });
+            _operator, $"/api/v1/work/tasks/{line.WorkTaskId}/complete", new { toLocationCode = bin });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Contains("count_quantity_required", await response.Content.ReadAsStringAsync());
 
         // Still open, so somebody can go back and do it properly.
-        var task = await GetAsync<TaskDetail>($"/api/work/tasks/{line.WorkTaskId}");
+        var task = await GetAsync<TaskDetail>($"/api/v1/work/tasks/{line.WorkTaskId}");
         Assert.NotEqual("Completed", task.Task.Status);
     }
 
@@ -369,7 +369,7 @@ public sealed class CountingLoopTests(CountflowApiFixture fixture)
         // strength of a look at another.
         var response = await PostAsync(
             _operator,
-            $"/api/work/tasks/{line.WorkTaskId}/complete",
+            $"/api/v1/work/tasks/{line.WorkTaskId}/complete",
             new { toLocationCode = _dock, countedQuantity = 8m });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -389,7 +389,7 @@ public sealed class CountingLoopTests(CountflowApiFixture fixture)
 
         var response = await PostAsync(
             _operator,
-            $"/api/work/tasks/{line.WorkTaskId}/complete",
+            $"/api/v1/work/tasks/{line.WorkTaskId}/complete",
             new { toLocationCode = bin, countedQuantity = -1m });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -413,7 +413,7 @@ public sealed class CountingLoopTests(CountflowApiFixture fixture)
 
         // Considered and refused by a named rule rather than filtered out of a
         // query — the trace has to be able to say the bay was looked at (ADR 0004).
-        var trace = await GetAsync<TraceView>($"/api/rules/traces/{plan.DecisionTraceId}");
+        var trace = await GetAsync<TraceView>($"/api/v1/rules/traces/{plan.DecisionTraceId}");
 
         Assert.Contains(
             trace.Candidates,
@@ -437,7 +437,7 @@ public sealed class CountingLoopTests(CountflowApiFixture fixture)
         var second = await RaisePlanAsync();
         Assert.DoesNotContain(second.Lines, l => l.LocationCode == bin);
 
-        var trace = await GetAsync<TraceView>($"/api/rules/traces/{second.DecisionTraceId}");
+        var trace = await GetAsync<TraceView>($"/api/v1/rules/traces/{second.DecisionTraceId}");
 
         Assert.Contains(
             trace.Candidates,
@@ -457,7 +457,7 @@ public sealed class CountingLoopTests(CountflowApiFixture fixture)
 
         await Read<TaskCompletion>(await PostAsync(
             _operator,
-            $"/api/work/tasks/{line.WorkTaskId}/complete",
+            $"/api/v1/work/tasks/{line.WorkTaskId}/complete",
             new { toLocationCode = bin, countedQuantity = 15m }));
 
         // The anti-churn rule. A holding that has just been counted has just been
@@ -469,7 +469,7 @@ public sealed class CountingLoopTests(CountflowApiFixture fixture)
         var again = await RaisePlanAsync();
         Assert.DoesNotContain(again.Lines, l => l.LocationCode == bin);
 
-        var trace = await GetAsync<TraceView>($"/api/rules/traces/{again.DecisionTraceId}");
+        var trace = await GetAsync<TraceView>($"/api/v1/rules/traces/{again.DecisionTraceId}");
 
         Assert.Contains(
             trace.Candidates,
@@ -491,7 +491,7 @@ public sealed class CountingLoopTests(CountflowApiFixture fixture)
         // Never counted scores 1 outright on the overdue preference: there is no
         // fraction to take of an interval that never started, and a holding nobody
         // has ever verified is as overdue as a holding can be.
-        var trace = await GetAsync<TraceView>($"/api/rules/traces/{plan.DecisionTraceId}");
+        var trace = await GetAsync<TraceView>($"/api/v1/rules/traces/{plan.DecisionTraceId}");
 
         var evaluated = Assert.Single(
             trace.Candidates,
@@ -530,7 +530,7 @@ public sealed class CountingLoopTests(CountflowApiFixture fixture)
         await SettleAsync(sku);
 
         var plan = await RaisePlanAsync();
-        var trace = await GetAsync<TraceView>($"/api/rules/traces/{plan.DecisionTraceId}");
+        var trace = await GetAsync<TraceView>($"/api/v1/rules/traces/{plan.DecisionTraceId}");
 
         // Every other holding in this database is either unsettled or already on a
         // plan, so this is the only thing the policy can admit — which is the
@@ -561,7 +561,7 @@ public sealed class CountingLoopTests(CountflowApiFixture fixture)
 
         var preview = await Read<PreviewCountBody>(await PostAsync(
             _supervisor,
-            "/api/rules/cycle-count/preview",
+            "/api/v1/rules/cycle-count/preview",
             new { warehouseCode = _warehouseCode, maxTasks = 50 }));
 
         Assert.Contains(preview.Lines, l => l.LocationCode == bin);
@@ -585,11 +585,11 @@ public sealed class CountingLoopTests(CountflowApiFixture fixture)
         var line = Assert.Single(plan.Lines, l => l.LocationCode == bin);
 
         var cancelled = await Read<CancelPlanBody>(await PostAsync(
-            _supervisor, $"/api/counting/plans/{plan.Id}/cancel", new { reason = "Shift ended" }));
+            _supervisor, $"/api/v1/counting/plans/{plan.Id}/cancel", new { reason = "Shift ended" }));
 
         Assert.True(cancelled.WithdrawnCount >= 1);
 
-        var task = await GetAsync<TaskDetail>($"/api/work/tasks/{line.WorkTaskId}");
+        var task = await GetAsync<TaskDetail>($"/api/v1/work/tasks/{line.WorkTaskId}");
         Assert.Equal("Cancelled", task.Task.Status);
 
         // The holding is a candidate again, because nobody is on their way to it.
@@ -608,9 +608,9 @@ public sealed class CountingLoopTests(CountflowApiFixture fixture)
         var line = Assert.Single(plan.Lines, l => l.LocationCode == bin);
 
         await Read<TaskDetail>(await PostAsync(
-            _operator, $"/api/work/tasks/{line.WorkTaskId}/claim", new { }));
+            _operator, $"/api/v1/work/tasks/{line.WorkTaskId}/claim", new { }));
 
-        var response = await PostAsync(_supervisor, $"/api/counting/plans/{plan.Id}/cancel", new { });
+        var response = await PostAsync(_supervisor, $"/api/v1/counting/plans/{plan.Id}/cancel", new { });
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         Assert.Contains("counts_in_progress", await response.Content.ReadAsStringAsync());
@@ -627,13 +627,13 @@ public sealed class CountingLoopTests(CountflowApiFixture fixture)
 
         var first = await Read<CountPlanBody>(await PostAsync(
             _supervisor,
-            "/api/counting/plans",
+            "/api/v1/counting/plans",
             new { warehouseCode = _warehouseCode, maxTasks = 50 },
             key));
 
         var again = await Read<CountPlanBody>(await PostAsync(
             _supervisor,
-            "/api/counting/plans",
+            "/api/v1/counting/plans",
             new { warehouseCode = _warehouseCode, maxTasks = 50 },
             key));
 
@@ -660,7 +660,7 @@ public sealed class CountingLoopTests(CountflowApiFixture fixture)
 
         var scrapped = await Read<MovementReceiptBody>(await PostAsync(
             _supervisor,
-            "/api/inventory/scrap",
+            "/api/v1/inventory/scrap",
             new
             {
                 sku,
@@ -693,7 +693,7 @@ public sealed class CountingLoopTests(CountflowApiFixture fixture)
 
         var response = await PostAsync(
             _supervisor,
-            "/api/inventory/scrap",
+            "/api/v1/inventory/scrap",
             new { sku, quantity = 1m, locationCode = bin, cause = "Damaged", notes = "" });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -705,9 +705,9 @@ public sealed class CountingLoopTests(CountflowApiFixture fixture)
     [Fact]
     public async Task The_reconciler_s_findings_are_kept_and_read_back_rather_than_recomputed()
     {
-        await Read<object>(await PostAsync(_supervisor, "/api/inventory/reconciliation", new { }));
+        await Read<object>(await PostAsync(_supervisor, "/api/v1/inventory/reconciliation", new { }));
 
-        var history = await GetAsync<List<ReconciliationRunBody>>("/api/inventory/reconciliation/history");
+        var history = await GetAsync<List<ReconciliationRunBody>>("/api/v1/inventory/reconciliation/history");
 
         var run = Assert.Single(history, r => r.Trigger == "Manual");
         Assert.True(run.IsClean);
@@ -726,7 +726,7 @@ public sealed class CountingLoopTests(CountflowApiFixture fixture)
 
         var order = await Read<OrderBody>(await PostAsync(
             _supervisor,
-            "/api/outbound/orders",
+            "/api/v1/outbound/orders",
             new
             {
                 warehouseCode = _warehouseCode,
@@ -736,17 +736,17 @@ public sealed class CountingLoopTests(CountflowApiFixture fixture)
             }));
 
         await Read<object>(await PostAsync(
-            _supervisor, $"/api/outbound/orders/{order.Id}/release", new { }));
+            _supervisor, $"/api/v1/outbound/orders/{order.Id}/release", new { }));
 
         // An ad-hoc transfer moves the goods out from under the claim. The pick will
         // fail loudly when somebody tries it, which is the right failure — but
         // nobody should have to be the picker to find out.
         await Read<object>(await PostAsync(
             _supervisor,
-            "/api/inventory/transfers",
+            "/api/v1/inventory/transfers",
             new { sku, quantity = 30m, fromLocationCode = bin, toLocationCode = _dock }));
 
-        var stranded = await GetAsync<List<StrandedBody>>("/api/inventory/reservations/stranded");
+        var stranded = await GetAsync<List<StrandedBody>>("/api/v1/inventory/reservations/stranded");
 
         var row = Assert.Single(stranded, s => s.Sku == sku);
         Assert.Equal(bin, row.LocationCode);
@@ -767,11 +767,11 @@ public sealed class CountingLoopTests(CountflowApiFixture fixture)
 
         await Read<TaskCompletion>(await PostAsync(
             _operator,
-            $"/api/work/tasks/{line.WorkTaskId}/complete",
+            $"/api/v1/work/tasks/{line.WorkTaskId}/complete",
             new { toLocationCode = bin, countedQuantity = 11m }));
 
         var statistics = await GetAsync<WorkStatisticsBody>(
-            $"/api/work/statistics?warehouseId={await WarehouseIdAsync()}");
+            $"/api/v1/work/statistics?warehouseId={await WarehouseIdAsync()}");
 
         var counts = Assert.Single(statistics.ByKind, k => k.Kind == "CycleCount");
 
@@ -815,7 +815,7 @@ public sealed class CountingLoopTests(CountflowApiFixture fixture)
     private async Task<CountPlanBody> RaisePlanAsync() =>
         await Read<CountPlanBody>(await PostAsync(
             _supervisor,
-            "/api/counting/plans",
+            "/api/v1/counting/plans",
             new { warehouseCode = _warehouseCode, maxTasks = 50 }));
 
     /// <summary>Raises a plan and returns the line for one bay, with its plan id attached.</summary>
@@ -837,7 +837,7 @@ public sealed class CountingLoopTests(CountflowApiFixture fixture)
     {
         var received = await Read<DockReceipt>(await PostAsync(
             _operator,
-            "/api/inbound/receipts",
+            "/api/v1/inbound/receipts",
             new { sku, quantity, toLocationCode = _dock }));
 
         Assert.NotNull(received.SuggestedLocationCode);
@@ -845,7 +845,7 @@ public sealed class CountingLoopTests(CountflowApiFixture fixture)
 
         await Read<TaskCompletion>(await PostAsync(
             _operator,
-            $"/api/work/tasks/{received.WorkTaskId}/complete",
+            $"/api/v1/work/tasks/{received.WorkTaskId}/complete",
             new { toLocationCode = received.SuggestedLocationCode }));
 
         return received.SuggestedLocationCode!;
@@ -927,7 +927,7 @@ public sealed class CountingLoopTests(CountflowApiFixture fixture)
     private async Task<decimal> BalanceAsync(string sku, string locationCode)
     {
         var page = await GetAsync<BalancePage>(
-            $"/api/inventory/balances?sku={Uri.EscapeDataString(sku)}" +
+            $"/api/v1/inventory/balances?sku={Uri.EscapeDataString(sku)}" +
             $"&location={Uri.EscapeDataString(locationCode)}&status=Available");
 
         return page.Items.Sum(r => r.Quantity);
@@ -942,7 +942,7 @@ public sealed class CountingLoopTests(CountflowApiFixture fixture)
     private async Task<decimal> EveryHoldingAsync(string sku)
     {
         var page = await GetAsync<BalancePage>(
-            $"/api/inventory/balances?sku={Uri.EscapeDataString(sku)}&includeEmpty=true&pageSize=500");
+            $"/api/v1/inventory/balances?sku={Uri.EscapeDataString(sku)}&includeEmpty=true&pageSize=500");
 
         return page.Items.Sum(r => r.Quantity);
     }
@@ -950,7 +950,7 @@ public sealed class CountingLoopTests(CountflowApiFixture fixture)
     private async Task<List<MovementRow>> MovementsOfTypeAsync(string sku, string type)
     {
         var page = await GetAsync<MovementPage>(
-            $"/api/inventory/movements?sku={Uri.EscapeDataString(sku)}");
+            $"/api/v1/inventory/movements?sku={Uri.EscapeDataString(sku)}");
 
         return [.. page.Items.Where(m => m.Type == type)];
     }
@@ -1035,7 +1035,7 @@ public sealed class CountingLoopTests(CountflowApiFixture fixture)
     {
         var client = fixture.CreateClient();
 
-        var response = await client.PostAsJsonAsync("/api/auth/login", Credentials(userName, Secret));
+        var response = await client.PostAsJsonAsync("/api/v1/auth/login", Credentials(userName, Secret));
         response.EnsureSuccessStatusCode();
 
         var body = (await response.Content.ReadFromJsonAsync<LoginResponse>())!;

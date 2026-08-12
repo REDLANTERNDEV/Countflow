@@ -34,7 +34,7 @@ public static class ClaimNextTask
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapPost("/api/work/tasks/claim-next", async (
+        endpoints.MapPost("/work/tasks/claim-next", async (
                 ClaimNextTaskRequest? request,
                 ClaimsPrincipal user,
                 WorkDbContext dbContext,
@@ -137,7 +137,7 @@ public static class ClaimTask
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapPost("/api/work/tasks/{id:guid}/claim", async (
+        endpoints.MapPost("/work/tasks/{id:guid}/claim", async (
                 Guid id,
                 ClaimsPrincipal user,
                 WorkDbContext dbContext,
@@ -201,7 +201,7 @@ public static class ReleaseTask
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapPost("/api/work/tasks/{id:guid}/release", async (
+        endpoints.MapPost("/work/tasks/{id:guid}/release", async (
                 Guid id,
                 ClaimsPrincipal user,
                 WorkDbContext dbContext,

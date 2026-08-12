@@ -37,11 +37,13 @@ internal static class SimulatorProgram
 
         var supervisor = await SignInAsync(settings.BaseAddress, settings.Supervisor, settings.SupervisorSecret);
         var operatorClient = await SignInAsync(settings.BaseAddress, settings.Operator, settings.OperatorSecret);
+        var admin = await SignInAsync(settings.BaseAddress, settings.Admin, settings.AdminSecret);
 
-        if (supervisor is null || operatorClient is null)
+        if (supervisor is null || operatorClient is null || admin is null)
         {
             supervisor?.Dispose();
             operatorClient?.Dispose();
+            admin?.Dispose();
 
             Console.Error.WriteLine("Could not sign in. Check the credentials and that the API is up.");
             return 1;
@@ -49,7 +51,7 @@ internal static class SimulatorProgram
 
         try
         {
-            var simulator = new WarehouseSimulator(supervisor, operatorClient, Console.WriteLine);
+            var simulator = new WarehouseSimulator(supervisor, operatorClient, admin, Console.WriteLine);
 
             var report = await simulator.RunAsync(settings.Plan);
 
@@ -73,6 +75,7 @@ internal static class SimulatorProgram
         {
             supervisor.Dispose();
             operatorClient.Dispose();
+            admin.Dispose();
         }
     }
 
@@ -80,7 +83,7 @@ internal static class SimulatorProgram
     {
         var client = new HttpClient { BaseAddress = baseAddress, Timeout = TimeSpan.FromMinutes(5) };
 
-        using var response = await client.PostAsJsonAsync("/api/auth/login", new { identifier, password = secret });
+        using var response = await client.PostAsJsonAsync("/api/v1/auth/login", new { identifier, password = secret });
 
         if (!response.IsSuccessStatusCode)
         {
@@ -107,6 +110,8 @@ internal static class SimulatorProgram
         string SupervisorSecret,
         string Operator,
         string OperatorSecret,
+        string Admin,
+        string AdminSecret,
         SimulationPlan Plan);
 
     private static class Args
@@ -121,6 +126,9 @@ internal static class SimulatorProgram
               --warehouse <code>     Warehouse to work (default WH1)
               --supervisor <user>    Supervisor identifier
               --operator <user>      Operator identifier
+              --admin <user>         Admin identifier — needed only to promote the
+                                     counting policy, which is the one admin-only
+                                     endpoint the simulator touches
               --days <n>             Days to simulate (default 4)
               --seed <n>             Random seed; the same seed builds the same warehouse
               --receipts <n>         Receipts per day (default 5)
@@ -128,8 +136,9 @@ internal static class SimulatorProgram
               --counts <n>           Counts raised per day (default 10)
               --keep-quiet-period    Do not lower the counting quiet period for this warehouse
 
-            Secrets come from COUNTFLOW_SUPERVISOR_SECRET and COUNTFLOW_OPERATOR_SECRET,
-            never from the command line — an argument is visible in the process table.
+            Secrets come from COUNTFLOW_SUPERVISOR_SECRET, COUNTFLOW_OPERATOR_SECRET and
+            COUNTFLOW_ADMIN_SECRET, never from the command line — an argument is visible
+            in the process table.
             """;
 
         public static Settings? Parse(string[] args)
@@ -141,11 +150,15 @@ internal static class SimulatorProgram
 
             var supervisorSecret = Environment.GetEnvironmentVariable("COUNTFLOW_SUPERVISOR_SECRET");
             var operatorSecret = Environment.GetEnvironmentVariable("COUNTFLOW_OPERATOR_SECRET");
+            var adminSecret = Environment.GetEnvironmentVariable("COUNTFLOW_ADMIN_SECRET");
 
-            if (string.IsNullOrWhiteSpace(supervisorSecret) || string.IsNullOrWhiteSpace(operatorSecret))
+            if (string.IsNullOrWhiteSpace(supervisorSecret)
+                || string.IsNullOrWhiteSpace(operatorSecret)
+                || string.IsNullOrWhiteSpace(adminSecret))
             {
                 Console.Error.WriteLine(
-                    "Set COUNTFLOW_SUPERVISOR_SECRET and COUNTFLOW_OPERATOR_SECRET before running the simulator.");
+                    "Set COUNTFLOW_SUPERVISOR_SECRET, COUNTFLOW_OPERATOR_SECRET and "
+                    + "COUNTFLOW_ADMIN_SECRET before running the simulator.");
 
                 return null;
             }
@@ -165,6 +178,8 @@ internal static class SimulatorProgram
                 supervisorSecret,
                 Value(args, "--operator") ?? "operator",
                 operatorSecret,
+                Value(args, "--admin") ?? "admin",
+                adminSecret,
                 plan);
         }
 

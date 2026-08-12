@@ -31,7 +31,7 @@ export function HomeScreen(props: HomeScreenProps) {
     setFinding(true);
     setErrorCode(null);
 
-    const { data, error } = await api.POST('/api/work/tasks/claim-next', { body: {} });
+    const { data, error } = await api.POST('/api/v1/work/tasks/claim-next', { body: {} });
 
     setFinding(false);
 

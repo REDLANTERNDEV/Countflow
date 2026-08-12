@@ -18,7 +18,7 @@ public static class GetWarehouses
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapGet("/api/warehouses", async (
+        endpoints.MapGet("/warehouses", async (
                 MasterDataDbContext dbContext,
                 CancellationToken cancellationToken) =>
             {

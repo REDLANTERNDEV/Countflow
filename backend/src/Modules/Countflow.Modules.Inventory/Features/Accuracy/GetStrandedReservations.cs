@@ -53,7 +53,7 @@ public static class GetStrandedReservations
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapGet("/api/inventory/reservations/stranded", async (
+        endpoints.MapGet("/inventory/reservations/stranded", async (
                 InventoryDbContext dbContext,
                 IItemDirectory items,
                 ILocationDirectory locations,

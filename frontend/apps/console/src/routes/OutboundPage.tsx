@@ -67,7 +67,7 @@ export function OutboundPage() {
     queryKey: ['sales-orders', status, page],
     placeholderData: keepPreviousData,
     queryFn: async () => {
-      const { data, error } = await api.GET('/api/outbound/orders', {
+      const { data, error } = await api.GET('/api/v1/outbound/orders', {
         params: {
           query: {
             page,
@@ -88,7 +88,7 @@ export function OutboundPage() {
     queryKey: ['decision-trace', openTraceId],
     enabled: openTraceId !== null,
     queryFn: async () => {
-      const { data, error } = await api.GET('/api/rules/traces/{id}', {
+      const { data, error } = await api.GET('/api/v1/rules/traces/{id}', {
         params: { path: { id: openTraceId! } },
       });
 
@@ -100,7 +100,7 @@ export function OutboundPage() {
   const { data: waves } = useQuery({
     queryKey: ['waves'],
     queryFn: async () => {
-      const { data, error } = await api.GET('/api/outbound/waves', {});
+      const { data, error } = await api.GET('/api/v1/outbound/waves', {});
 
       if (error) throw error;
       return data;
@@ -111,7 +111,7 @@ export function OutboundPage() {
     mutationFn: async (id: string) => {
       setErrorCode(null);
 
-      const { data, error } = await api.POST('/api/outbound/waves/{id}/release', {
+      const { data, error } = await api.POST('/api/v1/outbound/waves/{id}/release', {
         params: { path: { id }, header: { 'Idempotency-Key': newKey() } },
         body: {},
       });
@@ -134,21 +134,21 @@ export function OutboundPage() {
 
       const request =
         action === 'cancel'
-          ? api.POST('/api/outbound/orders/{id}/cancel', {
+          ? api.POST('/api/v1/outbound/orders/{id}/cancel', {
               params: { path: { id } },
               body: { reason: cancelReason.trim() || 'Cancelled from the console' },
             })
           : action === 'pack'
-            ? api.POST('/api/outbound/orders/{id}/pack', {
+            ? api.POST('/api/v1/outbound/orders/{id}/pack', {
                 params: { path: { id } },
                 body: {},
               })
             : action === 'release'
-              ? api.POST('/api/outbound/orders/{id}/release', {
+              ? api.POST('/api/v1/outbound/orders/{id}/release', {
                   params: { path: { id }, header: { 'Idempotency-Key': newKey() } },
                   body: {},
                 })
-              : api.POST('/api/outbound/orders/{id}/despatch', {
+              : api.POST('/api/v1/outbound/orders/{id}/despatch', {
                   params: { path: { id }, header: { 'Idempotency-Key': newKey() } },
                 });
 

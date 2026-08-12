@@ -28,7 +28,7 @@ public static class CreateCountPlan
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapPost("/api/counting/plans", async (
+        endpoints.MapPost("/counting/plans", async (
                 CreateCountPlanRequest request,
                 ClaimsPrincipal user,
                 [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey,
@@ -83,7 +83,7 @@ public static class GetCountPlans
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapGet("/api/counting/plans", async (
+        endpoints.MapGet("/counting/plans", async (
                 Guid? warehouseId,
                 CountPlanStatus? status,
                 int? page,
@@ -131,7 +131,7 @@ public static class GetCountPlan
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapGet("/api/counting/plans/{id:guid}", async (
+        endpoints.MapGet("/counting/plans/{id:guid}", async (
                 Guid id,
                 CountingDbContext dbContext,
                 CountPlanDescriber describe,
@@ -167,7 +167,7 @@ public static class CancelCountPlan
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapPost("/api/counting/plans/{id:guid}/cancel", async (
+        endpoints.MapPost("/counting/plans/{id:guid}/cancel", async (
                 Guid id,
                 CancelCountPlanRequest? request,
                 CountingDbContext dbContext,

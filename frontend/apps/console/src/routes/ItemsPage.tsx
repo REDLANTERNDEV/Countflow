@@ -36,7 +36,7 @@ export function ItemsPage() {
     queryKey: ['items', search, abcClass, temperature, page],
     placeholderData: keepPreviousData,
     queryFn: async () => {
-      const { data, error } = await api.GET('/api/items', {
+      const { data, error } = await api.GET('/api/v1/items', {
         params: {
           query: {
             page,

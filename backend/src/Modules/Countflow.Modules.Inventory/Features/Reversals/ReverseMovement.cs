@@ -34,7 +34,7 @@ public static class ReverseMovement
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapPost("/api/inventory/movements/{movementId:guid}/reversal", async (
+        endpoints.MapPost("/inventory/movements/{movementId:guid}/reversal", async (
                 Guid movementId,
                 ReverseMovementRequest? request,
                 ClaimsPrincipal user,

@@ -24,7 +24,7 @@ public static class CreateOrder
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapPost("/api/outbound/orders", async (
+        endpoints.MapPost("/outbound/orders", async (
                 CreateOrderRequest request,
                 OutboundDbContext dbContext,
                 OrderDescriber describe,

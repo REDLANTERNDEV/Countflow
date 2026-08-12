@@ -93,7 +93,7 @@ public sealed class InventoryLedgerTests(CountflowApiFixture fixture)
         var sku = await NewItemAsync();
         var bin = _bins[0];
 
-        var receipt = await PostAsync("/api/inventory/receipts", new
+        var receipt = await PostAsync("/api/v1/inventory/receipts", new
         {
             sku,
             quantity = 120m,
@@ -120,7 +120,7 @@ public sealed class InventoryLedgerTests(CountflowApiFixture fixture)
     {
         var sku = await NewItemAsync(lotTracked: true);
 
-        var response = await PostAsync("/api/inventory/receipts", new
+        var response = await PostAsync("/api/v1/inventory/receipts", new
         {
             sku,
             quantity = 10m,
@@ -138,7 +138,7 @@ public sealed class InventoryLedgerTests(CountflowApiFixture fixture)
         var bin = _bins[2];
         var sscc = Sscc.FromPayload("30512345000000001");
 
-        var response = await PostAsync("/api/inventory/receipts", new
+        var response = await PostAsync("/api/v1/inventory/receipts", new
         {
             sku,
             quantity = 48m,
@@ -153,7 +153,7 @@ public sealed class InventoryLedgerTests(CountflowApiFixture fixture)
         // Filtered to the bin: an unfiltered enquiry also returns the supplier
         // contra row, which carries the same SKU and batch and is equally real.
         var page = await GetAsync<BalancePage>(
-            $"/api/inventory/balances?sku={sku}&location={Uri.EscapeDataString(bin)}");
+            $"/api/v1/inventory/balances?sku={sku}&location={Uri.EscapeDataString(bin)}");
         var row = Assert.Single(page.Items);
 
         Assert.Equal("LOT-2211", row.LotNumber);
@@ -169,7 +169,7 @@ public sealed class InventoryLedgerTests(CountflowApiFixture fixture)
     {
         var sku = await NewItemAsync(lotTracked: true, expiryTracked: true);
 
-        var first = await PostAsync("/api/inventory/receipts", new
+        var first = await PostAsync("/api/v1/inventory/receipts", new
         {
             sku,
             quantity = 10m,
@@ -179,7 +179,7 @@ public sealed class InventoryLedgerTests(CountflowApiFixture fixture)
         });
         Assert.Equal(HttpStatusCode.OK, first.StatusCode);
 
-        var second = await PostAsync("/api/inventory/receipts", new
+        var second = await PostAsync("/api/v1/inventory/receipts", new
         {
             sku,
             quantity = 10m,
@@ -205,8 +205,8 @@ public sealed class InventoryLedgerTests(CountflowApiFixture fixture)
 
         var body = new { sku, quantity = 60m, toLocationCode = bin };
 
-        var first = await PostAsync("/api/inventory/receipts", body, key);
-        var second = await PostAsync("/api/inventory/receipts", body, key);
+        var first = await PostAsync("/api/v1/inventory/receipts", body, key);
+        var second = await PostAsync("/api/v1/inventory/receipts", body, key);
 
         Assert.Equal(HttpStatusCode.OK, first.StatusCode);
         Assert.Equal(HttpStatusCode.OK, second.StatusCode);
@@ -236,7 +236,7 @@ public sealed class InventoryLedgerTests(CountflowApiFixture fixture)
 
         // Eight copies at once, past the cheap pre-check and into the unique index.
         var responses = await Task.WhenAll(
-            Enumerable.Range(0, 8).Select(_ => PostAsync("/api/inventory/receipts", body, key)));
+            Enumerable.Range(0, 8).Select(_ => PostAsync("/api/v1/inventory/receipts", body, key)));
 
         Assert.All(responses, r => Assert.Equal(HttpStatusCode.OK, r.StatusCode));
 
@@ -250,7 +250,7 @@ public sealed class InventoryLedgerTests(CountflowApiFixture fixture)
         var sku = await NewItemAsync();
         var key = $"reused-{Guid.CreateVersion7()}";
 
-        var first = await PostAsync("/api/inventory/receipts", new
+        var first = await PostAsync("/api/v1/inventory/receipts", new
         {
             sku,
             quantity = 10m,
@@ -258,7 +258,7 @@ public sealed class InventoryLedgerTests(CountflowApiFixture fixture)
         }, key);
         Assert.Equal(HttpStatusCode.OK, first.StatusCode);
 
-        var second = await PostAsync("/api/inventory/receipts", new
+        var second = await PostAsync("/api/v1/inventory/receipts", new
         {
             sku,
             quantity = 99m,
@@ -277,7 +277,7 @@ public sealed class InventoryLedgerTests(CountflowApiFixture fixture)
     {
         var sku = await NewItemAsync();
 
-        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/inventory/receipts")
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/inventory/receipts")
         {
             Content = JsonContent.Create(new { sku, quantity = 5m, toLocationCode = _bins[7] })
         };
@@ -298,7 +298,7 @@ public sealed class InventoryLedgerTests(CountflowApiFixture fixture)
 
         await ReceiveAsync(sku, 100m, source);
 
-        var response = await PostAsync("/api/inventory/transfers", new
+        var response = await PostAsync("/api/v1/inventory/transfers", new
         {
             sku,
             quantity = 40m,
@@ -322,7 +322,7 @@ public sealed class InventoryLedgerTests(CountflowApiFixture fixture)
 
         await ReceiveAsync(sku, 10m, source);
 
-        var response = await PostAsync("/api/inventory/transfers", new
+        var response = await PostAsync("/api/v1/inventory/transfers", new
         {
             sku,
             quantity = 11m,
@@ -351,7 +351,7 @@ public sealed class InventoryLedgerTests(CountflowApiFixture fixture)
 
         await ReceiveAsync(sku, 30m, bin);
 
-        var response = await PostAsync("/api/inventory/status-changes", new
+        var response = await PostAsync("/api/v1/inventory/status-changes", new
         {
             sku,
             quantity = 12m,
@@ -365,7 +365,7 @@ public sealed class InventoryLedgerTests(CountflowApiFixture fixture)
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
         var page = await GetAsync<BalancePage>(
-            $"/api/inventory/balances?sku={sku}&location={Uri.EscapeDataString(bin)}");
+            $"/api/v1/inventory/balances?sku={sku}&location={Uri.EscapeDataString(bin)}");
 
         var available = page.Items.Single(r => r.Status == "Available");
         var quarantined = page.Items.Single(r => r.Status == "Quarantine");
@@ -377,7 +377,7 @@ public sealed class InventoryLedgerTests(CountflowApiFixture fixture)
 
         // "Who quarantined this, when, and why" is the question asked after a
         // recall. A status column overwritten in place cannot answer it.
-        var ledger = await GetAsync<MovementPage>($"/api/inventory/movements?sku={sku}");
+        var ledger = await GetAsync<MovementPage>($"/api/v1/inventory/movements?sku={sku}");
         var entry = ledger.Items.Single(m => m.Type == "StatusChange");
 
         Assert.Equal("DamageFound", entry.Reason);
@@ -393,7 +393,7 @@ public sealed class InventoryLedgerTests(CountflowApiFixture fixture)
         var sku = await NewItemAsync();
         await ReceiveAsync(sku, 5m, _bins[13]);
 
-        var response = await PostAsync("/api/inventory/status-changes", new
+        var response = await PostAsync("/api/v1/inventory/status-changes", new
         {
             sku,
             quantity = 5m,
@@ -414,7 +414,7 @@ public sealed class InventoryLedgerTests(CountflowApiFixture fixture)
 
         // Two physical locations, labelled a receipt. It balances arithmetically and
         // would make every inbound report a lie.
-        var response = await PostAsync("/api/inventory/transfers", new
+        var response = await PostAsync("/api/v1/inventory/transfers", new
         {
             sku,
             quantity = 5m,
@@ -435,14 +435,14 @@ public sealed class InventoryLedgerTests(CountflowApiFixture fixture)
         var sku = await NewItemAsync();
         var bin = _bins[16];
 
-        var receipt = await Read<ReceiptBody>(await PostAsync("/api/inventory/receipts", new
+        var receipt = await Read<ReceiptBody>(await PostAsync("/api/v1/inventory/receipts", new
         {
             sku,
             quantity = 75m,
             toLocationCode = bin
         }));
 
-        var reversal = await PostAsync($"/api/inventory/movements/{receipt.MovementId}/reversal", new
+        var reversal = await PostAsync($"/api/v1/inventory/movements/{receipt.MovementId}/reversal", new
         {
             notes = "Booked against the wrong purchase order"
         });
@@ -451,7 +451,7 @@ public sealed class InventoryLedgerTests(CountflowApiFixture fixture)
 
         Assert.Equal(0m, await BalanceAsync(sku, bin));
 
-        var ledger = await GetAsync<MovementPage>($"/api/inventory/movements?sku={sku}");
+        var ledger = await GetAsync<MovementPage>($"/api/v1/inventory/movements?sku={sku}");
 
         // Two entries, not zero. The correction adds to the record rather than
         // erasing it — an auditor can see that something was posted in error, who
@@ -473,14 +473,14 @@ public sealed class InventoryLedgerTests(CountflowApiFixture fixture)
     {
         var sku = await NewItemAsync();
 
-        var receipt = await Read<ReceiptBody>(await PostAsync("/api/inventory/receipts", new
+        var receipt = await Read<ReceiptBody>(await PostAsync("/api/v1/inventory/receipts", new
         {
             sku,
             quantity = 20m,
             toLocationCode = _bins[17]
         }));
 
-        var url = $"/api/inventory/movements/{receipt.MovementId}/reversal";
+        var url = $"/api/v1/inventory/movements/{receipt.MovementId}/reversal";
 
         // Distinct keys, so this tests the "already reversed" rule rather than
         // idempotent replay.
@@ -499,7 +499,7 @@ public sealed class InventoryLedgerTests(CountflowApiFixture fixture)
 
         await ReceiveAsync(sku, 50m, bin);
 
-        var loss = await PostAsync("/api/inventory/adjustments", new
+        var loss = await PostAsync("/api/v1/inventory/adjustments", new
         {
             sku,
             quantity = -8m,
@@ -511,14 +511,14 @@ public sealed class InventoryLedgerTests(CountflowApiFixture fixture)
         Assert.Equal(HttpStatusCode.OK, loss.StatusCode);
         Assert.Equal(42m, await BalanceAsync(sku, bin));
 
-        var entry = (await GetAsync<MovementPage>($"/api/inventory/movements?sku={sku}"))
+        var entry = (await GetAsync<MovementPage>($"/api/v1/inventory/movements?sku={sku}"))
             .Items.Single(m => m.Type == "CountAdjustment");
 
         Assert.Equal(bin, entry.FromLocationCode);
         Assert.Equal(_adjustmentCode, entry.ToLocationCode);
         Assert.Equal(8m, entry.Quantity);
 
-        var gain = await PostAsync("/api/inventory/adjustments", new
+        var gain = await PostAsync("/api/v1/inventory/adjustments", new
         {
             sku,
             quantity = 3m,
@@ -536,7 +536,7 @@ public sealed class InventoryLedgerTests(CountflowApiFixture fixture)
         var sku = await NewItemAsync();
         await ReceiveAsync(sku, 10m, _bins[19]);
 
-        var response = await PostAsync("/api/inventory/adjustments", new
+        var response = await PostAsync("/api/v1/inventory/adjustments", new
         {
             sku,
             quantity = -10m,
@@ -557,7 +557,7 @@ public sealed class InventoryLedgerTests(CountflowApiFixture fixture)
         var sku = await NewItemAsync();
         await ReceiveAsync(sku, 10m, _bins[20]);
 
-        var response = await PostAsync("/api/inventory/transfers", new
+        var response = await PostAsync("/api/v1/inventory/transfers", new
         {
             sku,
             quantity = 10m,
@@ -613,7 +613,7 @@ public sealed class InventoryLedgerTests(CountflowApiFixture fixture)
 
                     var quantity = Math.Min(available, random.Next(1, 20));
 
-                    var response = await PostAsync("/api/inventory/transfers", new
+                    var response = await PostAsync("/api/v1/inventory/transfers", new
                     {
                         sku,
                         quantity,
@@ -634,7 +634,7 @@ public sealed class InventoryLedgerTests(CountflowApiFixture fixture)
 
                     var quantity = Math.Min(available, random.Next(1, 10));
 
-                    var response = await PostAsync("/api/inventory/adjustments", new
+                    var response = await PostAsync("/api/v1/inventory/adjustments", new
                     {
                         sku,
                         quantity = -quantity,
@@ -657,7 +657,7 @@ public sealed class InventoryLedgerTests(CountflowApiFixture fixture)
                     // Quarantine leaves the location total alone, which is exactly
                     // why it belongs in a conservation test: a status change that
                     // leaked quantity would look like a rounding error.
-                    var response = await PostAsync("/api/inventory/status-changes", new
+                    var response = await PostAsync("/api/v1/inventory/status-changes", new
                     {
                         sku,
                         quantity,
@@ -707,7 +707,7 @@ public sealed class InventoryLedgerTests(CountflowApiFixture fixture)
         // negative — the classic double-allocation that puts a picker in front of an
         // empty shelf.
         var attempts = await Task.WhenAll(Enumerable.Range(0, 20).Select(i =>
-            PostAsync("/api/inventory/transfers", new
+            PostAsync("/api/v1/inventory/transfers", new
             {
                 sku,
                 quantity = 10m,
@@ -745,7 +745,7 @@ public sealed class InventoryLedgerTests(CountflowApiFixture fixture)
         {
             var forwards = i % 2 == 0;
 
-            return PostAsync("/api/inventory/transfers", new
+            return PostAsync("/api/v1/inventory/transfers", new
             {
                 sku,
                 quantity = 5m,
@@ -767,7 +767,7 @@ public sealed class InventoryLedgerTests(CountflowApiFixture fixture)
         var bin = _bins[32];
 
         await ReceiveAsync(sku, 90m, bin);
-        await PostAsync("/api/inventory/transfers", new
+        await PostAsync("/api/v1/inventory/transfers", new
         {
             sku,
             quantity = 30m,
@@ -842,12 +842,12 @@ public sealed class InventoryLedgerTests(CountflowApiFixture fixture)
 
         // The timestamp is server-assigned, so the cutoff has to come from the
         // ledger rather than from the test's own clock.
-        var asOf = (await GetAsync<MovementPage>($"/api/inventory/movements?sku={sku}"))
+        var asOf = (await GetAsync<MovementPage>($"/api/v1/inventory/movements?sku={sku}"))
             .Items.Max(m => m.OccurredAt);
 
         await Task.Delay(20);
 
-        await PostAsync("/api/inventory/transfers", new
+        await PostAsync("/api/v1/inventory/transfers", new
         {
             sku,
             quantity = 120m,
@@ -855,7 +855,7 @@ public sealed class InventoryLedgerTests(CountflowApiFixture fixture)
             toLocationCode = _bins[36]
         });
 
-        await PostAsync("/api/inventory/adjustments", new
+        await PostAsync("/api/v1/inventory/adjustments", new
         {
             sku,
             quantity = -10m,
@@ -866,7 +866,7 @@ public sealed class InventoryLedgerTests(CountflowApiFixture fixture)
         Assert.Equal(20m, await BalanceAsync(sku, bin));
 
         var historic = await GetAsync<BalancePage>(
-            $"/api/inventory/balances?sku={sku}&location={Uri.EscapeDataString(bin)}" +
+            $"/api/v1/inventory/balances?sku={sku}&location={Uri.EscapeDataString(bin)}" +
             $"&asOf={Uri.EscapeDataString(asOf.ToString("O"))}");
 
         // "Show me A-07-03-02 as of 14 July" — the query a mutable quantity column
@@ -883,7 +883,7 @@ public sealed class InventoryLedgerTests(CountflowApiFixture fixture)
         await ReceiveAsync(sku, 10m, _bins[37]);
 
         var page = await GetAsync<BalancePage>(
-            $"/api/inventory/balances?sku={sku}&asOf=2020-01-01T00%3A00%3A00Z");
+            $"/api/v1/inventory/balances?sku={sku}&asOf=2020-01-01T00%3A00%3A00Z");
 
         Assert.Empty(page.Items);
     }
@@ -894,7 +894,7 @@ public sealed class InventoryLedgerTests(CountflowApiFixture fixture)
         var asOf = DateTimeOffset.UtcNow.AddDays(1).ToString("O");
 
         var response = await _supervisor.GetAsync(
-            $"/api/inventory/balances?asOf={Uri.EscapeDataString(asOf)}");
+            $"/api/v1/inventory/balances?asOf={Uri.EscapeDataString(asOf)}");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Contains("inventory.as_of_in_future", await response.Content.ReadAsStringAsync());
@@ -989,7 +989,7 @@ public sealed class InventoryLedgerTests(CountflowApiFixture fixture)
         await ReceiveAsync(sku, 12m, _bins[1]);
 
         var page = await GetAsync<BalancePage>(
-            $"/api/inventory/balances?sku={sku}&location={Uri.EscapeDataString(_supplierCode)}");
+            $"/api/v1/inventory/balances?sku={sku}&location={Uri.EscapeDataString(_supplierCode)}");
 
         // Not a bug to be fixed: it is the contra account. A warehouse that has
         // received anything owes its supplier account exactly that much, and this is
@@ -1036,23 +1036,23 @@ public sealed class InventoryLedgerTests(CountflowApiFixture fixture)
     }
 
     private Task<HttpResponseMessage> ReceiveAsync(string sku, decimal quantity, string locationCode) =>
-        PostAsync("/api/inventory/receipts", new { sku, quantity, toLocationCode = locationCode });
+        PostAsync("/api/v1/inventory/receipts", new { sku, quantity, toLocationCode = locationCode });
 
     private async Task<decimal> BalanceAsync(string sku, string locationCode)
     {
         var page = await GetAsync<BalancePage>(
-            $"/api/inventory/balances?sku={Uri.EscapeDataString(sku)}" +
+            $"/api/v1/inventory/balances?sku={Uri.EscapeDataString(sku)}" +
             $"&location={Uri.EscapeDataString(locationCode)}&status=Available");
 
         return page.Items.Sum(r => r.Quantity);
     }
 
     private async Task<int> MovementCountAsync(string sku) =>
-        (await GetAsync<MovementPage>($"/api/inventory/movements?sku={Uri.EscapeDataString(sku)}")).Total;
+        (await GetAsync<MovementPage>($"/api/v1/inventory/movements?sku={Uri.EscapeDataString(sku)}")).Total;
 
     private async Task<ReconciliationBody> ReconcileAsync()
     {
-        var response = await _supervisor.PostAsync("/api/inventory/reconciliation", content: null);
+        var response = await _supervisor.PostAsync("/api/v1/inventory/reconciliation", content: null);
 
         response.EnsureSuccessStatusCode();
 
@@ -1157,7 +1157,7 @@ public sealed class InventoryLedgerTests(CountflowApiFixture fixture)
     {
         var client = fixture.CreateClient();
 
-        var response = await client.PostAsJsonAsync("/api/auth/login",
+        var response = await client.PostAsJsonAsync("/api/v1/auth/login",
             Credentials(userName, SupervisorSecret));
 
         response.EnsureSuccessStatusCode();

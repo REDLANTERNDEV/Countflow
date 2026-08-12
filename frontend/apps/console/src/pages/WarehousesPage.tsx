@@ -22,7 +22,7 @@ export function WarehousesPage() {
   const { data, isPending, error } = useQuery({
     queryKey: ['warehouses'],
     queryFn: async () => {
-      const { data, error } = await api.GET('/api/warehouses');
+      const { data, error } = await api.GET('/api/v1/warehouses');
       if (error) throw new Error('warehouses');
       return data;
     },

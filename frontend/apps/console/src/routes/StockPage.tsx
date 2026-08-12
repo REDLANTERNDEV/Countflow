@@ -52,7 +52,7 @@ export function StockPage() {
     queryKey: ['stock', sku, location, lot, sscc, status, includeEmpty, asOf, page],
     placeholderData: keepPreviousData,
     queryFn: async () => {
-      const { data, error } = await api.GET('/api/inventory/balances', {
+      const { data, error } = await api.GET('/api/v1/inventory/balances', {
         params: {
           query: {
             page,

@@ -41,7 +41,7 @@ public static class GetItems
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapGet("/api/items", async (
+        endpoints.MapGet("/items", async (
                 MasterDataDbContext dbContext,
                 CancellationToken cancellationToken,
                 string? search = null,
@@ -94,7 +94,7 @@ public static class GetItems
             .WithSummary("List items, filtered and paged.")
             .Produces<PagedResponse<ItemResponse>>();
 
-        endpoints.MapGet("/api/items/{sku}", async (
+        endpoints.MapGet("/items/{sku}", async (
                 string sku,
                 MasterDataDbContext dbContext,
                 CancellationToken cancellationToken) =>

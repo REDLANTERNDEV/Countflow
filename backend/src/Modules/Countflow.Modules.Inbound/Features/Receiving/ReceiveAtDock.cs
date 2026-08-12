@@ -92,7 +92,7 @@ public static class ReceiveAtDock
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapPost("/api/inbound/receipts", async (
+        endpoints.MapPost("/inbound/receipts", async (
                 DockReceiptRequest request,
                 ClaimsPrincipal user,
                 [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey,

@@ -57,7 +57,7 @@ public static class GetWorkStatistics
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapGet("/api/work/statistics", async (
+        endpoints.MapGet("/work/statistics", async (
                 Guid warehouseId,
                 DateTimeOffset? from,
                 DateTimeOffset? to,

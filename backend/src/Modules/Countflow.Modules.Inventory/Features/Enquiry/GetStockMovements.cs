@@ -46,7 +46,7 @@ public static class GetStockMovements
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapGet("/api/inventory/movements", async (
+        endpoints.MapGet("/inventory/movements", async (
                 InventoryDbContext dbContext,
                 IItemDirectory items,
                 ILocationDirectory locations,

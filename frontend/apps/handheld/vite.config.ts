@@ -37,7 +37,7 @@ export default defineConfig({
         navigateFallback: '/handheld/index.html',
         runtimeCaching: [
           {
-            urlPattern: ({ url }) => url.pathname.startsWith('/api/'),
+            urlPattern: ({ url }) => url.pathname.startsWith('/api/v1/'),
             handler: 'NetworkOnly',
           },
         ],

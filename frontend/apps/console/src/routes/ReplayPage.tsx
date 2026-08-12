@@ -68,7 +68,7 @@ export function ReplayPage() {
   const warehouses = useQuery({
     queryKey: ['warehouses'],
     queryFn: async () => {
-      const { data, error } = await api.GET('/api/warehouses');
+      const { data, error } = await api.GET('/api/v1/warehouses');
       if (error) throw error;
       return data;
     },
@@ -79,7 +79,7 @@ export function ReplayPage() {
   const ruleSets = useQuery({
     queryKey: ['rule-sets', kind],
     queryFn: async () => {
-      const { data, error } = await api.GET('/api/rules/sets', {
+      const { data, error } = await api.GET('/api/v1/rules/sets', {
         params: { query: { kind: kind as 'Putaway' } },
       });
       if (error) throw error;
@@ -91,7 +91,7 @@ export function ReplayPage() {
     queryKey: ['replay-runs', kind],
     placeholderData: keepPreviousData,
     queryFn: async () => {
-      const { data, error } = await api.GET('/api/replay/runs', {
+      const { data, error } = await api.GET('/api/v1/replay/runs', {
         params: { query: { kind: kind as 'Putaway', pageSize: 25 } },
       });
       if (error) throw error;
@@ -103,7 +103,7 @@ export function ReplayPage() {
     queryKey: ['replay-run', openRun, outcomeFilter],
     enabled: openRun !== null,
     queryFn: async () => {
-      const { data, error } = await api.GET('/api/replay/runs/{id}', {
+      const { data, error } = await api.GET('/api/v1/replay/runs/{id}', {
         params: {
           path: { id: openRun as string },
           query: outcomeFilter ? { outcome: outcomeFilter as 'Changed' } : {},
@@ -118,7 +118,7 @@ export function ReplayPage() {
     mutationFn: async () => {
       setErrorCode(null);
 
-      const { data, error } = await api.POST('/api/replay/runs', {
+      const { data, error } = await api.POST('/api/v1/replay/runs', {
         body: {
           warehouseCode: selectedWarehouse,
           kind: kind as 'Putaway',

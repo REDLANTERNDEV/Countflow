@@ -30,7 +30,7 @@ public static class GetLocations
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapGet("/api/locations", async (
+        endpoints.MapGet("/locations", async (
                 MasterDataDbContext dbContext,
                 CancellationToken cancellationToken,
                 string? search = null,

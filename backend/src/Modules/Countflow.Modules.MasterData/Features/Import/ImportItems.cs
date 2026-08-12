@@ -26,7 +26,7 @@ public static class ImportItems
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapPost("/api/import/items", async (
+        endpoints.MapPost("/import/items", async (
                 HttpRequest httpRequest,
                 MasterDataDbContext dbContext,
                 CancellationToken cancellationToken,

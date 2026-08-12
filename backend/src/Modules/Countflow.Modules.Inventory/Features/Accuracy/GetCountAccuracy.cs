@@ -76,7 +76,7 @@ public static class GetCountAccuracy
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapGet("/api/inventory/accuracy", async (
+        endpoints.MapGet("/inventory/accuracy", async (
                 Guid warehouseId,
                 DateTimeOffset? from,
                 DateTimeOffset? to,

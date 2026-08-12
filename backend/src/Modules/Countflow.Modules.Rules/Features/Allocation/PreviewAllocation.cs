@@ -50,7 +50,7 @@ public static class PreviewAllocation
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapPost("/api/rules/allocation/preview", async (
+        endpoints.MapPost("/rules/allocation/preview", async (
                 PreviewAllocationRequest request,
                 ClaimsPrincipal user,
                 AllocationAdvisor advisor,

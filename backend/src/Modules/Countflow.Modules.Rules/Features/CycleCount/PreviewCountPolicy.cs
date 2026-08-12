@@ -42,7 +42,7 @@ public static class PreviewCountPolicy
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapPost("/api/rules/cycle-count/preview", async (
+        endpoints.MapPost("/rules/cycle-count/preview", async (
                 PreviewCountPolicyRequest request,
                 ClaimsPrincipal user,
                 CountPolicyAdvisor advisor,

@@ -42,7 +42,7 @@ export function App() {
         return;
       }
 
-      const { data } = await api.GET('/api/auth/me');
+      const { data } = await api.GET('/api/v1/auth/me');
       setUser((data as CurrentUser | undefined) ?? null);
       setInitialising(false);
     }
@@ -54,7 +54,7 @@ export function App() {
     setSubmitting(true);
     setErrorCode(null);
 
-    const { data, error } = await api.POST('/api/auth/login', {
+    const { data, error } = await api.POST('/api/v1/auth/login', {
       body: { identifier: code, password: secret },
     });
 
@@ -79,7 +79,7 @@ export function App() {
   async function signOut() {
     const session = tokenStore.read();
     if (session) {
-      await api.POST('/api/auth/logout', { body: { refreshToken: session.refreshToken } });
+      await api.POST('/api/v1/auth/logout', { body: { refreshToken: session.refreshToken } });
     }
 
     tokenStore.clear();

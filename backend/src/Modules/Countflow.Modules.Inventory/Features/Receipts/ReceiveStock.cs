@@ -47,7 +47,7 @@ public static class ReceiveStock
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapPost("/api/inventory/receipts", async (
+        endpoints.MapPost("/inventory/receipts", async (
                 ReceiveStockRequest request,
                 ClaimsPrincipal user,
                 [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey,

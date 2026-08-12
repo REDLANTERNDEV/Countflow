@@ -32,7 +32,7 @@ public static class PackOrder
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapPost("/api/outbound/orders/{id:guid}/pack", async (
+        endpoints.MapPost("/outbound/orders/{id:guid}/pack", async (
                 Guid id,
                 PackOrderRequest? request,
                 ClaimsPrincipal user,
@@ -139,7 +139,7 @@ public static class DespatchOrder
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapPost("/api/outbound/orders/{id:guid}/despatch", async (
+        endpoints.MapPost("/outbound/orders/{id:guid}/despatch", async (
                 Guid id,
                 ClaimsPrincipal user,
                 [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey,

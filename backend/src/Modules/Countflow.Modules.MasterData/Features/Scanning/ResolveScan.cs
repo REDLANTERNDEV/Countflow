@@ -73,7 +73,7 @@ public static class ResolveScan
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapPost("/api/scan/resolve", async (
+        endpoints.MapPost("/scan/resolve", async (
                 ResolveScanRequest request,
                 MasterDataDbContext dbContext,
                 CancellationToken cancellationToken) =>

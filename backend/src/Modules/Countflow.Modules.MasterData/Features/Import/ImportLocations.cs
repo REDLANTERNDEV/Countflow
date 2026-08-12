@@ -23,7 +23,7 @@ public static class ImportLocations
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapPost("/api/import/locations", async (
+        endpoints.MapPost("/import/locations", async (
                 HttpRequest httpRequest,
                 MasterDataDbContext dbContext,
                 CancellationToken cancellationToken,

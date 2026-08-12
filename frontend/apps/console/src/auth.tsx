@@ -33,7 +33,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      const { data } = await api.GET('/api/auth/me');
+      const { data } = await api.GET('/api/v1/auth/me');
       if (!cancelled) {
         setUser((data as CurrentUser | undefined) ?? null);
         setInitialising(false);
@@ -48,7 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   /** Returns null on success, or the server's error *code* for the caller to translate. */
   const signIn = useCallback(async (identifier: string, password: string) => {
-    const { data, error } = await api.POST('/api/auth/login', {
+    const { data, error } = await api.POST('/api/v1/auth/login', {
       body: { identifier, password },
     });
 
@@ -72,7 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = useCallback(async () => {
     const session = tokenStore.read();
     if (session) {
-      await api.POST('/api/auth/logout', { body: { refreshToken: session.refreshToken } });
+      await api.POST('/api/v1/auth/logout', { body: { refreshToken: session.refreshToken } });
     }
 
     tokenStore.clear();

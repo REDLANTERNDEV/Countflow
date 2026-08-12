@@ -4,7 +4,75 @@
  */
 
 export interface paths {
-    "/api/warehouses": {
+    "/api/v1/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Exchange credentials for an access token and a refresh token. */
+        post: operations["Login"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Rotate a refresh token for a new access token. */
+        post: operations["Refresh"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revoke a refresh token. */
+        post: operations["Logout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Return the authenticated user and their roles. */
+        get: operations["GetCurrentUser"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/warehouses": {
         parameters: {
             query?: never;
             header?: never;
@@ -21,7 +89,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/locations": {
+    "/api/v1/locations": {
         parameters: {
             query?: never;
             header?: never;
@@ -38,7 +106,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/items": {
+    "/api/v1/items": {
         parameters: {
             query?: never;
             header?: never;
@@ -55,7 +123,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/items/{sku}": {
+    "/api/v1/items/{sku}": {
         parameters: {
             query?: never;
             header?: never;
@@ -72,7 +140,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/scan/resolve": {
+    "/api/v1/scan/resolve": {
         parameters: {
             query?: never;
             header?: never;
@@ -89,7 +157,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/import/items": {
+    "/api/v1/import/items": {
         parameters: {
             query?: never;
             header?: never;
@@ -106,7 +174,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/import/locations": {
+    "/api/v1/import/locations": {
         parameters: {
             query?: never;
             header?: never;
@@ -123,7 +191,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/inventory/receipts": {
+    "/api/v1/inventory/receipts": {
         parameters: {
             query?: never;
             header?: never;
@@ -140,7 +208,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/inventory/transfers": {
+    "/api/v1/inventory/transfers": {
         parameters: {
             query?: never;
             header?: never;
@@ -157,7 +225,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/inventory/adjustments": {
+    "/api/v1/inventory/adjustments": {
         parameters: {
             query?: never;
             header?: never;
@@ -174,7 +242,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/inventory/scrap": {
+    "/api/v1/inventory/scrap": {
         parameters: {
             query?: never;
             header?: never;
@@ -191,7 +259,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/inventory/status-changes": {
+    "/api/v1/inventory/status-changes": {
         parameters: {
             query?: never;
             header?: never;
@@ -208,7 +276,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/inventory/movements/{movementId}/reversal": {
+    "/api/v1/inventory/movements/{movementId}/reversal": {
         parameters: {
             query?: never;
             header?: never;
@@ -225,7 +293,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/inventory/balances": {
+    "/api/v1/inventory/balances": {
         parameters: {
             query?: never;
             header?: never;
@@ -242,7 +310,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/inventory/movements": {
+    "/api/v1/inventory/movements": {
         parameters: {
             query?: never;
             header?: never;
@@ -259,7 +327,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/inventory/reconciliation": {
+    "/api/v1/inventory/reconciliation": {
         parameters: {
             query?: never;
             header?: never;
@@ -276,7 +344,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/inventory/reconciliation/history": {
+    "/api/v1/inventory/reconciliation/history": {
         parameters: {
             query?: never;
             header?: never;
@@ -293,7 +361,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/inventory/accuracy": {
+    "/api/v1/inventory/accuracy": {
         parameters: {
             query?: never;
             header?: never;
@@ -310,7 +378,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/inventory/reservations/stranded": {
+    "/api/v1/inventory/reservations/stranded": {
         parameters: {
             query?: never;
             header?: never;
@@ -327,7 +395,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/rules/sets": {
+    "/api/v1/rules/sets": {
         parameters: {
             query?: never;
             header?: never;
@@ -345,7 +413,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/rules/sets/{id}": {
+    "/api/v1/rules/sets/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -362,7 +430,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/rules/sets/{id}/promote": {
+    "/api/v1/rules/sets/{id}/promote": {
         parameters: {
             query?: never;
             header?: never;
@@ -379,7 +447,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/rules/sets/{id}/archive": {
+    "/api/v1/rules/sets/{id}/archive": {
         parameters: {
             query?: never;
             header?: never;
@@ -396,7 +464,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/rules/traces/{id}": {
+    "/api/v1/rules/traces/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -413,7 +481,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/rules/putaway/preview": {
+    "/api/v1/rules/putaway/preview": {
         parameters: {
             query?: never;
             header?: never;
@@ -430,7 +498,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/rules/allocation/preview": {
+    "/api/v1/rules/allocation/preview": {
         parameters: {
             query?: never;
             header?: never;
@@ -447,7 +515,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/rules/cycle-count/preview": {
+    "/api/v1/rules/cycle-count/preview": {
         parameters: {
             query?: never;
             header?: never;
@@ -464,7 +532,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/work/tasks": {
+    "/api/v1/work/tasks": {
         parameters: {
             query?: never;
             header?: never;
@@ -481,7 +549,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/work/tasks/{id}": {
+    "/api/v1/work/tasks/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -498,7 +566,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/work/tasks/claim-next": {
+    "/api/v1/work/tasks/claim-next": {
         parameters: {
             query?: never;
             header?: never;
@@ -515,7 +583,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/work/tasks/{id}/claim": {
+    "/api/v1/work/tasks/{id}/claim": {
         parameters: {
             query?: never;
             header?: never;
@@ -532,7 +600,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/work/tasks/{id}/release": {
+    "/api/v1/work/tasks/{id}/release": {
         parameters: {
             query?: never;
             header?: never;
@@ -549,7 +617,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/work/tasks/{id}/complete": {
+    "/api/v1/work/tasks/{id}/complete": {
         parameters: {
             query?: never;
             header?: never;
@@ -566,7 +634,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/work/statistics": {
+    "/api/v1/work/statistics": {
         parameters: {
             query?: never;
             header?: never;
@@ -583,7 +651,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/inbound/asns": {
+    "/api/v1/inbound/asns": {
         parameters: {
             query?: never;
             header?: never;
@@ -601,7 +669,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/inbound/asns/{reference}": {
+    "/api/v1/inbound/asns/{reference}": {
         parameters: {
             query?: never;
             header?: never;
@@ -618,7 +686,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/inbound/receipts": {
+    "/api/v1/inbound/receipts": {
         parameters: {
             query?: never;
             header?: never;
@@ -635,7 +703,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/outbound/orders": {
+    "/api/v1/outbound/orders": {
         parameters: {
             query?: never;
             header?: never;
@@ -653,7 +721,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/outbound/orders/{id}": {
+    "/api/v1/outbound/orders/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -670,7 +738,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/outbound/orders/{id}/release": {
+    "/api/v1/outbound/orders/{id}/release": {
         parameters: {
             query?: never;
             header?: never;
@@ -687,7 +755,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/outbound/orders/{id}/pack": {
+    "/api/v1/outbound/orders/{id}/pack": {
         parameters: {
             query?: never;
             header?: never;
@@ -704,7 +772,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/outbound/orders/{id}/despatch": {
+    "/api/v1/outbound/orders/{id}/despatch": {
         parameters: {
             query?: never;
             header?: never;
@@ -721,7 +789,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/outbound/orders/{id}/cancel": {
+    "/api/v1/outbound/orders/{id}/cancel": {
         parameters: {
             query?: never;
             header?: never;
@@ -738,7 +806,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/outbound/waves": {
+    "/api/v1/outbound/waves": {
         parameters: {
             query?: never;
             header?: never;
@@ -756,7 +824,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/outbound/waves/{id}/release": {
+    "/api/v1/outbound/waves/{id}/release": {
         parameters: {
             query?: never;
             header?: never;
@@ -773,7 +841,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/counting/plans": {
+    "/api/v1/counting/plans": {
         parameters: {
             query?: never;
             header?: never;
@@ -791,7 +859,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/counting/plans/{id}": {
+    "/api/v1/counting/plans/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -808,7 +876,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/counting/plans/{id}/cancel": {
+    "/api/v1/counting/plans/{id}/cancel": {
         parameters: {
             query?: never;
             header?: never;
@@ -825,7 +893,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/replay/runs": {
+    "/api/v1/replay/runs": {
         parameters: {
             query?: never;
             header?: never;
@@ -843,7 +911,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/replay/runs/{id}": {
+    "/api/v1/replay/runs/{id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -852,74 +920,6 @@ export interface paths {
         };
         /** One replay run and the decisions it compared. */
         get: operations["GetReplayRun"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/auth/login": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Exchange credentials for an access token and a refresh token. */
-        post: operations["Login"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/auth/refresh": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Rotate a refresh token for a new access token. */
-        post: operations["Refresh"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/auth/logout": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Revoke a refresh token. */
-        post: operations["Logout"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/auth/me": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Return the authenticated user and their roles. */
-        get: operations["GetCurrentUser"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2197,6 +2197,123 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    Login: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    Refresh: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RefreshRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    Logout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LogoutRequest"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    GetCurrentUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserInfo"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     GetWarehouses: {
         parameters: {
             query?: never;
@@ -4497,123 +4614,6 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
-                };
-            };
-        };
-    };
-    Login: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["LoginRequest"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AuthResponse"];
-                };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
-                };
-            };
-        };
-    };
-    Refresh: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["RefreshRequest"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AuthResponse"];
-                };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/problem+json": components["schemas"]["ProblemDetails"];
-                };
-            };
-        };
-    };
-    Logout: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["LogoutRequest"];
-            };
-        };
-        responses: {
-            /** @description No Content */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    GetCurrentUser: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["UserInfo"];
-                };
-            };
-            /** @description Unauthorized */
-            401: {
                 headers: {
                     [name: string]: unknown;
                 };

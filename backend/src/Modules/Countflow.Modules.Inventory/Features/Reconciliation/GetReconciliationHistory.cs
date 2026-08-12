@@ -40,7 +40,7 @@ public static class GetReconciliationHistory
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapGet("/api/inventory/reconciliation/history", async (
+        endpoints.MapGet("/inventory/reconciliation/history", async (
                 int? limit,
                 ReconciliationJournal journal,
                 CancellationToken cancellationToken) =>

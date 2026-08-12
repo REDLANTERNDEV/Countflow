@@ -80,7 +80,7 @@ public static class GetRuleSets
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapGet("/api/rules/sets", async (
+        endpoints.MapGet("/rules/sets", async (
                 RulesDbContext dbContext,
                 CancellationToken cancellationToken,
                 DecisionKind? kind = null) =>

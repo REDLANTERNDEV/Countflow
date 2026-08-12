@@ -5,7 +5,144 @@
     "version": "1.0.0"
   },
   "paths": {
-    "/api/warehouses": {
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Exchange credentials for an access token and a refresh token.",
+        "operationId": "Login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/refresh": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Rotate a refresh token for a new access token.",
+        "operationId": "Refresh",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Revoke a refresh token.",
+        "operationId": "Logout",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LogoutRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Return the authenticated user and their roles.",
+        "operationId": "GetCurrentUser",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserInfo"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/warehouses": {
       "get": {
         "tags": [
           "Master data"
@@ -29,7 +166,7 @@
         }
       }
     },
-    "/api/locations": {
+    "/api/v1/locations": {
       "get": {
         "tags": [
           "Master data"
@@ -98,7 +235,7 @@
         }
       }
     },
-    "/api/items": {
+    "/api/v1/items": {
       "get": {
         "tags": [
           "Master data"
@@ -160,7 +297,7 @@
         }
       }
     },
-    "/api/items/{sku}": {
+    "/api/v1/items/{sku}": {
       "get": {
         "tags": [
           "Master data"
@@ -201,7 +338,7 @@
         }
       }
     },
-    "/api/scan/resolve": {
+    "/api/v1/scan/resolve": {
       "post": {
         "tags": [
           "Scanning"
@@ -242,7 +379,7 @@
         }
       }
     },
-    "/api/import/items": {
+    "/api/v1/import/items": {
       "post": {
         "tags": [
           "Import"
@@ -293,7 +430,7 @@
         }
       }
     },
-    "/api/import/locations": {
+    "/api/v1/import/locations": {
       "post": {
         "tags": [
           "Import"
@@ -362,7 +499,7 @@
         }
       }
     },
-    "/api/inventory/receipts": {
+    "/api/v1/inventory/receipts": {
       "post": {
         "tags": [
           "Inventory"
@@ -432,7 +569,7 @@
         }
       }
     },
-    "/api/inventory/transfers": {
+    "/api/v1/inventory/transfers": {
       "post": {
         "tags": [
           "Inventory"
@@ -502,7 +639,7 @@
         }
       }
     },
-    "/api/inventory/adjustments": {
+    "/api/v1/inventory/adjustments": {
       "post": {
         "tags": [
           "Inventory"
@@ -582,7 +719,7 @@
         }
       }
     },
-    "/api/inventory/scrap": {
+    "/api/v1/inventory/scrap": {
       "post": {
         "tags": [
           "Inventory"
@@ -662,7 +799,7 @@
         }
       }
     },
-    "/api/inventory/status-changes": {
+    "/api/v1/inventory/status-changes": {
       "post": {
         "tags": [
           "Inventory"
@@ -732,7 +869,7 @@
         }
       }
     },
-    "/api/inventory/movements/{movementId}/reversal": {
+    "/api/v1/inventory/movements/{movementId}/reversal": {
       "post": {
         "tags": [
           "Inventory"
@@ -827,7 +964,7 @@
         }
       }
     },
-    "/api/inventory/balances": {
+    "/api/v1/inventory/balances": {
       "get": {
         "tags": [
           "Inventory"
@@ -939,7 +1076,7 @@
         }
       }
     },
-    "/api/inventory/movements": {
+    "/api/v1/inventory/movements": {
       "get": {
         "tags": [
           "Inventory"
@@ -1048,7 +1185,7 @@
         }
       }
     },
-    "/api/inventory/reconciliation": {
+    "/api/v1/inventory/reconciliation": {
       "post": {
         "tags": [
           "Inventory"
@@ -1079,7 +1216,7 @@
         }
       }
     },
-    "/api/inventory/reconciliation/history": {
+    "/api/v1/inventory/reconciliation/history": {
       "get": {
         "tags": [
           "Inventory"
@@ -1123,7 +1260,7 @@
         }
       }
     },
-    "/api/inventory/accuracy": {
+    "/api/v1/inventory/accuracy": {
       "get": {
         "tags": [
           "Inventory"
@@ -1181,7 +1318,7 @@
         }
       }
     },
-    "/api/inventory/reservations/stranded": {
+    "/api/v1/inventory/reservations/stranded": {
       "get": {
         "tags": [
           "Inventory"
@@ -1215,7 +1352,7 @@
         }
       }
     },
-    "/api/rules/sets": {
+    "/api/v1/rules/sets": {
       "get": {
         "tags": [
           "Rules"
@@ -1304,7 +1441,7 @@
         }
       }
     },
-    "/api/rules/sets/{id}": {
+    "/api/v1/rules/sets/{id}": {
       "put": {
         "tags": [
           "Rules"
@@ -1386,7 +1523,7 @@
         }
       }
     },
-    "/api/rules/sets/{id}/promote": {
+    "/api/v1/rules/sets/{id}/promote": {
       "post": {
         "tags": [
           "Rules"
@@ -1458,7 +1595,7 @@
         }
       }
     },
-    "/api/rules/sets/{id}/archive": {
+    "/api/v1/rules/sets/{id}/archive": {
       "post": {
         "tags": [
           "Rules"
@@ -1510,7 +1647,7 @@
         }
       }
     },
-    "/api/rules/traces/{id}": {
+    "/api/v1/rules/traces/{id}": {
       "get": {
         "tags": [
           "Rules"
@@ -1552,7 +1689,7 @@
         }
       }
     },
-    "/api/rules/putaway/preview": {
+    "/api/v1/rules/putaway/preview": {
       "post": {
         "tags": [
           "Rules"
@@ -1603,7 +1740,7 @@
         }
       }
     },
-    "/api/rules/allocation/preview": {
+    "/api/v1/rules/allocation/preview": {
       "post": {
         "tags": [
           "Rules"
@@ -1654,7 +1791,7 @@
         }
       }
     },
-    "/api/rules/cycle-count/preview": {
+    "/api/v1/rules/cycle-count/preview": {
       "post": {
         "tags": [
           "Rules"
@@ -1705,7 +1842,7 @@
         }
       }
     },
-    "/api/work/tasks": {
+    "/api/v1/work/tasks": {
       "get": {
         "tags": [
           "Work"
@@ -1768,7 +1905,7 @@
         }
       }
     },
-    "/api/work/tasks/{id}": {
+    "/api/v1/work/tasks/{id}": {
       "get": {
         "tags": [
           "Work"
@@ -1810,7 +1947,7 @@
         }
       }
     },
-    "/api/work/tasks/claim-next": {
+    "/api/v1/work/tasks/claim-next": {
       "post": {
         "tags": [
           "Work"
@@ -1857,7 +1994,7 @@
         }
       }
     },
-    "/api/work/tasks/{id}/claim": {
+    "/api/v1/work/tasks/{id}/claim": {
       "post": {
         "tags": [
           "Work"
@@ -1909,7 +2046,7 @@
         }
       }
     },
-    "/api/work/tasks/{id}/release": {
+    "/api/v1/work/tasks/{id}/release": {
       "post": {
         "tags": [
           "Work"
@@ -1951,7 +2088,7 @@
         }
       }
     },
-    "/api/work/tasks/{id}/complete": {
+    "/api/v1/work/tasks/{id}/complete": {
       "post": {
         "tags": [
           "Work"
@@ -2040,7 +2177,7 @@
         }
       }
     },
-    "/api/work/statistics": {
+    "/api/v1/work/statistics": {
       "get": {
         "tags": [
           "Work"
@@ -2098,7 +2235,7 @@
         }
       }
     },
-    "/api/inbound/asns": {
+    "/api/v1/inbound/asns": {
       "get": {
         "tags": [
           "Inbound"
@@ -2212,7 +2349,7 @@
         }
       }
     },
-    "/api/inbound/asns/{reference}": {
+    "/api/v1/inbound/asns/{reference}": {
       "get": {
         "tags": [
           "Inbound"
@@ -2253,7 +2390,7 @@
         }
       }
     },
-    "/api/inbound/receipts": {
+    "/api/v1/inbound/receipts": {
       "post": {
         "tags": [
           "Inbound"
@@ -2323,7 +2460,7 @@
         }
       }
     },
-    "/api/outbound/orders": {
+    "/api/v1/outbound/orders": {
       "get": {
         "tags": [
           "Outbound"
@@ -2438,7 +2575,7 @@
         }
       }
     },
-    "/api/outbound/orders/{id}": {
+    "/api/v1/outbound/orders/{id}": {
       "get": {
         "tags": [
           "Outbound"
@@ -2480,7 +2617,7 @@
         }
       }
     },
-    "/api/outbound/orders/{id}/release": {
+    "/api/v1/outbound/orders/{id}/release": {
       "post": {
         "tags": [
           "Outbound"
@@ -2565,7 +2702,7 @@
         }
       }
     },
-    "/api/outbound/orders/{id}/pack": {
+    "/api/v1/outbound/orders/{id}/pack": {
       "post": {
         "tags": [
           "Outbound"
@@ -2633,7 +2770,7 @@
         }
       }
     },
-    "/api/outbound/orders/{id}/despatch": {
+    "/api/v1/outbound/orders/{id}/despatch": {
       "post": {
         "tags": [
           "Outbound"
@@ -2702,7 +2839,7 @@
         }
       }
     },
-    "/api/outbound/orders/{id}/cancel": {
+    "/api/v1/outbound/orders/{id}/cancel": {
       "post": {
         "tags": [
           "Outbound"
@@ -2764,7 +2901,7 @@
         }
       }
     },
-    "/api/outbound/waves": {
+    "/api/v1/outbound/waves": {
       "get": {
         "tags": [
           "Outbound"
@@ -2856,7 +2993,7 @@
         }
       }
     },
-    "/api/outbound/waves/{id}/release": {
+    "/api/v1/outbound/waves/{id}/release": {
       "post": {
         "tags": [
           "Outbound"
@@ -2941,7 +3078,7 @@
         }
       }
     },
-    "/api/counting/plans": {
+    "/api/v1/counting/plans": {
       "post": {
         "tags": [
           "Counting"
@@ -3073,7 +3210,7 @@
         }
       }
     },
-    "/api/counting/plans/{id}": {
+    "/api/v1/counting/plans/{id}": {
       "get": {
         "tags": [
           "Counting"
@@ -3115,7 +3252,7 @@
         }
       }
     },
-    "/api/counting/plans/{id}/cancel": {
+    "/api/v1/counting/plans/{id}/cancel": {
       "post": {
         "tags": [
           "Counting"
@@ -3193,7 +3330,7 @@
         }
       }
     },
-    "/api/replay/runs": {
+    "/api/v1/replay/runs": {
       "post": {
         "tags": [
           "Replay"
@@ -3316,7 +3453,7 @@
         }
       }
     },
-    "/api/replay/runs/{id}": {
+    "/api/v1/replay/runs/{id}": {
       "get": {
         "tags": [
           "Replay"
@@ -3364,143 +3501,6 @@
           },
           "404": {
             "description": "Not Found",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/auth/login": {
-      "post": {
-        "tags": [
-          "Authentication"
-        ],
-        "summary": "Exchange credentials for an access token and a refresh token.",
-        "operationId": "Login",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/LoginRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/auth/refresh": {
-      "post": {
-        "tags": [
-          "Authentication"
-        ],
-        "summary": "Rotate a refresh token for a new access token.",
-        "operationId": "Refresh",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RefreshRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/problem\u002Bjson": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/auth/logout": {
-      "post": {
-        "tags": [
-          "Authentication"
-        ],
-        "summary": "Revoke a refresh token.",
-        "operationId": "Logout",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/LogoutRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "204": {
-            "description": "No Content"
-          }
-        }
-      }
-    },
-    "/api/auth/me": {
-      "get": {
-        "tags": [
-          "Authentication"
-        ],
-        "summary": "Return the authenticated user and their roles.",
-        "operationId": "GetCurrentUser",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UserInfo"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
             "content": {
               "application/problem\u002Bjson": {
                 "schema": {
@@ -8171,6 +8171,9 @@
   },
   "tags": [
     {
+      "name": "Authentication"
+    },
+    {
       "name": "Master data"
     },
     {
@@ -8199,9 +8202,6 @@
     },
     {
       "name": "Replay"
-    },
-    {
-      "name": "Authentication"
     }
   ]
 }

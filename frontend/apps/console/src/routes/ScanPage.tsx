@@ -31,7 +31,7 @@ export function ScanPage() {
   const { data: sample } = useQuery({
     queryKey: ['scan-sample'],
     queryFn: async () => {
-      const { data } = await api.GET('/api/items', {
+      const { data } = await api.GET('/api/v1/items', {
         params: { query: { temperature: 'Chilled', pageSize: 1 } },
       });
 
@@ -43,7 +43,7 @@ export function ScanPage() {
 
   const resolve = useMutation({
     mutationFn: async (raw: string) => {
-      const { data, error } = await api.POST('/api/scan/resolve', { body: { barcode: raw } });
+      const { data, error } = await api.POST('/api/v1/scan/resolve', { body: { barcode: raw } });
       if (error) {
         const problem = error as { code?: string };
         throw new Error(problem.code ?? 'unknown');

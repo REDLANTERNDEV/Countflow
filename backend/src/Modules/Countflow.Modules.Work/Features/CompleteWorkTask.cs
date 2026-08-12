@@ -33,7 +33,7 @@ public static class CompleteWorkTask
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapPost("/api/work/tasks/{id:guid}/complete", async (
+        endpoints.MapPost("/work/tasks/{id:guid}/complete", async (
                 Guid id,
                 CompleteWorkTaskRequest request,
                 ClaimsPrincipal user,

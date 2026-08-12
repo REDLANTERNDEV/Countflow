@@ -17,7 +17,7 @@ public static class GetWaves
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapGet("/api/outbound/waves", async (
+        endpoints.MapGet("/outbound/waves", async (
                 OutboundDbContext dbContext,
                 OrderDescriber describe,
                 CancellationToken cancellationToken,
@@ -79,7 +79,7 @@ public static class CreateWave
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapPost("/api/outbound/waves", async (
+        endpoints.MapPost("/outbound/waves", async (
                 CreateWaveRequest request,
                 OutboundDbContext dbContext,
                 OrderDescriber describe,
@@ -182,7 +182,7 @@ public static class ReleaseWave
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapPost("/api/outbound/waves/{id:guid}/release", async (
+        endpoints.MapPost("/outbound/waves/{id:guid}/release", async (
                 Guid id,
                 ReleaseWaveRequest? request,
                 ClaimsPrincipal user,

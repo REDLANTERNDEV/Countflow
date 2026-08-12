@@ -54,7 +54,7 @@ export function WorkPage() {
     queryKey: ['work-tasks', status, kind, page],
     placeholderData: keepPreviousData,
     queryFn: async () => {
-      const { data, error } = await api.GET('/api/work/tasks', {
+      const { data, error } = await api.GET('/api/v1/work/tasks', {
         params: {
           query: {
             page,
@@ -76,7 +76,7 @@ export function WorkPage() {
     queryKey: ['work-task', openTaskId],
     enabled: openTaskId !== null,
     queryFn: async () => {
-      const { data, error } = await api.GET('/api/work/tasks/{id}', {
+      const { data, error } = await api.GET('/api/v1/work/tasks/{id}', {
         params: { path: { id: openTaskId! } },
       });
 

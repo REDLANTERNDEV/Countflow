@@ -49,7 +49,7 @@ export function RulesPage() {
   const { data, isPending, error } = useQuery({
     queryKey: ['rule-sets'],
     queryFn: async () => {
-      const { data, error } = await api.GET('/api/rules/sets', {});
+      const { data, error } = await api.GET('/api/v1/rules/sets', {});
 
       if (error) throw error;
       return data;
@@ -61,7 +61,7 @@ export function RulesPage() {
     setErrorCode(null);
     setPreview(null);
 
-    const { data, error } = await api.POST('/api/rules/putaway/preview', {
+    const { data, error } = await api.POST('/api/v1/rules/putaway/preview', {
       body: {
         sku: sku.trim(),
         quantity: Number(quantity),

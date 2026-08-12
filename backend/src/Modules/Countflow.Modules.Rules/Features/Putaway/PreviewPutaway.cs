@@ -44,7 +44,7 @@ public static class PreviewPutaway
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapPost("/api/rules/putaway/preview", async (
+        endpoints.MapPost("/rules/putaway/preview", async (
                 PreviewPutawayRequest request,
                 ClaimsPrincipal user,
                 PutawayAdvisor advisor,

@@ -58,7 +58,7 @@ export function TaskScreen({ taskId, onDone }: TaskScreenProps) {
   const load = useCallback(async () => {
     setLoading(true);
 
-    const { data, error } = await api.GET('/api/work/tasks/{id}', {
+    const { data, error } = await api.GET('/api/v1/work/tasks/{id}', {
       params: { path: { id: taskId } },
     });
 
@@ -79,7 +79,7 @@ export function TaskScreen({ taskId, onDone }: TaskScreenProps) {
   // Claiming is separate from opening, so a supervisor can look at a job on the
   // console without taking it out of somebody's queue.
   const claim = useCallback(async () => {
-    const { data } = await api.POST('/api/work/tasks/{id}/claim', {
+    const { data } = await api.POST('/api/v1/work/tasks/{id}/claim', {
       params: { path: { id: taskId } },
     });
 
@@ -90,7 +90,7 @@ export function TaskScreen({ taskId, onDone }: TaskScreenProps) {
     setSubmitting(true);
     setErrorCode(null);
 
-    const { data, error } = await api.POST('/api/work/tasks/{id}/complete', {
+    const { data, error } = await api.POST('/api/v1/work/tasks/{id}/complete', {
       params: {
         path: { id: taskId },
         header: { 'Idempotency-Key': idempotencyKey.current },

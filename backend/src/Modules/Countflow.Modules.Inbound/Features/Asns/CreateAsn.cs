@@ -24,7 +24,7 @@ public static class CreateAsn
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapPost("/api/inbound/asns", async (
+        endpoints.MapPost("/inbound/asns", async (
                 CreateAsnRequest request,
                 InboundDbContext dbContext,
                 IItemDirectory items,

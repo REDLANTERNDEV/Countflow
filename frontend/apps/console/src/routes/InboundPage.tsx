@@ -47,7 +47,7 @@ export function InboundPage() {
     queryKey: ['asns', status, page],
     placeholderData: keepPreviousData,
     queryFn: async () => {
-      const { data, error } = await api.GET('/api/inbound/asns', {
+      const { data, error } = await api.GET('/api/v1/inbound/asns', {
         params: {
           query: {
             page,

@@ -44,7 +44,7 @@ public static class TransferStock
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapPost("/api/inventory/transfers", async (
+        endpoints.MapPost("/inventory/transfers", async (
                 TransferStockRequest request,
                 ClaimsPrincipal user,
                 [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey,

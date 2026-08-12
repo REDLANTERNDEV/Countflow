@@ -52,7 +52,7 @@ export function LocationsPage() {
     // the flicker reads as breakage.
     placeholderData: keepPreviousData,
     queryFn: async () => {
-      const { data, error } = await api.GET('/api/locations', {
+      const { data, error } = await api.GET('/api/v1/locations', {
         params: {
           query: {
             page,

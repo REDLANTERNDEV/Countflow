@@ -35,11 +35,35 @@ namespace Countflow.Simulator;
 /// ADR 0002.
 /// </para>
 /// </summary>
+/// <param name="admin">
+/// Held for exactly one call. Promoting a rule set is the only admin-only endpoint
+/// this simulator touches, and it is admin-only on purpose — it is the step that
+/// changes where every pallet in the building goes tonight.
+/// <para>
+/// Separate from <paramref name="supervisor"/> rather than folded into it, because
+/// the first version was run with an admin client in the supervisor's place and
+/// therefore never discovered that a supervisor cannot promote. From the command
+/// line, where the simulator really did sign in as a supervisor, the counting
+/// policy silently failed to change and four simulated days produced no counts at
+/// all. A simulator whose credentials are stronger than the ones it claims to use
+/// is not testing the API an integrator has.
+/// </para>
+/// </param>
 public sealed class WarehouseSimulator(
     HttpClient supervisor,
     HttpClient operatorClient,
+    HttpClient admin,
     Action<string>? log = null)
 {
+    /// <summary>
+    /// The published surface this client was written against, pinned the way an
+    /// outside integrator pins it: in one place, as a version they chose, not as a
+    /// shared constant the server could move underneath them. A server that shipped
+    /// a v2 would leave this driving v1 until somebody here decided otherwise, which
+    /// is the entire point of versioning the surface.
+    /// </summary>
+    private const string Api = "/api/v1";
+
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
     {
         Converters = { new JsonStringEnumConverter() }
@@ -123,7 +147,7 @@ public sealed class WarehouseSimulator(
     private async Task ReceiveAsync(
         SimulationPlan plan,
         Random random,
-        IReadOnlyList<string> skus,
+        IReadOnlyList<SimulatedSku> skus,
         string dock,
         int day,
         int index,
@@ -134,23 +158,36 @@ public sealed class WarehouseSimulator(
         var reference = $"SIM-ASN-{plan.Seed}-{day:D2}{index:D2}";
 
         var lines = Enumerable.Range(0, plan.LinesPerReceipt)
-            .Select(_ => new
+            .Select(_ => skus[random.Next(skus.Count)])
+            .Select(item => new
             {
-                sku = skus[random.Next(skus.Count)],
+                sku = item.Sku,
                 expectedQuantity = (decimal)(random.Next(4, 25) * 6),
-                expectedLotNumber = $"L{plan.Seed % 1000:D3}-{day:D2}{random.Next(1, 4):D2}",
-                // Batches at a spread of ages, which is the input FEFO exists to
-                // rank and the reason a warehouse built entirely today would tell
-                // rotation rules nothing.
-                expectedExpiryDate = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(random.Next(30, 720)))
-                    .ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
+                // A batch only where the item has batches. Sending one anyway is
+                // refused by the ledger, and quietly cost this simulator every
+                // receipt of a non-lot-tracked SKU until a container run showed it.
+                expectedLotNumber = item.IsLotTracked
+                    ? $"L{plan.Seed % 1000:D3}-{day:D2}{random.Next(1, 4):D2}"
+                    : null
             })
             .DistinctBy(line => new { line.sku, line.expectedLotNumber })
+            // Batches at a spread of ages, which is the input FEFO exists to rank
+            // and the reason a warehouse built entirely today would tell rotation
+            // rules nothing. Drawn once per lot number and remembered: a lot number
+            // *is* a batch, and the ledger rightly refuses a second delivery of
+            // L812-0102 that claims a different expiry from the first.
+            .Select(line => new
+            {
+                line.sku,
+                line.expectedQuantity,
+                line.expectedLotNumber,
+                expectedExpiryDate = line.expectedLotNumber is null ? null : ExpiryOf(line.expectedLotNumber, random)
+            })
             .ToList();
 
         var asn = await PostAsync<AsnView>(
             supervisor,
-            "/api/inbound/asns",
+            $"{Api}/inbound/asns",
             new { reference, warehouseCode = plan.WarehouseCode, lines, supplierName = "Simulated Supplies Ltd" },
             cancellationToken);
 
@@ -168,7 +205,7 @@ public sealed class WarehouseSimulator(
 
             var posted = await PostAsync<JsonElement?>(
                 operatorClient,
-                "/api/inbound/receipts",
+                $"{Api}/inbound/receipts",
                 new
                 {
                     sku = line.Sku,
@@ -214,7 +251,7 @@ public sealed class WarehouseSimulator(
         {
             var claimed = await PostAsync<TaskDetailView>(
                 operatorClient,
-                "/api/work/tasks/claim-next",
+                $"{Api}/work/tasks/claim-next",
                 new { kind },
                 cancellationToken);
 
@@ -230,7 +267,7 @@ public sealed class WarehouseSimulator(
                 // Nowhere to put it. Real, and the trace explains why — but nothing
                 // an operator can confirm, so it goes back on the queue.
                 await PostAsync<JsonElement?>(
-                    operatorClient, $"/api/work/tasks/{task.Id}/release", new { }, cancellationToken);
+                    operatorClient, $"{Api}/work/tasks/{task.Id}/release", new { }, cancellationToken);
 
                 Note($"{kind} {task.Sku} had no admissible location and was left on the queue");
                 continue;
@@ -244,7 +281,7 @@ public sealed class WarehouseSimulator(
 
             var confirmed = await PostAsync<JsonElement?>(
                 operatorClient,
-                $"/api/work/tasks/{task.Id}/complete",
+                $"{Api}/work/tasks/{task.Id}/complete",
                 new
                 {
                     toLocationCode = overridden ?? destination,
@@ -290,7 +327,7 @@ public sealed class WarehouseSimulator(
 
         var order = await PostAsync<OrderView>(
             supervisor,
-            "/api/outbound/orders",
+            $"{Api}/outbound/orders",
             new
             {
                 warehouseCode = plan.WarehouseCode,
@@ -306,7 +343,7 @@ public sealed class WarehouseSimulator(
         totals.Orders++;
 
         var released = await PostAsync<ReleaseView>(
-            supervisor, $"/api/outbound/orders/{order.Id}/release", new { }, cancellationToken);
+            supervisor, $"{Api}/outbound/orders/{order.Id}/release", new { }, cancellationToken);
 
         if (released is null) return;
 
@@ -324,17 +361,17 @@ public sealed class WarehouseSimulator(
     private async Task FinishOrdersAsync(Totals totals, CancellationToken cancellationToken)
     {
         var page = await GetAsync<OrderPageView>(
-            supervisor, "/api/outbound/orders?status=Released&pageSize=50", cancellationToken);
+            supervisor, $"{Api}/outbound/orders?status=Released&pageSize=50", cancellationToken);
 
         foreach (var order in page?.Items ?? [])
         {
             var packed = await PostAsync<JsonElement?>(
-                supervisor, $"/api/outbound/orders/{order.Id}/pack", new { }, cancellationToken);
+                supervisor, $"{Api}/outbound/orders/{order.Id}/pack", new { }, cancellationToken);
 
             if (packed is null) continue;
 
             var despatched = await PostAsync<JsonElement?>(
-                supervisor, $"/api/outbound/orders/{order.Id}/despatch", new { }, cancellationToken);
+                supervisor, $"{Api}/outbound/orders/{order.Id}/despatch", new { }, cancellationToken);
 
             if (despatched is not null) totals.Despatches++;
         }
@@ -359,7 +396,7 @@ public sealed class WarehouseSimulator(
     {
         var created = await PostAsync<CountPlanView>(
             supervisor,
-            "/api/counting/plans",
+            $"{Api}/counting/plans",
             new { warehouseCode = plan.WarehouseCode, maxTasks = plan.CountsPerDay, notes = $"Simulated day {day}" },
             cancellationToken);
 
@@ -373,7 +410,7 @@ public sealed class WarehouseSimulator(
         foreach (var line in created.Lines.Where(l => l.WorkTaskId is not null))
         {
             var claimed = await PostAsync<TaskDetailView>(
-                operatorClient, $"/api/work/tasks/{line.WorkTaskId}/claim", new { }, cancellationToken);
+                operatorClient, $"{Api}/work/tasks/{line.WorkTaskId}/claim", new { }, cancellationToken);
 
             if (claimed?.Task is not { } task) continue;
 
@@ -388,7 +425,7 @@ public sealed class WarehouseSimulator(
 
             var confirmed = await PostAsync<JsonElement?>(
                 operatorClient,
-                $"/api/work/tasks/{task.Id}/complete",
+                $"{Api}/work/tasks/{task.Id}/complete",
                 new { toLocationCode = task.FromLocationCode, countedQuantity = found },
                 cancellationToken);
 
@@ -413,7 +450,7 @@ public sealed class WarehouseSimulator(
     /// </summary>
     private async Task OpenTheQuietPeriodAsync(string warehouseCode, CancellationToken cancellationToken)
     {
-        var warehouses = await GetAsync<List<WarehouseView>>(supervisor, "/api/warehouses", cancellationToken);
+        var warehouses = await GetAsync<List<WarehouseView>>(supervisor, $"{Api}/warehouses", cancellationToken);
 
         var warehouse = warehouses?.FirstOrDefault(w =>
             string.Equals(w.Code, warehouseCode, StringComparison.OrdinalIgnoreCase));
@@ -424,7 +461,7 @@ public sealed class WarehouseSimulator(
             return;
         }
 
-        var sets = await GetAsync<RuleSetsView>(supervisor, "/api/rules/sets?kind=CycleCount", cancellationToken);
+        var sets = await GetAsync<RuleSetsView>(supervisor, $"{Api}/rules/sets?kind=CycleCount", cancellationToken);
 
         var active = sets?.Items.FirstOrDefault(set => set.Status == "Active" && set.WarehouseId is null);
 
@@ -447,7 +484,7 @@ public sealed class WarehouseSimulator(
 
         var draft = await PostAsync<RuleSetView>(
             supervisor,
-            "/api/rules/sets",
+            $"{Api}/rules/sets",
             new
             {
                 kind = "CycleCount",
@@ -466,10 +503,14 @@ public sealed class WarehouseSimulator(
         }
 
         var promoted = await PostAsync<RuleSetView>(
-            supervisor, $"/api/rules/sets/{draft.Id}/promote", new { }, cancellationToken);
+            admin, $"{Api}/rules/sets/{draft.Id}/promote", new { }, cancellationToken);
 
         if (promoted is null)
         {
+            // Reported, not merely noted. This failing means every count in the run
+            // is refused by the quiet period, and the symptom — a summary line
+            // reading "0 count plans, 0 counts" — is one nobody reads as a fault.
+            Report("could not promote the counting policy; THIS RUN WILL PRODUCE NO COUNTS");
             Note("drafted a counting policy but could not promote it; counting left as it is");
             return;
         }
@@ -480,7 +521,7 @@ public sealed class WarehouseSimulator(
     private async Task<string?> FindDockAsync(CancellationToken cancellationToken)
     {
         var page = await GetAsync<LocationPageView>(
-            supervisor, "/api/locations?type=ReceivingDock&pageSize=10", cancellationToken);
+            supervisor, $"{Api}/locations?type=ReceivingDock&pageSize=10", cancellationToken);
 
         return page?.Items.FirstOrDefault()?.Code;
     }
@@ -488,7 +529,7 @@ public sealed class WarehouseSimulator(
     private async Task<string?> FindBenchAsync(CancellationToken cancellationToken)
     {
         var page = await GetAsync<LocationPageView>(
-            supervisor, "/api/locations?type=Packing&pageSize=10", cancellationToken);
+            supervisor, $"{Api}/locations?type=Packing&pageSize=10", cancellationToken);
 
         return page?.Items.FirstOrDefault()?.Code;
     }
@@ -499,7 +540,7 @@ public sealed class WarehouseSimulator(
         CancellationToken cancellationToken)
     {
         _storage ??= (await GetAsync<LocationPageView>(
-            supervisor, "/api/locations?type=Bulk&pageSize=500", cancellationToken))
+            supervisor, $"{Api}/locations?type=Bulk&pageSize=500", cancellationToken))
             ?.Items.Select(location => location.Code).ToList() ?? [];
 
         if (_storage.Count == 0) return null;
@@ -511,18 +552,53 @@ public sealed class WarehouseSimulator(
 
     private List<string>? _storage;
 
-    private async Task<IReadOnlyList<string>> FindSkusAsync(int count, CancellationToken cancellationToken)
+    /// <summary>
+    /// The pool this run buys from, carrying each item's lot-tracking flag.
+    /// <para>
+    /// The flag travels with the SKU because the ledger refuses a lot on an item
+    /// that is not lot-tracked — <c>inventory.lot_not_permitted</c> — and the first
+    /// version of this attached a batch to everything. Against the fixture
+    /// catalogue, which is lot-tracked throughout, that was invisible; against the
+    /// shipped 500-SKU seed, where roughly two ambient items in seven carry batches,
+    /// it silently threw away every receipt of the other five.
+    /// </para>
+    /// </summary>
+    private async Task<IReadOnlyList<SimulatedSku>> FindSkusAsync(int count, CancellationToken cancellationToken)
     {
         var page = await GetAsync<ItemPageView>(
             supervisor,
-            $"/api/items?pageSize={Math.Clamp(count, 1, 200).ToString(CultureInfo.InvariantCulture)}",
+            $"{Api}/items?pageSize={Math.Clamp(count, 1, 200).ToString(CultureInfo.InvariantCulture)}",
             cancellationToken);
 
         // Ambient only. A chilled item received onto an ambient dock and then
         // refused by every storage location is a real scenario and a good test of the
         // trace, but a warehouse made mostly of them puts almost nothing away, and
         // stock on shelves is what the whole exercise is for.
-        return [.. (page?.Items ?? []).Where(item => item.TemperatureClass == "Ambient").Select(item => item.Sku)];
+        return
+        [
+            .. (page?.Items ?? [])
+                .Where(item => item.TemperatureClass == "Ambient")
+                .Select(item => new SimulatedSku(item.Sku, item.IsLotTracked))
+        ];
+    }
+
+    private sealed record SimulatedSku(string Sku, bool IsLotTracked);
+
+    private readonly Dictionary<string, string> _expiryByLot = [];
+
+    private string ExpiryOf(string lotNumber, Random random)
+    {
+        if (_expiryByLot.TryGetValue(lotNumber, out var known))
+        {
+            return known;
+        }
+
+        var expiry = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(random.Next(30, 720)))
+            .ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
+        _expiryByLot[lotNumber] = expiry;
+
+        return expiry;
     }
 
     // ------------------------------------------------------------- the plumbing
@@ -623,7 +699,7 @@ public sealed class WarehouseSimulator(
 
     private sealed record LocationPageView(List<LocationView> Items);
 
-    private sealed record ItemView(string Sku, string TemperatureClass);
+    private sealed record ItemView(string Sku, string TemperatureClass, bool IsLotTracked);
 
     private sealed record ItemPageView(List<ItemView> Items);
 

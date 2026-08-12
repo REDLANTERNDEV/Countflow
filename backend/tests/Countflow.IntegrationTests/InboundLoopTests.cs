@@ -85,7 +85,7 @@ public sealed class InboundLoopTests(CountflowApiFixture fixture)
 
         // 1. Goods come off the truck onto the dock.
         var received = await Read<DockReceipt>(await PostAsync(
-            _operator, "/api/inbound/receipts", new { sku, quantity = 48m, toLocationCode = _dock, sscc }));
+            _operator, "/api/v1/inbound/receipts", new { sku, quantity = 48m, toLocationCode = _dock, sscc }));
 
         Assert.Equal(_dock, received.ToLocationCode);
         Assert.NotEqual(Guid.Empty, received.DecisionTraceId);
@@ -98,7 +98,7 @@ public sealed class InboundLoopTests(CountflowApiFixture fixture)
 
         // 3. The operator takes the job and sees why that bin.
         var claimed = await Read<TaskDetail>(await PostAsync(
-            _operator, $"/api/work/tasks/{received.WorkTaskId}/claim", new { }));
+            _operator, $"/api/v1/work/tasks/{received.WorkTaskId}/claim", new { }));
 
         Assert.Equal(received.WorkTaskId, claimed.Task.Id);
         Assert.Equal("Putaway", claimed.Task.Kind);
@@ -126,7 +126,7 @@ public sealed class InboundLoopTests(CountflowApiFixture fixture)
         // 4. They confirm it at the bin they were sent to.
         var completed = await Read<TaskCompletion>(await PostAsync(
             _operator,
-            $"/api/work/tasks/{claimed.Task.Id}/complete",
+            $"/api/v1/work/tasks/{claimed.Task.Id}/complete",
             new { toLocationCode = received.SuggestedLocationCode }));
 
         Assert.Equal("Completed", completed.Task.Status);
@@ -164,10 +164,10 @@ public sealed class InboundLoopTests(CountflowApiFixture fixture)
         var sku = await NewItemAsync();
 
         var first = await Read<DockReceipt>(await PostAsync(
-            _operator, "/api/inbound/receipts", new { sku, quantity = 10m, toLocationCode = _dock }));
+            _operator, "/api/v1/inbound/receipts", new { sku, quantity = 10m, toLocationCode = _dock }));
 
         var second = await Read<DockReceipt>(await PostAsync(
-            _operator, "/api/inbound/receipts", new { sku, quantity = 10m, toLocationCode = _dock }));
+            _operator, "/api/v1/inbound/receipts", new { sku, quantity = 10m, toLocationCode = _dock }));
 
         // Not merely equal by luck: the second receipt sees the first still on the
         // dock, and consolidation would only pull it elsewhere if the first had
@@ -183,12 +183,12 @@ public sealed class InboundLoopTests(CountflowApiFixture fixture)
         var sku = await NewItemAsync(temperature: TemperatureClass.Chilled);
 
         var received = await Read<DockReceipt>(await PostAsync(
-            _operator, "/api/inbound/receipts", new { sku, quantity = 12m, toLocationCode = _dock }));
+            _operator, "/api/v1/inbound/receipts", new { sku, quantity = 12m, toLocationCode = _dock }));
 
         Assert.NotNull(received.SuggestedLocationCode);
         Assert.Contains("-CHL-", received.SuggestedLocationCode);
 
-        var trace = await GetAsync<TraceView>($"/api/rules/traces/{received.DecisionTraceId}");
+        var trace = await GetAsync<TraceView>($"/api/v1/rules/traces/{received.DecisionTraceId}");
 
         // Every admissible candidate is chilled, and at least one ambient bin was
         // considered and rejected by name. "It never even looked" is the answer a
@@ -218,7 +218,7 @@ public sealed class InboundLoopTests(CountflowApiFixture fixture)
         var sku = await NewItemAsync(temperature: TemperatureClass.Frozen);
 
         var received = await Read<DockReceipt>(await PostAsync(
-            _operator, "/api/inbound/receipts", new { sku, quantity = 6m, toLocationCode = _dock }));
+            _operator, "/api/v1/inbound/receipts", new { sku, quantity = 6m, toLocationCode = _dock }));
 
         Assert.Null(received.SuggestedLocationCode);
         Assert.Equal(0, received.AdmissibleCount);
@@ -228,7 +228,7 @@ public sealed class InboundLoopTests(CountflowApiFixture fixture)
         Assert.NotNull(received.WorkTaskId);
         Assert.NotEqual(Guid.Empty, received.DecisionTraceId);
 
-        var trace = await GetAsync<TraceView>($"/api/rules/traces/{received.DecisionTraceId}");
+        var trace = await GetAsync<TraceView>($"/api/v1/rules/traces/{received.DecisionTraceId}");
 
         Assert.True(trace.ConsideredCount > 100);
         Assert.Equal(0, trace.AdmissibleCount);
@@ -241,7 +241,7 @@ public sealed class InboundLoopTests(CountflowApiFixture fixture)
         var sku = await NewItemAsync();
 
         var preview = await Read<PreviewBody>(await PostAsync(
-            _supervisor, "/api/rules/putaway/preview",
+            _supervisor, "/api/v1/rules/putaway/preview",
             new { sku, quantity = 24m, fromLocationCode = _dock }));
 
         Assert.NotNull(preview.LocationCode);
@@ -257,15 +257,15 @@ public sealed class InboundLoopTests(CountflowApiFixture fixture)
         var sku = await NewItemAsync();
 
         var received = await Read<DockReceipt>(await PostAsync(
-            _operator, "/api/inbound/receipts", new { sku, quantity = 5m, toLocationCode = _dock }));
+            _operator, "/api/v1/inbound/receipts", new { sku, quantity = 5m, toLocationCode = _dock }));
 
         // Rule sets are configuration. Traces are the explanation an operator is
         // owed at the bin — hiding them behind a supervisor role would ship the
         // feature and lose the benefit (ADR 0004).
-        Assert.Equal(HttpStatusCode.Forbidden, (await _operator.GetAsync("/api/rules/sets")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await _operator.GetAsync("/api/v1/rules/sets")).StatusCode);
         Assert.Equal(
             HttpStatusCode.OK,
-            (await _operator.GetAsync($"/api/rules/traces/{received.DecisionTraceId}")).StatusCode);
+            (await _operator.GetAsync($"/api/v1/rules/traces/{received.DecisionTraceId}")).StatusCode);
     }
 
     // ----------------------------------------------------------- the operator
@@ -276,13 +276,13 @@ public sealed class InboundLoopTests(CountflowApiFixture fixture)
         var sku = await NewItemAsync();
 
         var received = await Read<DockReceipt>(await PostAsync(
-            _operator, "/api/inbound/receipts", new { sku, quantity = 20m, toLocationCode = _dock }));
+            _operator, "/api/v1/inbound/receipts", new { sku, quantity = 20m, toLocationCode = _dock }));
 
         var elsewhere = await ADifferentAmbientBinAsync(received.SuggestedLocationCode!);
 
         var completed = await Read<TaskCompletion>(await PostAsync(
             _operator,
-            $"/api/work/tasks/{received.WorkTaskId}/complete",
+            $"/api/v1/work/tasks/{received.WorkTaskId}/complete",
             new { toLocationCode = elsewhere, overrideReason = "Racking damaged" }));
 
         // The floor is allowed to disagree with the rules. What matters is that
@@ -305,9 +305,9 @@ public sealed class InboundLoopTests(CountflowApiFixture fixture)
         var sku = await NewItemAsync();
 
         var received = await Read<DockReceipt>(await PostAsync(
-            _operator, "/api/inbound/receipts", new { sku, quantity = 30m, toLocationCode = _dock }));
+            _operator, "/api/v1/inbound/receipts", new { sku, quantity = 30m, toLocationCode = _dock }));
 
-        var url = $"/api/work/tasks/{received.WorkTaskId}/complete";
+        var url = $"/api/v1/work/tasks/{received.WorkTaskId}/complete";
         var body = new { toLocationCode = received.SuggestedLocationCode };
         var key = $"confirm-{sku}";
 
@@ -327,9 +327,9 @@ public sealed class InboundLoopTests(CountflowApiFixture fixture)
         var sku = await NewItemAsync();
 
         var received = await Read<DockReceipt>(await PostAsync(
-            _operator, "/api/inbound/receipts", new { sku, quantity = 30m, toLocationCode = _dock }));
+            _operator, "/api/v1/inbound/receipts", new { sku, quantity = 30m, toLocationCode = _dock }));
 
-        var url = $"/api/work/tasks/{received.WorkTaskId}/complete";
+        var url = $"/api/v1/work/tasks/{received.WorkTaskId}/complete";
         var body = new { toLocationCode = received.SuggestedLocationCode };
 
         Assert.Equal(HttpStatusCode.OK, (await PostAsync(_operator, url, body, $"a-{sku}")).StatusCode);
@@ -351,7 +351,7 @@ public sealed class InboundLoopTests(CountflowApiFixture fixture)
             var sku = await NewItemAsync();
             skus.Add(sku);
 
-            await PostAsync(_operator, "/api/inbound/receipts",
+            await PostAsync(_operator, "/api/v1/inbound/receipts",
                 new { sku, quantity = 4m, toLocationCode = _dock });
         }
 
@@ -360,8 +360,8 @@ public sealed class InboundLoopTests(CountflowApiFixture fixture)
         var claims = await Task.WhenAll(
             Enumerable.Range(0, 3).SelectMany(_ => new[]
             {
-                PostAsync(_operator, "/api/work/tasks/claim-next", new { }),
-                PostAsync(_secondOperator, "/api/work/tasks/claim-next", new { })
+                PostAsync(_operator, "/api/v1/work/tasks/claim-next", new { }),
+                PostAsync(_secondOperator, "/api/v1/work/tasks/claim-next", new { })
             }));
 
         var claimed = new List<Guid>();
@@ -381,17 +381,17 @@ public sealed class InboundLoopTests(CountflowApiFixture fixture)
         var sku = await NewItemAsync();
 
         var received = await Read<DockReceipt>(await PostAsync(
-            _operator, "/api/inbound/receipts", new { sku, quantity = 8m, toLocationCode = _dock }));
+            _operator, "/api/v1/inbound/receipts", new { sku, quantity = 8m, toLocationCode = _dock }));
 
-        var release = await PostAsync(_operator, $"/api/work/tasks/{received.WorkTaskId}/release", new { });
+        var release = await PostAsync(_operator, $"/api/v1/work/tasks/{received.WorkTaskId}/release", new { });
         Assert.Equal(HttpStatusCode.Conflict, release.StatusCode);
 
-        var claimed = await Read<TaskDetail>(await PostAsync(_operator, "/api/work/tasks/claim-next", new { }));
+        var claimed = await Read<TaskDetail>(await PostAsync(_operator, "/api/v1/work/tasks/claim-next", new { }));
 
         Assert.Equal(HttpStatusCode.NoContent,
-            (await PostAsync(_operator, $"/api/work/tasks/{claimed.Task.Id}/release", new { })).StatusCode);
+            (await PostAsync(_operator, $"/api/v1/work/tasks/{claimed.Task.Id}/release", new { })).StatusCode);
 
-        var detail = await GetAsync<TaskDetail>($"/api/work/tasks/{claimed.Task.Id}");
+        var detail = await GetAsync<TaskDetail>($"/api/v1/work/tasks/{claimed.Task.Id}");
         Assert.Equal("Ready", detail.Task.Status);
     }
 
@@ -401,15 +401,15 @@ public sealed class InboundLoopTests(CountflowApiFixture fixture)
         var sku = await NewItemAsync();
 
         var received = await Read<DockReceipt>(await PostAsync(
-            _operator, "/api/inbound/receipts", new { sku, quantity = 8m, toLocationCode = _dock }));
+            _operator, "/api/v1/inbound/receipts", new { sku, quantity = 8m, toLocationCode = _dock }));
 
         Assert.Equal(
             HttpStatusCode.OK,
-            (await PostAsync(_operator, $"/api/work/tasks/{received.WorkTaskId}/claim", new { })).StatusCode);
+            (await PostAsync(_operator, $"/api/v1/work/tasks/{received.WorkTaskId}/claim", new { })).StatusCode);
 
         var stolen = await PostAsync(
             _secondOperator,
-            $"/api/work/tasks/{received.WorkTaskId}/complete",
+            $"/api/v1/work/tasks/{received.WorkTaskId}/complete",
             new { toLocationCode = received.SuggestedLocationCode });
 
         Assert.Equal(HttpStatusCode.Forbidden, stolen.StatusCode);
@@ -417,7 +417,7 @@ public sealed class InboundLoopTests(CountflowApiFixture fixture)
         // And a second operator cannot take it out from under the first either.
         Assert.Equal(
             HttpStatusCode.Conflict,
-            (await PostAsync(_secondOperator, $"/api/work/tasks/{received.WorkTaskId}/claim", new { })).StatusCode);
+            (await PostAsync(_secondOperator, $"/api/v1/work/tasks/{received.WorkTaskId}/claim", new { })).StatusCode);
     }
 
     // ---------------------------------------------------------- whole pallets
@@ -432,15 +432,15 @@ public sealed class InboundLoopTests(CountflowApiFixture fixture)
 
         // A trailer is unloaded SKU by SKU onto one pallet.
         var one = await Read<DockReceipt>(await PostAsync(
-            _operator, "/api/inbound/receipts",
+            _operator, "/api/v1/inbound/receipts",
             new { sku = first, quantity = 10m, toLocationCode = _dock, sscc }));
 
         var two = await Read<DockReceipt>(await PostAsync(
-            _operator, "/api/inbound/receipts",
+            _operator, "/api/v1/inbound/receipts",
             new { sku = second, quantity = 20m, toLocationCode = _dock, sscc }));
 
         var three = await Read<DockReceipt>(await PostAsync(
-            _operator, "/api/inbound/receipts",
+            _operator, "/api/v1/inbound/receipts",
             new { sku = third, quantity = 30m, toLocationCode = _dock, sscc }));
 
         // One pallet is one thing somebody picks up, so it is one job — otherwise
@@ -448,12 +448,12 @@ public sealed class InboundLoopTests(CountflowApiFixture fixture)
         Assert.Equal(one.WorkTaskId, two.WorkTaskId);
         Assert.Equal(one.WorkTaskId, three.WorkTaskId);
 
-        var detail = await GetAsync<TaskDetail>($"/api/work/tasks/{one.WorkTaskId}");
+        var detail = await GetAsync<TaskDetail>($"/api/v1/work/tasks/{one.WorkTaskId}");
         Assert.Equal(60m, detail.Task.Quantity);
 
         var completed = await Read<TaskCompletion>(await PostAsync(
             _operator,
-            $"/api/work/tasks/{one.WorkTaskId}/complete",
+            $"/api/v1/work/tasks/{one.WorkTaskId}/complete",
             new { toLocationCode = one.SuggestedLocationCode }));
 
         // Three ledger lines under one confirmation — the composite deferred from
@@ -480,13 +480,13 @@ public sealed class InboundLoopTests(CountflowApiFixture fixture)
         var sscc = NewSscc();
 
         var one = await Read<DockReceipt>(await PostAsync(
-            _operator, "/api/inbound/receipts",
+            _operator, "/api/v1/inbound/receipts",
             new { sku = first, quantity = 7m, toLocationCode = _dock, sscc }));
 
-        await PostAsync(_operator, "/api/inbound/receipts",
+        await PostAsync(_operator, "/api/v1/inbound/receipts",
             new { sku = second, quantity = 9m, toLocationCode = _dock, sscc });
 
-        var url = $"/api/work/tasks/{one.WorkTaskId}/complete";
+        var url = $"/api/v1/work/tasks/{one.WorkTaskId}/complete";
         var body = new { toLocationCode = one.SuggestedLocationCode };
         var key = $"plate-{sscc}";
 
@@ -511,7 +511,7 @@ public sealed class InboundLoopTests(CountflowApiFixture fixture)
         var sku = await NewItemAsync();
         var reference = NewAsnReference();
 
-        Assert.Equal(HttpStatusCode.OK, (await PostAsync(_supervisor, "/api/inbound/asns", new
+        Assert.Equal(HttpStatusCode.OK, (await PostAsync(_supervisor, "/api/v1/inbound/asns", new
         {
             reference,
             warehouseCode = _warehouseCode,
@@ -520,7 +520,7 @@ public sealed class InboundLoopTests(CountflowApiFixture fixture)
         })).StatusCode);
 
         var partial = await Read<DockReceipt>(await PostAsync(
-            _operator, "/api/inbound/receipts",
+            _operator, "/api/v1/inbound/receipts",
             new { sku, quantity = 60m, toLocationCode = _dock, asnReference = reference }));
 
         Assert.NotNull(partial.AsnLine);
@@ -530,7 +530,7 @@ public sealed class InboundLoopTests(CountflowApiFixture fixture)
         Assert.Equal("Receiving", partial.AsnLine.AsnStatus);
 
         var rest = await Read<DockReceipt>(await PostAsync(
-            _operator, "/api/inbound/receipts",
+            _operator, "/api/v1/inbound/receipts",
             new { sku, quantity = 40m, toLocationCode = _dock, asnReference = reference }));
 
         Assert.Equal(0m, rest.AsnLine!.OutstandingQuantity);
@@ -543,7 +543,7 @@ public sealed class InboundLoopTests(CountflowApiFixture fixture)
         var sku = await NewItemAsync();
         var reference = NewAsnReference();
 
-        Assert.Equal(HttpStatusCode.OK, (await PostAsync(_supervisor, "/api/inbound/asns", new
+        Assert.Equal(HttpStatusCode.OK, (await PostAsync(_supervisor, "/api/v1/inbound/asns", new
         {
             reference,
             warehouseCode = _warehouseCode,
@@ -553,8 +553,8 @@ public sealed class InboundLoopTests(CountflowApiFixture fixture)
         var body = new { sku, quantity = 60m, toLocationCode = _dock, asnReference = reference };
         var key = $"dock-{sku}";
 
-        var first = await Read<DockReceipt>(await PostAsync(_operator, "/api/inbound/receipts", body, key));
-        var second = await Read<DockReceipt>(await PostAsync(_operator, "/api/inbound/receipts", body, key));
+        var first = await Read<DockReceipt>(await PostAsync(_operator, "/api/v1/inbound/receipts", body, key));
+        var second = await Read<DockReceipt>(await PostAsync(_operator, "/api/v1/inbound/receipts", body, key));
 
         Assert.False(first.Receipt.WasAlreadyPosted);
         Assert.True(second.Receipt.WasAlreadyPosted);
@@ -574,7 +574,7 @@ public sealed class InboundLoopTests(CountflowApiFixture fixture)
         var notOnNote = await NewItemAsync();
         var reference = NewAsnReference();
 
-        Assert.Equal(HttpStatusCode.OK, (await PostAsync(_supervisor, "/api/inbound/asns", new
+        Assert.Equal(HttpStatusCode.OK, (await PostAsync(_supervisor, "/api/v1/inbound/asns", new
         {
             reference,
             warehouseCode = _warehouseCode,
@@ -585,7 +585,7 @@ public sealed class InboundLoopTests(CountflowApiFixture fixture)
         // outside that document is how a delivery reconciles perfectly while being
         // wrong.
         var response = await PostAsync(
-            _operator, "/api/inbound/receipts",
+            _operator, "/api/v1/inbound/receipts",
             new { sku = notOnNote, quantity = 10m, toLocationCode = _dock, asnReference = reference });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -601,7 +601,7 @@ public sealed class InboundLoopTests(CountflowApiFixture fixture)
         // It would conserve stock perfectly, and skip the putaway movement and its
         // decision trace — which is the entire loop this module exists to run.
         var response = await PostAsync(
-            _operator, "/api/inbound/receipts", new { sku, quantity = 10m, toLocationCode = bin });
+            _operator, "/api/v1/inbound/receipts", new { sku, quantity = 10m, toLocationCode = bin });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -679,14 +679,14 @@ public sealed class InboundLoopTests(CountflowApiFixture fixture)
     private async Task<decimal> BalanceAsync(string sku, string locationCode)
     {
         var page = await GetAsync<BalancePage>(
-            $"/api/inventory/balances?sku={Uri.EscapeDataString(sku)}" +
+            $"/api/v1/inventory/balances?sku={Uri.EscapeDataString(sku)}" +
             $"&location={Uri.EscapeDataString(locationCode)}&status=Available");
 
         return page.Items.Sum(r => r.Quantity);
     }
 
     private async Task<List<MovementRow>> MovementsAsync(string sku) =>
-        (await GetAsync<MovementPage>($"/api/inventory/movements?sku={Uri.EscapeDataString(sku)}")).Items;
+        (await GetAsync<MovementPage>($"/api/v1/inventory/movements?sku={Uri.EscapeDataString(sku)}")).Items;
 
     private static async Task<HttpResponseMessage> PostAsync(
         HttpClient client,
@@ -766,7 +766,7 @@ public sealed class InboundLoopTests(CountflowApiFixture fixture)
     {
         var client = fixture.CreateClient();
 
-        var response = await client.PostAsJsonAsync("/api/auth/login", Credentials(userName, Secret));
+        var response = await client.PostAsJsonAsync("/api/v1/auth/login", Credentials(userName, Secret));
         response.EnsureSuccessStatusCode();
 
         var body = (await response.Content.ReadFromJsonAsync<LoginResponse>())!;

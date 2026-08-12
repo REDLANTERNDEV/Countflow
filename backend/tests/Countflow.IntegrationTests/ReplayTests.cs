@@ -181,29 +181,69 @@ public sealed class ReplayTests(CountflowApiFixture fixture)
         //    could never find out before this phase without promoting it and waiting.
         Assert.True(
             run.ChangedCount + run.ReorderedCount > 0,
-            "the field-normalised policy changed nothing, so the fields it ran against were not realistic");
+            $"the field-normalised policy changed nothing over {run.ReplayedCount} counting decisions "
+            + $"({run.ExactCount} reproduced exactly, {run.ApproximateCount} approximate), so the fields it "
+            + "ran against were not realistic");
 
-        // 2. And the report says why, by name. Against the shipped rule set, over
-        //    the same decisions and the same warehouse, travel barely separates the
-        //    candidates — they are all in the same hall. Measured against the field
-        //    instead, the same rule with the same weight stretches those few metres
-        //    across a large part of the score, which is exactly what "a few metres
-        //    took the full width of the score" looks like as a number.
-        var travel = Assert.Single(run.Influence, rule => rule.RuleCode == "count.travel_distance");
-
-        var shipped = run.Decisions
-            .SelectMany(decision => decision.BaselineInfluence)
-            .Where(line => line.RuleCode == "count.travel_distance")
+        // 2. And the report says why, by name — measured on the decisions where
+        //    travel had anything to say at all.
+        //
+        //    That qualification is the whole of it. A counting decision ranks only
+        //    the holdings the constraints admitted, and most of the time those sit
+        //    in one bay: they share a route position, the field's span is zero, and
+        //    both normalisers agree that every candidate is equally near. Averaging
+        //    over every decision therefore measures how often this particular
+        //    warehouse happened to offer a count two bays apart, which is a property
+        //    of the seed rather than of the rule — and an earlier version of this
+        //    test, which compared the two means and demanded a factor of three, went
+        //    red the moment an unrelated fix shifted the simulator's random stream.
+        //
+        //    On the decisions that *do* discriminate the mechanism is exact and owes
+        //    nothing to the warehouse: field normalisation maps whatever span the
+        //    candidates happen to have onto the whole of [0, 1], so a few metres
+        //    score 0 and 1 however few they are, while the building scores them as
+        //    the fraction of the hall they really are. That is "a few metres took
+        //    the full width of the score", stated as the arithmetic rather than as
+        //    an average of it.
+        var spreads = run.Decisions
+            .Select(decision => new
+            {
+                Field = Spread(decision.CandidateInfluence),
+                Building = Spread(decision.BaselineInfluence)
+            })
+            .Where(pair => pair.Field is not null && pair.Building is not null)
+            .Select(pair => new { Field = pair.Field!.Value, Building = pair.Building!.Value })
             .ToList();
 
-        Assert.NotEmpty(shipped);
+        Assert.NotEmpty(spreads);
 
-        var shippedSpread = shipped.Average(line => line.HighestValue - line.LowestValue);
+        var discriminating = spreads.Where(pair => pair.Field > 0m).ToList();
 
         Assert.True(
-            travel.MeanValueSpread > shippedSpread * 3m,
-            $"field normalisation spread travel {travel.MeanValueSpread:0.000} and the building spread it " +
-            $"{shippedSpread:0.000}; the two scales are not being told apart");
+            discriminating.Count > 0,
+            $"travel separated no candidate from another in any of {spreads.Count} counting decisions, so "
+            + "this warehouse cannot tell the two scales apart at all");
+
+        // Per decision, not averaged over them — an average is diluted by every
+        // count whose candidates share a bay, which is most of them, and that
+        // dilution is a property of the seed rather than of the rule.
+        //
+        // Three times is a floor, not a measurement. What actually happens is a
+        // factor in the hundreds: the admissible holdings of one count sit inside a
+        // few metres of one aisle, so the building scores them within a millionth of
+        // each other and the field spreads them across a third of the range —
+        // "a few metres took the full width of the score", per decision, in a
+        // warehouse nobody hand-built.
+        Assert.All(discriminating, pair =>
+            Assert.True(
+                pair.Field > pair.Building * 3m,
+                $"the field spread travel {pair.Field:0.000000} over candidates the building spread "
+                + $"{pair.Building:0.000000}; the two scales are not being told apart"));
+
+        static decimal? Spread(IReadOnlyList<InfluenceLineBody> influence) =>
+            influence.FirstOrDefault(line => line.RuleCode == "count.travel_distance") is { } line
+                ? line.HighestValue - line.LowestValue
+                : null;
     }
 
     [Fact]
@@ -266,7 +306,7 @@ public sealed class ReplayTests(CountflowApiFixture fixture)
 
         var run = await ReplayAsync("Putaway", active.Id);
 
-        var reread = await Read<ReplayRunBody>(await _supervisor.GetAsync($"/api/replay/runs/{run.Id}"));
+        var reread = await Read<ReplayRunBody>(await _supervisor.GetAsync($"/api/v1/replay/runs/{run.Id}"));
 
         Assert.Equal(run.Reference, reread.Reference);
         Assert.Equal(run.ReplayedCount, reread.ReplayedCount);
@@ -274,7 +314,7 @@ public sealed class ReplayTests(CountflowApiFixture fixture)
         Assert.Equal(run.Influence.Count, reread.Influence.Count);
 
         var listed = await Read<ReplayRunPageBody>(
-            await _supervisor.GetAsync("/api/replay/runs?kind=Putaway&pageSize=50"));
+            await _supervisor.GetAsync("/api/v1/replay/runs?kind=Putaway&pageSize=50"));
 
         Assert.Contains(listed.Items, item => item.Id == run.Id);
     }
@@ -290,7 +330,7 @@ public sealed class ReplayTests(CountflowApiFixture fixture)
         var run = await ReplayAsync("Putaway", candidate.Id);
 
         var filtered = await Read<ReplayRunBody>(
-            await _supervisor.GetAsync($"/api/replay/runs/{run.Id}?outcome=Changed"));
+            await _supervisor.GetAsync($"/api/v1/replay/runs/{run.Id}?outcome=Changed"));
 
         Assert.Equal(run.ChangedCount, filtered.Decisions.Count);
         Assert.All(filtered.Decisions, decision => Assert.Equal("Changed", decision.Outcome));
@@ -303,7 +343,7 @@ public sealed class ReplayTests(CountflowApiFixture fixture)
 
         var response = await PostAsync(
             _supervisor,
-            "/api/replay/runs",
+            "/api/v1/replay/runs",
             new
             {
                 warehouseCode = _warehouseCode,
@@ -324,7 +364,7 @@ public sealed class ReplayTests(CountflowApiFixture fixture)
 
         var response = await PostAsync(
             _operator,
-            "/api/replay/runs",
+            "/api/v1/replay/runs",
             new
             {
                 warehouseCode = _warehouseCode,
@@ -346,7 +386,7 @@ public sealed class ReplayTests(CountflowApiFixture fixture)
 
         var response = await PostAsync(
             _supervisor,
-            "/api/rules/sets",
+            "/api/v1/rules/sets",
             new
             {
                 kind = "Putaway",
@@ -368,7 +408,7 @@ public sealed class ReplayTests(CountflowApiFixture fixture)
 
         var response = await PostAsync(
             _supervisor,
-            "/api/rules/sets",
+            "/api/v1/rules/sets",
             new
             {
                 kind = "CycleCount",
@@ -389,7 +429,7 @@ public sealed class ReplayTests(CountflowApiFixture fixture)
         var active = await ActiveRuleSetAsync("Putaway");
 
         var response = await _supervisor.PutAsJsonAsync(
-            $"/api/rules/sets/{active.Id}",
+            $"/api/v1/rules/sets/{active.Id}",
             new
             {
                 rules = active.Rules.Select(rule => new { code = rule.Code, order = rule.Order, weight = rule.Weight })
@@ -411,7 +451,7 @@ public sealed class ReplayTests(CountflowApiFixture fixture)
         Assert.Equal(0, draft.Version);
 
         var promoted = await Read<RuleSetBody>(await PostAsync(
-            _admin, $"/api/rules/sets/{draft.Id}/promote", new { }));
+            _admin, $"/api/v1/rules/sets/{draft.Id}/promote", new { }));
 
         Assert.Equal("Active", promoted.Status);
         Assert.Equal(active.Version + 1, promoted.Version);
@@ -425,7 +465,7 @@ public sealed class ReplayTests(CountflowApiFixture fixture)
         // the only route the editor offers and is the point.
         var restore = await Read<RuleSetBody>(await PostAsync(
             _supervisor,
-            "/api/rules/sets",
+            "/api/v1/rules/sets",
             new
             {
                 kind = "Allocation",
@@ -433,7 +473,7 @@ public sealed class ReplayTests(CountflowApiFixture fixture)
                 cloneFromRuleSetId = active.Id
             }));
 
-        await Read<RuleSetBody>(await PostAsync(_admin, $"/api/rules/sets/{restore.Id}/promote", new { }));
+        await Read<RuleSetBody>(await PostAsync(_admin, $"/api/v1/rules/sets/{restore.Id}/promote", new { }));
     }
 
     [Fact]
@@ -446,7 +486,7 @@ public sealed class ReplayTests(CountflowApiFixture fixture)
         var draft = await CloneWithAsync(
             active, "putaway.cube_utilisation", weight: 0.2m, name: "Putaway draft a supervisor may not promote");
 
-        var response = await PostAsync(_supervisor, $"/api/rules/sets/{draft.Id}/promote", new { });
+        var response = await PostAsync(_supervisor, $"/api/v1/rules/sets/{draft.Id}/promote", new { });
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
@@ -479,11 +519,25 @@ public sealed class ReplayTests(CountflowApiFixture fixture)
             // a catalogue before it needs anything else.
             await SeedCatalogueAsync(24);
 
-            var simulator = new WarehouseSimulator(_admin, _operator);
+            // A supervisor in the supervisor's place, deliberately. This used to
+            // pass the admin client as the supervisor, which is why nothing here
+            // ever noticed that promoting the counting policy is admin-only — and
+            // the command-line simulator, which really does sign in as a
+            // supervisor, silently produced no counts at all.
+            var simulator = new WarehouseSimulator(_supervisor, _operator, _admin);
 
+            // Five days rather than three, and the extra two are load-bearing for
+            // the counting guard rather than padding. A counting decision only ever
+            // ranks the holdings the constraints admit, and in a warehouse two days
+            // old that is a handful of bays in one aisle — a field in which
+            // measuring travel against the building and against the field give
+            // nearly the same answer, which is the very agreement this file exists
+            // to break. It is the Phase 5 lesson one floor down: a thin candidate
+            // field is where a broken normaliser and a working one look alike, so a
+            // guard aimed at normalisation has to be given a field worth measuring.
             var report = await simulator.RunAsync(new SimulationPlan(
                 WarehouseCode: _warehouseCode,
-                Days: 3,
+                Days: 5,
                 ReceiptsPerDay: 4,
                 LinesPerReceipt: 3,
                 OrdersPerDay: 2,
@@ -572,14 +626,14 @@ public sealed class ReplayTests(CountflowApiFixture fixture)
 
     private async Task<RuleSetBody> ActiveRuleSetAsync(string kind)
     {
-        var sets = await Read<RuleSetsBody>(await _supervisor.GetAsync($"/api/rules/sets?kind={kind}"));
+        var sets = await Read<RuleSetsBody>(await _supervisor.GetAsync($"/api/v1/rules/sets?kind={kind}"));
 
         return sets.Items.First(set => set.Status == "Active");
     }
 
     private async Task<RuleSetBody> FindRuleSetAsync(Guid id)
     {
-        var sets = await Read<RuleSetsBody>(await _supervisor.GetAsync("/api/rules/sets"));
+        var sets = await Read<RuleSetsBody>(await _supervisor.GetAsync("/api/v1/rules/sets"));
 
         return sets.Items.First(set => set.Id == id);
     }
@@ -611,7 +665,7 @@ public sealed class ReplayTests(CountflowApiFixture fixture)
 
         return await Read<RuleSetBody>(await PostAsync(
             _supervisor,
-            "/api/rules/sets",
+            "/api/v1/rules/sets",
             new
             {
                 kind = original.Kind,
@@ -624,7 +678,7 @@ public sealed class ReplayTests(CountflowApiFixture fixture)
     private async Task<ReplayRunBody> ReplayAsync(string kind, Guid candidateRuleSetId) =>
         await Read<ReplayRunBody>(await PostAsync(
             _supervisor,
-            "/api/replay/runs",
+            "/api/v1/replay/runs",
             new
             {
                 warehouseCode = _warehouseCode,
@@ -691,7 +745,7 @@ public sealed class ReplayTests(CountflowApiFixture fixture)
     {
         var client = fixture.CreateClient();
 
-        var response = await client.PostAsJsonAsync("/api/auth/login", Credentials(userName, Secret));
+        var response = await client.PostAsJsonAsync("/api/v1/auth/login", Credentials(userName, Secret));
         response.EnsureSuccessStatusCode();
 
         var body = (await response.Content.ReadFromJsonAsync<LoginResponse>())!;

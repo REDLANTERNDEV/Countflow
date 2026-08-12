@@ -27,7 +27,7 @@ public static class ReleaseOrder
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapPost("/api/outbound/orders/{id:guid}/release", async (
+        endpoints.MapPost("/outbound/orders/{id:guid}/release", async (
                 Guid id,
                 ReleaseOrderRequest? request,
                 ClaimsPrincipal user,

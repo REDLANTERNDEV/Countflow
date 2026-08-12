@@ -136,8 +136,8 @@ public sealed class ModuleIsolationTests(CountflowApiFixture fixture) : IClassFi
 
         var document = await client.GetStringAsync("/openapi/v1.json");
 
-        Assert.Contains("/api/auth/login", document, StringComparison.Ordinal);
-        Assert.Contains("/api/warehouses", document, StringComparison.Ordinal);
+        Assert.Contains("/api/v1/auth/login", document, StringComparison.Ordinal);
+        Assert.Contains("/api/v1/warehouses", document, StringComparison.Ordinal);
     }
 
     private static async Task<List<string>> ReadSchemasAsync(NpgsqlConnection connection)

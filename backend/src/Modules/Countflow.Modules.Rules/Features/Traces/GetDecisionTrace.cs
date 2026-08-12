@@ -20,7 +20,7 @@ public static class GetDecisionTrace
 {
     public static void Map(IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapGet("/api/rules/traces/{id:guid}", async (
+        endpoints.MapGet("/rules/traces/{id:guid}", async (
                 Guid id,
                 IDecisionTraceReader traces,
                 CancellationToken cancellationToken) =>

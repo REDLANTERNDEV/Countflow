@@ -36,17 +36,19 @@ public sealed record RouteScale
 {
     private readonly IReadOnlyDictionary<int, int> _zoneRanks;
     private readonly long _slice;
+    private readonly long _nearest;
     private readonly long _span;
 
-    private RouteScale(IReadOnlyDictionary<int, int> zoneRanks, long slice, long span)
+    private RouteScale(IReadOnlyDictionary<int, int> zoneRanks, long slice, long nearest, long span)
     {
         _zoneRanks = zoneRanks;
         _slice = slice;
+        _nearest = nearest;
         _span = span;
     }
 
     /// <summary>A scale with nothing on it. Every location scores 0 — at the front, and equally so.</summary>
-    public static readonly RouteScale Empty = new(new Dictionary<int, int>(), 1L, 0L);
+    public static readonly RouteScale Empty = new(new Dictionary<int, int>(), 1L, 0L, 0L);
 
     /// <summary>
     /// Builds the scale from the locations it has to measure between.
@@ -82,9 +84,29 @@ public sealed record RouteScale
         // next zone's.
         var slice = known.Max(location => (long)location.PickSequence) + 1L;
 
-        var span = ((zoneRanks.Count - 1L) * slice) + slice - 1L;
+        // Measured between the ends the scale actually has, not between zero and the
+        // largest position it could theoretically hold.
+        //
+        // This is the fifth instance of the failure this type was extracted to
+        // prevent, and it hid inside the fix for the fourth. Dividing a position by
+        // the largest position makes a scale built from the whole building behave —
+        // there is always something at the front, so the nearest really is near
+        // zero — and makes a scale built from a *handful of candidates* useless, in
+        // exactly the way the old composite was useless: four holdings deep in the
+        // ambient hall all divide out to 0.9998-something, and the scale that was
+        // supposed to say "this one is nearest" cannot express the difference. It
+        // showed up as a candidate field spread of 0.0016 where the type's own
+        // documentation promises the nearest scores 0 and the furthest scores 1.
+        var positions = known.Select(Position).ToList();
 
-        return new RouteScale(zoneRanks, slice, span);
+        var nearest = positions.Min();
+        var span = positions.Max() - nearest;
+
+        return new RouteScale(zoneRanks, slice, nearest, span);
+
+        long Position(StorageLocationSnapshot location) =>
+            (zoneRanks.GetValueOrDefault(location.ZonePickSequence, zoneRanks.Count) * slice)
+            + location.PickSequence;
     }
 
     /// <summary>
@@ -116,7 +138,7 @@ public sealed record RouteScale
 
         var position = (rank * _slice) + location.PickSequence;
 
-        return Math.Clamp((decimal)position / _span, 0m, 1m);
+        return Math.Clamp((decimal)(position - _nearest) / _span, 0m, 1m);
     }
 
     /// <summary>True when the scale has more than one place on it, and can therefore rank anything.</summary>
