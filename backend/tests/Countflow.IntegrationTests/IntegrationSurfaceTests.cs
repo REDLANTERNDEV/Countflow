@@ -294,6 +294,7 @@ public sealed class IntegrationSurfaceTests(CountflowApiFixture fixture)
     [InlineData("auth.credential_required")]
     [InlineData("auth.role_required")]
     [InlineData("http.not_found")]
+    [InlineData("http.malformed_request")]
     public async Task Every_refusal_carries_a_code_including_the_ones_no_handler_wrote(string expected)
     {
         // docs/api/ tells an integrator to branch on `code` and never on prose,
@@ -303,11 +304,18 @@ public sealed class IntegrationSurfaceTests(CountflowApiFixture fixture)
         // domain's Error type. Driving the surface by hand in Phase 7 found bare
         // problem documents there. A contract that teaches the right lesson on the
         // happy path and breaks on a Friday is worse than no contract.
+        //
+        // The fourth case is the one TransportErrorCodes always named and this
+        // theory never asked for — a body that would not bind — and leaving it out
+        // is how it stayed a 500 under `docker compose up` for four phases while
+        // the table said 400. It is asked of a *documented* endpoint here, so a
+        // route that does not exist cannot answer for one that does.
         var response = expected switch
         {
             "auth.credential_required" => await fixture.CreateClient().GetAsync("/api/v1/warehouses"),
             "auth.role_required" => await (await SignInAsync("surface-supervisor"))
                 .PostAsJsonAsync("/api/v1/auth/service-accounts", new { name = "x", displayName = "x", roles = new[] { "Operator" } }),
+            "http.malformed_request" => await _admin.PostAsJsonAsync("/api/v1/inventory/receipts", new { }),
             _ => await _admin.GetAsync("/api/v1/no-such-endpoint")
         };
 

@@ -25,13 +25,23 @@
     -->
     <script>
       (function () {
+        // The system preference is resolved first and is what every path falls
+        // back to, including the failure one. Reading storage is the part that
+        // throws (a locked-down device, private browsing), and a device that
+        // will not answer "what did they choose" can still answer "is it dark
+        // out there" — landing on a hardcoded theme there would override the OS
+        // for exactly the people who never chose anything.
+        var theme = 'dark';
+        try {
+          theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        } catch (e) {}
+
         try {
           var p = localStorage.getItem('countflow.theme');
-          var d = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-          document.documentElement.dataset.theme = p === 'light' || p === 'dark' ? p : d;
-        } catch (e) {
-          document.documentElement.dataset.theme = 'light';
-        }
+          if (p === 'light' || p === 'dark') theme = p;
+        } catch (e) {}
+
+        document.documentElement.dataset.theme = theme;
       })();
     </script>
   </head>

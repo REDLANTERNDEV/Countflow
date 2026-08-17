@@ -1,7 +1,8 @@
 import { useTranslation } from '@countflow/i18n';
-import { Badge, Button, Code, Field, Input, LogoSymbol, ScanField, Spinner } from '@countflow/ui';
-import { useCallback, useEffect, useState } from 'react';
+import { Badge, Button, Field, Input, LogoSymbol, PasswordInput, Spinner } from '@countflow/ui';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, tokenStore } from './api.js';
+import { DeviceSettings } from './components/DeviceSettings.js';
 import { unanswered } from './lib/outbox/dispatch.js';
 import { needsAttention, pendingFor, strandedFrom } from './lib/outbox/outbox.js';
 import { outbox, startOutbox } from './outbox.js';
@@ -45,6 +46,11 @@ export function App() {
   const [errorCode, setErrorCode] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [confirmingSignOut, setConfirmingSignOut] = useState(false);
+
+  // Enter moves between the sign-in fields rather than submitting half a form,
+  // which is what makes a badge scan and a keyed code end up in the same place.
+  const operatorRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     async function restore() {
@@ -187,7 +193,7 @@ export function App() {
 
     return (
       <main className={shell}>
-        <ConnectivityBadge online={connected} />
+        <ConnectivityNotice online={connected} />
 
         <LogoSymbol size={52} className="mt-[var(--space-3)]" />
         <h1 className="m-0 mt-[var(--space-2)] text-[length:var(--text-2xl)] tracking-[var(--tracking-display)]">
@@ -216,48 +222,97 @@ export function App() {
           </div>
         ) : null}
 
-        {/* Badge scan fills the code and submits in one motion when a password
-            is already keyed; otherwise it just captures the code. */}
-        <ScanField
-          label={t('auth.operatorCode')}
-          placeholder="OP001"
-          clearOnScan={false}
-          onScan={(value) => {
-            setOperatorCode(value);
-            if (password) void signIn(value, password);
+        {/* An ordinary two-field sign-in, and a real `<form>`.
+
+            This used to be a `ScanField` above a password box, which meant the
+            operator code only existed once Enter had been pressed: keying the
+            code and then the password left the button disabled, with nothing on
+            screen saying that Enter was the missing step. A form is also the
+            right shape for a badge, not a concession against it — a
+            keyboard-wedge scanner types the code and ends with Enter, which
+            lands on the password rather than submitting a half-filled form. So
+            scanning and keying arrive at the same place, and neither asks the
+            operator to know which one the screen was expecting. */}
+        <form
+          className="flex flex-col gap-[var(--space-3)]"
+          onSubmit={(event) => {
+            event.preventDefault();
+
+            const code = operatorCode.trim();
+            if (!code) {
+              operatorRef.current?.focus();
+              return;
+            }
+
+            if (!password) {
+              passwordRef.current?.focus();
+              return;
+            }
+
+            void signIn(code, password);
           }}
-        />
-
-        {operatorCode ? (
-          <p className="m-0 text-[var(--color-text-secondary)]">
-            <Code>{operatorCode}</Code>
-          </p>
-        ) : null}
-
-        <Field label={t('auth.password')} htmlFor="hh-password">
-          <Input
-            id="hh-password"
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            autoComplete="current-password"
-          />
-        </Field>
-
-        {errorCode ? (
-          <p className="m-0 text-[var(--color-danger)]">
-            {t([`errors.${errorCode}`, 'errors.unknown'])}
-          </p>
-        ) : null}
-
-        <Button
-          variant="primary"
-          className="mt-[var(--space-3)] w-full"
-          disabled={submitting || !operatorCode || !password}
-          onClick={() => void signIn(operatorCode, password)}
         >
-          {submitting ? t('common.signingIn') : t('common.signIn')}
-        </Button>
+          <Field label={t('auth.operatorCode')} htmlFor="hh-operator">
+            <Input
+              id="hh-operator"
+              ref={operatorRef}
+              mono
+              autoFocus
+              value={operatorCode}
+              onChange={(event) => setOperatorCode(event.target.value)}
+              placeholder="OP001"
+              // An identifier, so nothing that reformats it should come near it.
+              // `username` still lets a password manager fill the pair on a
+              // shared device that has one.
+              autoComplete="username"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
+              enterKeyHint="next"
+            />
+          </Field>
+
+          <Field label={t('auth.password')} htmlFor="hh-password">
+            <PasswordInput
+              id="hh-password"
+              ref={passwordRef}
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              autoComplete="current-password"
+              enterKeyHint="go"
+              showLabel={t('common.showPassword')}
+              hideLabel={t('common.hidePassword')}
+            />
+          </Field>
+
+          {errorCode ? (
+            <p className="m-0 text-[var(--color-danger)]">
+              {t([`errors.${errorCode}`, 'errors.unknown'])}
+            </p>
+          ) : null}
+
+          {/* Disabled only while the request is in flight, never for an empty
+              field — and that is load-bearing rather than a style choice.
+              Implicit submission is skipped when a form's default button is
+              disabled, so greying this out until both fields are full would
+              mean Enter did nothing at the end of a badge scan, which is
+              precisely the moment the password box is still empty. An enabled
+              button also has somewhere to send the operator: submit routes to
+              whichever field is missing. */}
+          <Button
+            type="submit"
+            variant="primary"
+            className="mt-[var(--space-3)] w-full"
+            disabled={submitting}
+          >
+            {submitting ? t('common.signingIn') : t('common.signIn')}
+          </Button>
+        </form>
+
+        {/* `mt-auto` parks these at the foot of the screen: reachable before
+            signing in, which is the point of them being here, without competing
+            with the two fields that are why anybody opened this screen. */}
+        <DeviceSettings className="mt-auto pt-[var(--space-5)]" />
       </main>
     );
   }
@@ -268,7 +323,7 @@ export function App() {
   if (confirmingSignOut) {
     return (
       <main className={shell}>
-        <ConnectivityBadge online={connected} />
+        <ConnectivityNotice online={connected} />
 
         <h1 className="m-0 mt-[var(--space-3)] text-[length:var(--text-xl)]">
           {t('queue.signOutBlocked', { count: unsent.length })}
@@ -309,7 +364,7 @@ export function App() {
   return (
     <main className={shell}>
       <div className="flex flex-wrap items-center gap-[var(--space-2)]">
-        <ConnectivityBadge online={connected} />
+        <ConnectivityNotice online={connected} />
 
         {attention.length > 0 ? (
           <Button variant="ghost" size="sm" onClick={() => setScreen({ name: 'queue' })}>
@@ -368,20 +423,27 @@ export function App() {
   );
 }
 
-function ConnectivityBadge({ online }: { online: boolean }) {
+function ConnectivityNotice({ online }: { online: boolean }) {
   const { t } = useTranslation();
 
-  // Permanent rather than a transient toast: an operator needs to know at a
-  // glance whether their last scan actually reached the server, and warehouse
-  // coverage drops often enough that a popup would become noise.
+  // Only the bad state is drawn. Losing the link is news and stays permanent
+  // rather than becoming a toast: an operator needs to know at a glance whether
+  // their last scan actually reached the server, and warehouse coverage drops
+  // often enough that a popup would become noise they learn to dismiss. Working
+  // normally is not news, and a marker that is present for the whole of an
+  // ordinary shift is what `Badge` warns against — one used for flavour is one
+  // operators stop reading as signal. So the absence of this *is* the online
+  // state, and the sign-in screen carries nothing at all.
   //
   // It reports the device's link and nothing more. Whether a command landed is
   // answered by the queue beside it, because the flag is wrong in both
   // directions — an access point with a dead API behind it reads as online, and
   // a device that has not noticed losing its link reads as online too.
+  if (online) return null;
+
   return (
-    <Badge tone={online ? 'success' : 'warning'}>
-      {online ? t('common.online') : t('common.offline')}
+    <Badge tone="warning" className="self-start">
+      {t('common.offline')}
     </Badge>
   );
 }

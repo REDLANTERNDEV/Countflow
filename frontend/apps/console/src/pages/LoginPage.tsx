@@ -1,5 +1,5 @@
 import { useTranslation } from '@countflow/i18n';
-import { Badge, Button, Field, Input, LogoSymbol } from '@countflow/ui';
+import { Badge, Button, Field, Input, LogoSymbol, PasswordInput } from '@countflow/ui';
 import { useState, type FormEvent } from 'react';
 import { useAuth } from '../auth.js';
 import { LanguageSwitcher } from '../components/LanguageSwitcher.js';
@@ -55,7 +55,15 @@ export function LoginPage() {
   }
 
   return (
-    <main className="grid min-h-screen place-items-center p-[var(--space-5)]">
+    // The console scale is sized to fit table rows, which is the wrong answer for
+    // a screen holding two fields — 30px controls under 11px labels read as a
+    // fragment of an interface rather than the whole of one. `comfortable` steps
+    // the controls and their type up for this screen only; the density tokens
+    // cascade, so every component inside picks it up unchanged.
+    <main
+      data-density="comfortable"
+      className="grid min-h-screen place-items-center p-[var(--space-5)]"
+    >
       {/* Language and theme are reachable before signing in — an operator who
           cannot read English needs to switch before they can find anything. */}
       <div className="absolute right-[var(--space-5)] top-[var(--space-5)] flex gap-[var(--space-3)]">
@@ -63,7 +71,13 @@ export function LoginPage() {
         <ThemeSwitcher />
       </div>
 
-      <div className="flex flex-wrap items-start justify-center gap-[var(--space-6)]">
+      {/* `w-full` is load-bearing. `place-items-center` on the grid shrink-wraps
+          this row to its content, and the cards inside size themselves with
+          `min(…px, 100%)` — so their 100% resolved against a width their own
+          content had just determined, and the sign-in card settled at 214px of
+          its intended 360. Giving the row the grid area back makes the cards'
+          percentage mean the screen again; `justify-center` still centres them. */}
+      <div className="flex w-full flex-wrap items-start justify-center gap-[var(--space-6)]">
       <form
         onSubmit={handleSubmit}
         className="w-[min(360px,100%)] rounded-[var(--radius-surface)]
@@ -90,13 +104,14 @@ export function LoginPage() {
           </Field>
 
           <Field label={t('auth.password')} htmlFor="password">
-            <Input
+            <PasswordInput
               id="password"
-              type="password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               autoComplete="current-password"
               required
+              showLabel={t('common.showPassword')}
+              hideLabel={t('common.hidePassword')}
             />
           </Field>
 

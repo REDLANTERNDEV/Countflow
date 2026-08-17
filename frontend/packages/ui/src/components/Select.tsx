@@ -21,7 +21,7 @@ export function Select({ className, children, ...props }: SelectProps) {
           'rounded-[var(--radius-control)] border border-[var(--color-border-default)]',
           'bg-[var(--color-surface-raised)] text-[var(--color-text-primary)]',
           'h-[var(--control-height)] pl-[var(--space-3)] pr-[var(--space-6)]',
-          'text-[length:var(--text-sm)]',
+          'text-[length:var(--control-text)]',
           'transition-colors duration-[var(--duration-fast)]',
           'hover:border-[var(--color-border-strong)]',
           'focus:outline-2 focus:outline-[var(--color-accent)] focus:-outline-offset-1',

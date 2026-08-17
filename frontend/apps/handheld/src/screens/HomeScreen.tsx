@@ -2,6 +2,7 @@ import { currentLocale, useTranslation } from '@countflow/i18n';
 import { Badge, Button, Code, Numeric, Spinner } from '@countflow/ui';
 import { useEffect, useState } from 'react';
 import { api } from '../api.js';
+import { DeviceSettings } from '../components/DeviceSettings.js';
 import { unanswered } from '../lib/outbox/dispatch.js';
 import { needsAttention } from '../lib/outbox/outbox.js';
 import { outbox } from '../outbox.js';
@@ -221,7 +222,11 @@ export function HomeScreen(props: HomeScreenProps) {
         </div>
       ) : null}
 
-      <Button className="mt-auto w-full" onClick={onSignOut}>
+      {/* Takes over the `mt-auto` that used to sit on sign-out, so both stay
+          pinned to the foot of the screen and away from the two verbs above. */}
+      <DeviceSettings className="mt-auto pt-[var(--space-4)]" />
+
+      <Button className="w-full" onClick={onSignOut}>
         {t('common.signOut')}
       </Button>
     </>

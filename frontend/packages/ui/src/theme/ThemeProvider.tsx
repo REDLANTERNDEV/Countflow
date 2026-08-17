@@ -95,9 +95,9 @@ export function useTheme(): ThemeContextValue {
  * storage key above.
  */
 export const themeBootstrapScript = `
-(function(){try{
-var p=localStorage.getItem('${THEME_STORAGE_KEY}');
-var d=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';
-document.documentElement.dataset.theme=(p==='light'||p==='dark')?p:d;
-}catch(e){document.documentElement.dataset.theme='dark';}})();
+(function(){
+var t='dark';
+try{t=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}catch(e){}
+try{var p=localStorage.getItem('${THEME_STORAGE_KEY}');if(p==='light'||p==='dark')t=p;}catch(e){}
+document.documentElement.dataset.theme=t;})();
 `.trim();

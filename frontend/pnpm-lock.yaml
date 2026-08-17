@@ -116,6 +116,9 @@ importers:
       '@tanstack/react-router':
         specifier: 'catalog:'
         version: 1.170.25(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      lucide-react:
+        specifier: 'catalog:'
+        version: 1.31.0(react@19.2.8)
       react:
         specifier: 'catalog:'
         version: 19.2.8

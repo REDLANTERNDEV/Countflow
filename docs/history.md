@@ -1218,3 +1218,33 @@ at all**: uncoded transport failures, and an editor whose entire happy path was
 untested because every test of it asserted a refusal. Neither was reachable from
 the test suite. Both were the first thing that happened when a person used the
 product.
+
+### After 1.0 — a code that was documented, tested for, and never once emitted
+
+Somebody sent `POST /auth/login` with `identifier` spelt `username` and got a
+`500`. Two defects met there, and the pair is worth keeping because neither is
+visible from inside the other.
+
+The near one: a request contract's non-nullable strings were **documentation**.
+`record LoginRequest(string Identifier, string Password)` is exported as
+`"required": ["identifier", "password"]`, and System.Text.Json's defaults honour
+neither the constructor's arity nor its annotations — so the field bound to null,
+`FindUserAsync` trimmed it, and the handler's own type system had lied to it.
+Seven endpoints across five modules, found by probing them.
+
+The far one is the interesting half. Phase 7 built `TransportErrorCodes` so that
+every problem document carries a `code`, wrote `http.malformed_request` into
+`docs/api/error-codes.md`, and added a theory asserting the codes middleware
+writes for itself. That theory asked for three of them and not the fourth — and
+the fourth was the one that did not work, because `ThrowOnBadRequest` is on under
+Development and turns a bound-to-be-`400` into an exception the handler answers
+`500`. So the code was correct in production and wrong in every environment
+anybody runs, for four phases, with a test file next to it asserting its
+neighbours.
+
+**A guard you never ask the question of is a comment**, and the Phase 7 lesson
+generalises one step further than Phase 7 took it: it is not enough for the
+failure path to carry a code, the *test* has to be made to meet the failure. Both
+fixes are one line each in `Program.cs`; the mechanics are in
+[gotchas.md](gotchas.md), and each was verified by removing it and watching the
+new tests go red on their own.

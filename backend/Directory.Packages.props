@@ -49,7 +49,12 @@
   <ItemGroup Label="Testing">
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.10" />
-    <PackageVersion Include="Testcontainers.PostgreSql" Version="4.13.0" />
+    <!-- 4.14.0 rather than 4.13.0 for the transitive SSH.NET: 4.13.0 pulls in
+         2025.1.0, whose ScpClient.Download does not validate the file names a
+         remote server sends and will write outside the download directory
+         (GHSA-q939-rpr3-3284, fixed in 2026.0.0). Bumped rather than pinned
+         forward — upstream already moved, so there is nothing to pin. -->
+    <PackageVersion Include="Testcontainers.PostgreSql" Version="4.14.0" />
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.4" />
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />

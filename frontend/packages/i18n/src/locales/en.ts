@@ -13,6 +13,7 @@ export const en = {
     loading: 'Loading…',
     search: 'Search',
     cancel: 'Cancel',
+    close: 'Close',
     save: 'Save',
     previous: 'Previous',
     next: 'Next',
@@ -27,7 +28,8 @@ export const en = {
     themeLight: 'Light',
     themeDark: 'Dark',
     language: 'Language',
-    online: 'Online',
+    showPassword: 'Show password',
+    hidePassword: 'Hide password',
     offline: 'Offline — work is queued',
   },
 
@@ -47,6 +49,20 @@ export const en = {
     integrations: 'Integrations',
     tour: 'Tour',
     scanTest: 'Scan test',
+
+    /* The rail's own furniture. `primary` names the landmark for a screen
+     * reader; the rest label controls that are an icon and nothing else. */
+    primary: 'Sections',
+    menu: 'Menu',
+    collapse: 'Collapse',
+    expand: 'Expand',
+
+    groups: {
+      masterData: 'Master data',
+      operations: 'Operations',
+      insight: 'Insight',
+      setup: 'Setup',
+    },
   },
 
   demo: {

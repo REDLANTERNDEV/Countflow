@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent } from 'react';
 import { cn } from '../lib/cn.js';
+import { acceptsTypedInput } from '../lib/focus.js';
 import { Label } from './Input.js';
 
 export interface ScanFieldProps {
@@ -40,8 +41,16 @@ export function ScanField(props: ScanFieldProps) {
     const input = inputRef.current;
     input?.focus();
 
-    // Refocus after anything steals focus (a toast, an incidental tap).
-    const onFocusOut = () => {
+    // Refocus after anything *steals* focus (a toast, an incidental tap, a
+    // button press) — but not when the operator has deliberately moved it into
+    // another field. Taking it back unconditionally made every input beside a
+    // scan field impossible to type in: the password on the sign-in screen, the
+    // quantity and dock on receiving, the override reason on a task. Focus
+    // landed there and was pulled out again a tick later, which reads as the
+    // field simply not accepting taps. See `acceptsTypedInput`.
+    const onFocusOut = (event: FocusEvent) => {
+      if (acceptsTypedInput(event.relatedTarget as HTMLElement | null)) return;
+
       window.setTimeout(() => {
         if (!disabled) inputRef.current?.focus();
       }, 0);
@@ -91,7 +100,7 @@ export function ScanField(props: ScanFieldProps) {
           'bg-[var(--color-surface-sunken)] text-[var(--color-text-primary)]',
           'h-[var(--control-height)] px-[var(--space-3)]',
           'font-[family-name:var(--font-mono)] tabular-nums',
-          'text-[length:var(--text-base)]',
+          'text-[length:var(--control-text)]',
           'placeholder:text-[var(--color-text-tertiary)] placeholder:font-[family-name:var(--font-sans)]',
           'transition-colors duration-[var(--duration-fast)]',
           'focus:outline-2 focus:outline-[var(--color-accent)] focus:-outline-offset-1',

@@ -41,7 +41,7 @@ not a rule they can write code against.
 | `auth.role_required` | 403 | A valid credential without the role this endpoint needs. Getting a new credential will not help; the account needs the role. |
 | `http.not_found` | 404 | No such path. Check the `/api/v1` prefix first — an unversioned path is a `404`, deliberately. |
 | `http.method_not_allowed` | 405 | |
-| `http.malformed_request` | 400 | The body would not bind. Usually a type, a missing required field, or an enum member sent as a number. |
+| `http.malformed_request` | 400 | The request would not bind: a type, an enum member sent as a number, a missing required field, an explicit `null` where the schema is not nullable, or a required query parameter that is absent or unparseable. Two rules cover the body. **A field listed under `required` must be present and non-null.** **A nullable field may be omitted or sent as `null`, interchangeably** — optional fields are nullable in the schema except the few given a single non-`null` type (`maxTasks`, say), which may be omitted but not nulled. |
 | `http.unsupported_media_type` | 415 | Send `Content-Type: application/json`. |
 | `http.payload_too_large` | 413 | |
 | `http.unexpected_error` | 500 | Ours. Quote the `traceId`. |

@@ -53,6 +53,6 @@ is not repeated here. What is specific to working in this repository as an agent
 All nine phases of the original plan are complete — see
 [CHANGELOG.md](CHANGELOG.md) for what that means feature by feature, and
 [ROADMAP.md](ROADMAP.md) for what was deliberately left out. Last full
-verification: 226 backend tests, 25 frontend tests, both apps typecheck, 58
+verification: 235 backend tests, 36 frontend tests, both apps typecheck, 58
 versioned paths with no OpenAPI drift, and the containerised stack driven by hand
 with the API stopped and restarted under a live handheld.

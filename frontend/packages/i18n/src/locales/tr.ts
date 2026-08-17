@@ -19,6 +19,7 @@ export const tr: Catalogue = {
     loading: 'Yükleniyor…',
     search: 'Ara',
     cancel: 'İptal',
+    close: 'Kapat',
     save: 'Kaydet',
     previous: 'Önceki',
     next: 'Sonraki',
@@ -33,7 +34,8 @@ export const tr: Catalogue = {
     themeLight: 'Açık',
     themeDark: 'Koyu',
     language: 'Dil',
-    online: 'Çevrimiçi',
+    showPassword: 'Parolayı göster',
+    hidePassword: 'Parolayı gizle',
     offline: 'Çevrimdışı — işler kuyrukta',
   },
 
@@ -53,6 +55,18 @@ export const tr: Catalogue = {
     integrations: 'Entegrasyonlar',
     tour: 'Tanıtım',
     scanTest: 'Okutma testi',
+
+    primary: 'Bölümler',
+    menu: 'Menü',
+    collapse: 'Daralt',
+    expand: 'Genişlet',
+
+    groups: {
+      masterData: 'Ana veri',
+      operations: 'Operasyon',
+      insight: 'Analiz',
+      setup: 'Yapılandırma',
+    },
   },
 
   demo: {

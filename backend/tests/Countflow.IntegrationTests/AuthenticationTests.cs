@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text;
 using System.Text.Json;
 using Countflow.Modules.Identity.Domain;
 using Countflow.Modules.Identity.Persistence;
@@ -119,6 +120,76 @@ public sealed class AuthenticationTests(CountflowApiFixture fixture) : IClassFix
         // it is unique per request and says nothing about the account.
         Assert.Equal(unknown.StatusCode, wrong.StatusCode);
         Assert.Equal(await ReadProblemAsync(unknown), await ReadProblemAsync(wrong));
+    }
+
+    /// <summary>
+    /// A body that leaves out a required field, or sends an explicit null for one,
+    /// is refused as malformed — never as a fault of ours.
+    /// <para>
+    /// <c>LoginRequest(string Identifier, string Password)</c> reads as two required
+    /// strings and is <i>published</i> as two required strings, but System.Text.Json's
+    /// defaults respect neither the constructor's arity nor its nullable annotations:
+    /// a body naming the field <c>username</c> bound <c>Identifier</c> to null,
+    /// <c>FindUserAsync</c> trimmed it, and an integrator's typo came back as
+    /// <c>http.unexpected_error</c> with our stack trace in the log. All three auth
+    /// endpoints had it, because all three contracts have that shape.
+    /// </para>
+    /// <para>
+    /// The guard is in the host's serializer options rather than in this module —
+    /// the same body shape was a 500 on six endpoints across four other modules, and
+    /// a null check per field is the second set of validation rules that drifts.
+    /// </para>
+    /// </summary>
+    /// <param name="body">
+    /// Raw JSON rather than the <see cref="Credentials"/> helper, deliberately: the
+    /// helper builds a well-formed body and these are the shapes it cannot express.
+    /// None of them is a credential — no request here reaches a password check.
+    /// </param>
+    [Theory]
+    // Verbatim from the report: `identifier` sent as `username`.
+    [InlineData("login", """{"username":"admin","password":"x"}""")]
+    [InlineData("login", """{"identifier":null,"password":"x"}""")]
+    // The other half of the same contract, which was equally a 500. It names the
+    // seeded operator deliberately: an identifier nobody holds is refused before
+    // the password is ever looked at, so it would assert the right status for the
+    // wrong reason and pass with the guard removed.
+    [InlineData("login", $$"""{"identifier":"{{UserName}}"}""")]
+    [InlineData("refresh", """{}""")]
+    [InlineData("refresh", """{"refreshToken":null}""")]
+    [InlineData("logout", """{}""")]
+    [InlineData("logout", """{"refreshToken":null}""")]
+    public async Task A_body_missing_a_required_field_is_malformed_not_a_server_fault(string endpoint, string body)
+    {
+        var client = fixture.CreateClient();
+
+        var response = await client.PostAsync(
+            $"/api/v1/auth/{endpoint}",
+            new StringContent(body, Encoding.UTF8, "application/json"));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal("http.malformed_request", document.RootElement.GetProperty("code").GetString());
+    }
+
+    /// <summary>
+    /// A field that is present but blank is a different question, and its answer
+    /// does not change: a well-formed body naming nobody is the same opaque 401 as
+    /// naming somebody who does not exist. Here so the guard above cannot be
+    /// "tightened" into leaking which identifiers are real.
+    /// </summary>
+    [Fact]
+    public async Task A_blank_identifier_stays_an_indistinguishable_401()
+    {
+        var client = fixture.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/api/v1/auth/login", Credentials("   ", OperatorSecret));
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal(
+            await ReadProblemAsync(response),
+            await ReadProblemAsync(
+                await client.PostAsJsonAsync("/api/v1/auth/login", Credentials("does.not.exist", OperatorSecret))));
     }
 
     private static async Task<string> ReadProblemAsync(HttpResponseMessage response)

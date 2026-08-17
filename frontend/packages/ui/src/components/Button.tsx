@@ -19,20 +19,28 @@ const button = cva(
   {
     variants: {
       variant: {
+        // A filled variant takes the `-on` token, never the `-text` one. The
+        // `-text` values are terracotta and red darkened (or lightened) to be
+        // legible *on a surface*; putting one on its own fill is 1.34:1 in light
+        // and 1.50:1 in dark, which is how the primary action shipped unreadable
+        // in both themes. See theme.css for the arithmetic.
         primary:
-          'bg-[var(--color-accent)] text-[var(--color-accent-text)] hover:bg-[var(--color-accent-hover)]',
+          'bg-[var(--color-accent)] text-[var(--color-accent-on)] hover:bg-[var(--color-accent-hover)]',
         secondary:
           'bg-[var(--color-surface-raised)] text-[var(--color-text-primary)] border border-[var(--color-border-default)] hover:bg-[var(--color-surface-hover)] hover:border-[var(--color-border-strong)]',
         ghost:
           'bg-transparent text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]',
+        // An explicit hover fill rather than `brightness-110`: a filter lightens
+        // the fill under a white label, so the one state where the pointer is
+        // definitely on a destructive button was its least readable one.
         danger:
-          'bg-[var(--color-danger)] text-white hover:brightness-110',
+          'bg-[var(--color-danger-fill)] text-[var(--color-danger-on)] hover:bg-[var(--color-danger-fill-hover)]',
       },
       size: {
         // Heights come from the density scale, so the same component is 30px in
         // the console and 52px on a handheld without a second definition.
-        md: 'h-[var(--control-height)] px-[var(--space-4)] text-[length:var(--text-sm)]',
-        sm: 'h-[var(--control-height-sm)] px-[var(--space-3)] text-[length:var(--text-xs)]',
+        md: 'h-[var(--control-height)] px-[var(--space-4)] text-[length:var(--control-text)]',
+        sm: 'h-[var(--control-height-sm)] px-[var(--space-3)] text-[length:var(--control-text-sm)]',
         icon: 'h-[var(--control-height)] w-[var(--control-height)] p-0',
       },
     },

@@ -88,6 +88,17 @@ when you come looking. Phase numbers refer to [history.md](history.md).
   untrue — Phase 3 added three modules and the container build broke on all
   three, in a file nobody thinks to look in. The restore layer is keyed on the
   tar's contents, so it still only invalidates when a project file changes.
+- **A pruned build cache breaks every cached publish layer, and blames NuGet for
+  it.** Symptom: `docker compose build` fails with `NETSDK1064: Package
+  Microsoft.AspNetCore.OpenApi, version 10.0.10 was not found. It might have been
+  deleted since NuGet restore` — on a change that touched one line of C# and no
+  package reference. The restore layer is cached in the image, but the packages it
+  restored live in a **cache mount**, which is not part of the layer and which
+  Docker's garbage collector will reclaim on its own schedule. `dotnet publish
+  --no-restore` then finds a valid-looking restore and no packages. `--no-cache`
+  on the affected images is the fix, and it must name every image whose publish
+  layer went stale — `--no-cache api` will leave the migrator failing on the next
+  `up`, since each project's chain is cached separately.
 - **The integration fixture runs seeders, not just migrations.** From Phase 3 the
   putaway rule set is reference data the system cannot function without, so a
   fixture that only migrated would test a warehouse with no rules — a state
@@ -144,6 +155,28 @@ when you come looking. Phase numbers refer to [history.md](history.md).
   tells integrators to branch on `code`, so `TransportErrorCodes` fills them in
   from `CustomizeProblemDetails` — the one point every problem document in the
   host passes through. It never overwrites an existing `code`.
+- **A non-nullable string in a request contract is a comment, not a constraint —
+  unless you turn the two options on.** `record LoginRequest(string Identifier,
+  string Password)` reads as two required strings, and the OpenAPI export even
+  publishes them as `"required"`, but System.Text.Json's defaults check neither the
+  constructor's arity nor its nullable annotations: a body that omits `identifier`,
+  or sends `"identifier": null`, binds it to `null` and the handler's first
+  `Trim()` throws. Seven endpoints across five modules answered
+  `http.unexpected_error` for a caller's typo. `RespectRequiredConstructorParameters`
+  and `RespectNullableAnnotations`, both set in `Program.cs`, are what make the
+  contract mean what it says — and they cost nothing here only because every
+  optional parameter in this codebase already carries a default. **Give an optional
+  parameter a default, always**, or these two options will make it required.
+- **`ThrowOnBadRequest` defaults to on in Development, and it does not merely log
+  louder.** A binding failure that would set `400` in production is instead
+  rethrown as a `BadHttpRequestException`; `UseExceptionHandler` catches it,
+  discards the status it carries, and writes `http.unexpected_error`. So
+  `http.malformed_request` — documented since Phase 7 — had never once been emitted
+  by the stack anybody runs, and malformed JSON, a mistyped field and a missing one
+  were all `500`s under `docker compose up` while the table said `400`. Turned off
+  in `Program.cs` so Development takes production's path rather than a second
+  mapping beside it. **A contract only tested in the environment nobody develops
+  in is not tested.**
 - **The change feed serves behind a watermark, and that is its correctness.**
   Postgres assigns an identity value at `INSERT`, not at `COMMIT`, so two
   concurrent postings can take 105 and 106 and commit the other way round; a
@@ -222,6 +255,61 @@ when you come looking. Phase numbers refer to [history.md](history.md).
   Three things fix it and all three are needed: a successful sign-in notes it, the
   Home refresh probes instead of gating on the flag it updates, and
   `startOutbox` heartbeats while the device believes itself unreachable.
+- **A language detector that caches has overwritten the answer to a different
+  question.** `i18next-browser-languagedetector`'s `caches: ['localStorage']`
+  writes whatever it *detected* into the same key a deliberate choice is stored
+  in — so "we guessed English from your browser" becomes indistinguishable from
+  "this person chose English", and the app stops following the browser it was
+  supposed to default to. It stored the raw navigator tag too, so the value was
+  `en-US` rather than a supported code, which is the tell. Detection now writes
+  nothing (`caches: []`), `setLanguage` is the only writer, and `initI18n` clears
+  a stored value that is not an exact `SUPPORTED_LANGUAGES` entry — that shape
+  can only have come from the old cache, so it is safe to treat as noise.
+- **A pre-paint theme script must fall back to the system preference, not to a
+  colour.** Reading `localStorage` is the part that throws — a locked-down device,
+  private browsing — and a `catch` that assigns `'light'` (or `'dark'`) overrides
+  the OS for exactly the people who never chose anything. Resolve `matchMedia`
+  first and let the stored value override *it*. There are three copies of this
+  script: `themeBootstrapScript` in `ThemeProvider.tsx`, which exists so the
+  inline ones stay in sync, and the two `index.html` files, **which do not
+  actually use it**. Change one, change all three until something inlines it.
+- **A sticky scan field must ask *where* focus went, not merely whether it left.**
+  `ScanField` holds focus so an operator with a scanner in one hand and a carton
+  in the other never has to tap first, and it did that by refocusing on every
+  `focusout`. Every screen with a scan field also has something to type beside it
+  — quantity and dock on receiving, a task's override reason, and at the time the
+  handheld's sign-in password — and all of them were unreachable: focus landed,
+  then was pulled back a tick later by a `setTimeout(…, 0)`, which reads as a
+  field that ignores taps rather than as a fight over focus. (Sign-in has since
+  become an ordinary form; receiving and tasks still pair the two.) The rule is
+  `acceptsTypedInput`
+  (`packages/ui/src/lib/focus.ts`) against `relatedTarget`: focus that went
+  nowhere comes back, focus the operator put in another *text* field stays. The
+  case that fixes the shape is a **button** — focusable but untypeable, so "did
+  focus move at all" would leave a scanner pointed at a control, where the Enter
+  that ends every scan presses it.
+- **A CSS custom property read in a mount effect can come back empty.** Under
+  Vite the stylesheet is injected by JavaScript, so
+  `getComputedStyle(root).getPropertyValue('--breakpoint-lg')` inside a
+  `useEffect` returns `''` often enough to matter — and the symptom is not an
+  error, it is a listener that silently never gets registered and a drawer that
+  stays open when a tablet is rotated. Read tokens from CSS; where JavaScript
+  genuinely needs one, make it a constant and hold the two together with a test,
+  as `RAIL_BREAKPOINT` and `apps/console/test/navigation.test.mjs` do.
+- **A Radix dialog opened by something that is not its `Trigger` does not restore
+  focus.** Controlling `open` from a plain button beside it works for everything
+  except the last step: on close Radix returns focus to `Dialog.Trigger`, and with
+  no trigger to return to, a keyboard user who presses Escape lands on `<body>`
+  and has to tab from the top of the document. `Sheet` takes the opener as a
+  `trigger` prop and renders it inside `Dialog.Trigger` for exactly this reason —
+  controlled `open` and a real trigger coexist fine, and the wrapper that
+  hand-rolls the opener is the one that gets it wrong.
+- **The in-app browser's viewport override dispatches nothing.** Resizing it
+  changes `clientWidth` and flips `matchMedia(...).matches`, but fires no
+  `matchMedia` change event, no `resize`, and no `ResizeObserver` callback. So
+  anything that reacts to a breakpoint being *crossed* cannot be provoked there
+  and has to be checked in a real browser — the harness cannot ask the question,
+  which is not the same as the answer being no.
 - **Only send a lot where the item has lots.** The ledger refuses
   `inventory.lot_not_permitted`, and the simulator attached a batch to everything.
   Invisible against the fixture catalogue, which is lot-tracked throughout; against

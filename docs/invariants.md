@@ -147,6 +147,13 @@ already assumed the answer.
   files.
 - Vertical slices: `Features/<UseCase>/` holds the endpoint, command, handler and
   validator together. Not layered folders.
+- **A request contract's required fields are exactly its non-defaulted
+  constructor parameters, and the binder now enforces that.** So an optional
+  parameter must carry a default — `string? Notes = null`, never a bare
+  `string? Notes` — or the host will require callers to send it, and the published
+  document will say so. Two serializer options in `Program.cs` are what make the
+  contract mean what it reads as; see
+  [gotchas.md](gotchas.md) for what they are and what went wrong without them.
 - Domain failures return `Result` / `Result<T>` with a coded `Error`; exceptions
   are for genuinely exceptional conditions. `ToHttpResult()` maps them.
 - Add a module by adding one line to `ModuleCatalog.All` — the API and the
@@ -414,8 +421,29 @@ expensive way.
   SSCC, SKU, location code) are never grouped or locale-formatted. Values
   (quantities, weights, dates) always are. A number-formatted GTIN is not a
   barcode.
-- **Density comes from `data-density` on `<html>`**, not per-app stylesheets.
-  `console` = 30px controls, `handheld` = 52px.
+- **Density comes from `data-density`**, not per-app stylesheets. `console` = 30px
+  controls and `handheld` = 52px, both set on `<html>`. `comfortable` = 44px is
+  the one that is scoped to a container instead, for a focused single-task screen
+  inside the console — the console scale is sized to fit table rows, and a screen
+  holding two fields is not a table. The console's sign-in uses it. The drawer and
+  its opening control are a separate documented exception at 44px: they exist only
+  below `--breakpoint-lg`, where the console is being touched rather than pointed
+  at, and the console scale is sized for a mouse.
+- **A component names a type *role*, never a step.** `--control-text`,
+  `--control-text-sm` and `--label-text` are what a control and its label wear;
+  each density points them at the step that suits its own control height. A
+  component that reaches for `--text-sm` directly gets the same 13px whether it
+  is 30px tall or 52px, which is how the handheld spent its life with desktop
+  type inside gloved-tap controls — heights scaled with density and the type did
+  not. Steps (`--text-xs` … `--text-2xl`) are for prose and headings; controls
+  take the roles.
+- **The console's navigation is `NAV_GROUPS`, and adding a route means adding it
+  there.** The rail and the drawer both render that one list, so a route the
+  router knows about and the list does not is a page reachable only by typing its
+  URL. Checked both ways by `apps/console/test/navigation.test.mjs`, which also
+  holds `RAIL_BREAKPOINT` to the `--breakpoint-lg` token that Tailwind builds
+  `lg:` from — the layout has to close the drawer when a rotating tablet crosses
+  that width, and it cannot read the token at runtime (see [gotchas.md](gotchas.md)).
 - **The API returns `{ code, args }`, never prose.** Wording lives in
   `packages/i18n`. Adding a language is a catalogue, not a backend change.
 - **`tr.ts` is typed against `en.ts`**, so a missing key fails the build; the
@@ -445,6 +473,16 @@ Espresso over Terracotta.
   Espresso — both under AA. It is used for *fills* (white on terracotta is
   4.56:1) and the mark; shaded/tinted variants carry link and label text.
   Tokens: `--color-accent` (fill) vs `--color-accent-text`.
+
+  **A filled control therefore takes the `-on` token, never the `-text` one**, and
+  that is a rule with a scar: the primary button wore `--color-accent-text` on
+  `--color-accent` — 1.34:1 in light, 1.50:1 in dark — so the console's main
+  action was unreadable in both themes until somebody looked at it. `danger` had
+  the same shape one line below, failing in dark only, which is why
+  `--color-danger` (a text colour, lightened for dark) now has a separate fill
+  triplet beside it. `packages/ui/test/contrast.test.mjs` derives the fill/foreground
+  pairs from the components and fails under 4.5:1, so the next one is a red test
+  rather than a red button.
 - **Terracotta sits at hue 15°, where danger red normally lives.** Status colours
   were moved to clearly separate hue families, and every status badge carries a
   text label — colour is never the only signal.

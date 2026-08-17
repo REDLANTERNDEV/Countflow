@@ -56,6 +56,14 @@
   --tracking-body: 0em;
   --tracking-caption: 0.006em;
 
+  /* ---- Breakpoints ----------------------------------------------------
+   * `lg` is the width at which the console's side rail replaces the drawer, and
+   * it is declared here rather than left to Tailwind's identical default so that
+   * it is also emitted as a custom property. The layout has to close the drawer
+   * when a rotating tablet crosses that width, and the alternative is the number
+   * 1024 written once in a class name and once in JavaScript. */
+  --breakpoint-lg: 64rem;
+
   /* ---- Motion ---------------------------------------------------------
    * Critically damped by default: no overshoot on anything that merely
    * appears. Bounce is reserved for motion that followed a real gesture. */
@@ -98,7 +106,15 @@
   --color-success-muted: #dcece2;
   --color-warning: #8a6111;
   --color-warning-muted: #f5e8cf;
+  /* `--color-danger` is a *text* colour — it is read as one in thirty-odd
+   * places, which is why the dark theme lightens it. The fill triplet is
+   * separate for the same reason accent's is, and both themes name it
+   * explicitly rather than letting light's text value double as a fill: that
+   * coincidence is what let a 2.88:1 destructive button ship in dark mode. */
   --color-danger: #9b2622;
+  --color-danger-fill: #9b2622;
+  --color-danger-fill-hover: #8a211d;
+  --color-danger-on: #ffffff;
   --color-danger-muted: #f7dedc;
   --color-info: #2f5e86;
   --color-info-muted: #dde8f2;
@@ -131,7 +147,12 @@
   --color-text-disabled: #6b5f59;
 
   --color-accent: #c2542f;
-  --color-accent-hover: #d0633d;
+  /* Hover *deepens* here rather than lightening, which is the opposite of the
+   * instinct on a dark surface and is forced by the foreground: the fill carries
+   * white text, and the lightened #d0633d this used to be left it at 3.79:1 —
+   * under AA for a 13px label. #b04c2c is 5.36:1 with white and still 3.12:1
+   * against the surface, so the button remains a legible shape. */
+  --color-accent-hover: #b04c2c;
   --color-accent-text: #d07f62;
   --color-accent-on: #ffffff;
   --color-accent-muted: #3d2620;
@@ -140,7 +161,12 @@
   --color-success-muted: #1e3428;
   --color-warning: #d9a441;
   --color-warning-muted: #3a2e15;
+  /* Text, lightened for a dark surface — see the light theme's note. The fill is
+   * a different colour on purpose: white on this red is 2.88:1. */
   --color-danger: #e8776f;
+  --color-danger-fill: #c0392f;
+  --color-danger-fill-hover: #a82e29;
+  --color-danger-on: #ffffff;
   --color-danger-muted: #40201e;
   --color-info: #7fb2da;
   --color-info-muted: #1e2f3f;
@@ -172,6 +198,13 @@
   --text-lg: 1rem;
   --text-xl: 1.25rem;
   --text-2xl: 1.625rem;
+
+  /* What a control *says*, as a role rather than a step. A component that names
+   * a step directly gets the same 13px whether it is 30px tall or 52px, which is
+   * how the handheld ended up with desktop type inside gloved-tap controls. */
+  --control-text: var(--text-sm);
+  --control-text-sm: var(--text-xs);
+  --label-text: var(--text-xs);
 }
 
 [data-density='handheld'] {
@@ -188,12 +221,57 @@
   --control-height-sm: 44px;
   --row-height: 60px;
 
-  --text-xs: 0.8125rem;
-  --text-sm: 0.9375rem;
-  --text-base: 1.0625rem;
-  --text-lg: 1.1875rem;
-  --text-xl: 1.5rem;
-  --text-2xl: 1.875rem;
+  /* Read at arm's length, often through safety glasses, sometimes in a chilled
+   * aisle at 6am — and never leisurely. The floor for sustained reading on a
+   * device held like that is 16px, and the old scale reached it only at
+   * `--text-base`, leaving labels and control text below. Both clear it now;
+   * `--text-xs` stays under deliberately, being for asides rather than reading. */
+  --text-xs: 0.875rem;
+  --text-sm: 1rem;
+  --text-base: 1.125rem;
+  --text-lg: 1.3125rem;
+  --text-xl: 1.625rem;
+  --text-2xl: 2.125rem;
+
+  /* A 52px control carrying 15px type looked like a desktop form stretched to
+   * fit, which is what it was: the height came from the density scale and the
+   * type did not. These keep the two in proportion — 18px inside 52px here,
+   * 13px inside 30px in the console. */
+  --control-text: var(--text-base);
+  --control-text-sm: var(--text-sm);
+  --label-text: var(--text-sm);
+}
+
+/* Scoped to a container rather than set on <html>, and the only one of the three
+ * that is. The console scale is sized to fit rows — it is the right answer for a
+ * table and the wrong one for a screen holding two fields, where a 30px control
+ * with an 11px label reads as a shrunken fragment of an interface rather than
+ * the whole of one. Put this on a focused, single-task screen (the console's
+ * sign-in) and the components inside it pick the comfortable step up without
+ * knowing anything about where they are. */
+[data-density='comfortable'] {
+  --space-1: 3px;
+  --space-2: 6px;
+  --space-3: 10px;
+  --space-4: 14px;
+  --space-5: 18px;
+  --space-6: 26px;
+  --space-7: 36px;
+
+  --control-height: 44px;
+  --control-height-sm: 36px;
+  --row-height: 40px;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.75rem;
+
+  --control-text: var(--text-base);
+  --control-text-sm: var(--text-sm);
+  --label-text: var(--text-sm);
 }
 
 /* ---- Base ---------------------------------------------------------------- */
@@ -251,6 +329,29 @@
 
   ::selection {
     background: var(--color-accent-muted);
+  }
+}
+
+/* ---- Keyframes ------------------------------------------------------------
+ * Entrances only, and only for things that arrive over the page. The reduced
+ * motion block below already flattens every one of these to nothing, which is
+ * why they are plain keyframes rather than a second set of guarded rules. */
+
+@keyframes sheet-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes sheet-in-left {
+  from {
+    transform: translateX(-100%);
+  }
+}
+
+@keyframes sheet-in-right {
+  from {
+    transform: translateX(100%);
   }
 }
 
