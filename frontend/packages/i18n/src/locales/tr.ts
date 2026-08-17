@@ -433,6 +433,7 @@ export const tr: Catalogue = {
     scannedAt: '{{time}} okutuldu',
     attempts: '{{count}} kez denendi',
     acknowledge: 'Anladım',
+    tryAgain: 'Yeniden dene',
     said: 'Deponun cevabı',
     doNow: 'Ne yapmalı',
     code: 'Kod',
@@ -455,7 +456,8 @@ export const tr: Catalogue = {
         'Stok raftan indi ve artık bekleyen yok. Geri koymadan önce amirinize danışın.',
       not_recognised: 'Hiçbir kayıt oluşmadı. Doğru kodla yeniden yapın.',
       not_allowed: 'Yeniden giriş yapın. Yine reddediyorsa hesabınız bu işi yapamıyor demektir.',
-      stalled: 'Hâlâ burada kayıtlı. Vardiya sonuna kadar gitmezse bir amire gösterin.',
+      stalled:
+        'Hâlâ burada kayıtlı. Sinyal geldiğinde yeniden deneyin; vardiya sonuna kadar gitmezse bir amire gösterin.',
       unknown: 'Aşağıdaki kodla birlikte amirinize gösterin.',
     },
 

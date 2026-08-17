@@ -266,6 +266,16 @@ function RefusedCard({ command }: { command: QueuedCommand }) {
         </p>
       ) : null}
 
+      {/* A stall is the automatic retry giving up, not the command being
+          answered — so the operator gets the retry the automatic one stopped
+          doing. Without it the only button here would be the one that deletes
+          a movement the warehouse never heard about. */}
+      {command.state === 'stalled' ? (
+        <Button variant="primary" className="w-full" onClick={() => void outbox.retry(command.id)}>
+          {t('queue.tryAgain')}
+        </Button>
+      ) : null}
+
       {/* The only thing on this screen that removes a record, and it is only ever
           offered for a command the warehouse has finished with. A pending one has
           no button at all: it is the device's record of a pallet somebody moved,

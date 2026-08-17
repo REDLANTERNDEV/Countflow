@@ -1,0 +1,8 @@
+# Every pull request gets a review from the maintainer by default.
+*                       @REDLANTERNDEV
+
+# The parts where a mistake is expensive and silent.
+/backend/src/Modules/Countflow.Modules.Inventory/  @REDLANTERNDEV
+/backend/src/Countflow.SharedKernel/Rules/         @REDLANTERNDEV
+/docs/decisions.md                                 @REDLANTERNDEV
+/docs/invariants.md                                @REDLANTERNDEV

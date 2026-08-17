@@ -1,5 +1,5 @@
 import { api } from './api.js';
-import { createDispatch } from './lib/outbox/dispatch.js';
+import { createDispatch, unanswered } from './lib/outbox/dispatch.js';
 import { Outbox } from './lib/outbox/outbox.js';
 import type { OutboxStore } from './lib/outbox/store.js';
 import { createIndexedDbStore, createMemoryStore, openDatabase } from './lib/outbox/store.js';
@@ -60,16 +60,37 @@ export const outbox = new Outbox(store, createDispatch(api));
  */
 const RETRY_INTERVAL_MS = 15_000;
 
+/**
+ * Ask the warehouse whether it is there, when nothing else is going to.
+ *
+ * A drain only learns anything if it had something of the signed-in operator's
+ * to send, so on a device with an empty queue — or one holding only the
+ * previous operator's stranded work — a single unanswered request would latch
+ * the badge to offline for good. Every screen that gates on it is then stuck
+ * too, including "next job".
+ *
+ * `/auth/me` because a 401 is an answer: it says the warehouse is reachable and
+ * the session is not, which is exactly the distinction the queue is built on.
+ */
+async function probe(): Promise<void> {
+  try {
+    const { response } = await api.GET('/api/v1/auth/me');
+    outbox.noteReachable(!unanswered(response.status));
+  } catch {
+    outbox.noteReachable(false);
+  }
+}
+
 export function startOutbox(): () => void {
   const kick = () => {
     void outbox.drain();
   };
 
   const timer = setInterval(() => {
-    const { commands, draining } = outbox.getSnapshot();
+    const { commands, draining, reachable } = outbox.getSnapshot();
     if (draining) return;
-    if (!commands.some((c) => c.state === 'pending')) return;
-    kick();
+    if (commands.some((c) => c.state === 'pending')) kick();
+    if (reachable === false) void probe();
   }, RETRY_INTERVAL_MS);
 
   const wake = () => {

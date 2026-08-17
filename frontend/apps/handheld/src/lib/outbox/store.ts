@@ -91,11 +91,11 @@ export function openDatabase(): Promise<IDBDatabase> {
  * The durable store.
  *
  * IndexedDB directly rather than through Dexie, and the reason is in ADR 0003:
- * the handheld's production bundle is around 64 KB gzipped and cold-starts on
- * cheap scanner hardware in about a second. One object store with one index does
- * not justify a fifth of that budget again in wrapper. The callback-to-promise
- * plumbing is the twenty lines above and it is the whole of what Dexie would
- * have bought here.
+ * the handheld's production bundle is 132.3 kB gzipped and cold-starts on cheap
+ * scanner hardware in about a second. One object store with one index does not
+ * justify a wrapper costing more than this whole feature did. The
+ * callback-to-promise plumbing is the twenty lines above and it is the whole of
+ * what Dexie would have bought here.
  */
 export function createIndexedDbStore(db: IDBDatabase): OutboxStore {
   async function read<T>(store: string, run: (s: IDBObjectStore) => IDBRequest<T>): Promise<T> {

@@ -52,22 +52,24 @@ export function HomeScreen(props: HomeScreenProps) {
     let cancelled = false;
 
     async function load() {
-      if (online) {
-        try {
-          const { data, response } = await api.GET('/api/v1/work/tasks', {
-            params: { query: { mine: true, status: 'Assigned' } },
-          });
+      // Tried whatever the badge currently believes, because the request is
+      // itself the probe and gating it on the flag it updates is how the flag
+      // latches: a device that saw one 502 would never ask again, and would sit
+      // on a working network reporting itself offline with "next job" disabled.
+      // Offline the call fails in milliseconds and the cache below answers.
+      try {
+        const { data, response } = await api.GET('/api/v1/work/tasks', {
+          params: { query: { mine: true, status: 'Assigned' } },
+        });
 
-          outbox.noteReachable(!unanswered(response.status));
+        outbox.noteReachable(!unanswered(response.status));
 
-          // Reconciled against the warehouse rather than merged into, so a job
-          // somebody else finished stops being advertised on this device.
-          if (data) await reconcileTasks(data.items, user.id);
-        } catch {
-          // The link went between the check and the call. The cache below is
-          // what this whole path exists for.
-          outbox.noteReachable(false);
-        }
+        // Reconciled against the warehouse rather than merged into, so a job
+        // somebody else finished stops being advertised on this device.
+        if (data) await reconcileTasks(data.items, user.id);
+      } catch {
+        // No answer at all. The cache below is what this whole path exists for.
+        outbox.noteReachable(false);
       }
 
       const cached = await recallMyTasks(user.id);

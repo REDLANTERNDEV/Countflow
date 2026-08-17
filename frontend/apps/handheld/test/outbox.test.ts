@@ -215,6 +215,56 @@ test('a server that keeps faulting eventually steps aside instead of blocking th
   assert.equal((await store.get('key-2'))?.state, 'settled');
 });
 
+test('a stalled command is not abandoned — the operator can send it when the warehouse is back', async () => {
+  // The hole this closes was found by stopping the API for four minutes, which
+  // is shorter than a real outage. `drain` walks pending commands only, so a
+  // stalled one was unreachable by every automatic path *and* by the "send
+  // them now" button, and the single action left on its card was the one that
+  // deletes it. A movement the warehouse never heard about, thrown away by the
+  // person it happened to.
+  const store = createMemoryStore();
+  let answer: SendOutcome = { kind: 'unwell', status: 502 };
+
+  const { send, seen } = recorder(() => answer);
+  const outbox = new Outbox(store, send);
+  await outbox.setOwner(OP1);
+  await outbox.submit(completion(1));
+
+  for (let attempt = 0; attempt < STALL_AFTER; attempt += 1) await outbox.drain();
+  assert.equal((await store.get('key-1'))?.state, 'stalled');
+
+  // The warehouse comes back. A drain still will not touch it — that is what
+  // stalling means — so without `retry` the work is stuck for good.
+  answer = { kind: 'accepted', result: {} };
+  const attempted = seen.length;
+  await outbox.drain();
+  assert.equal(seen.length, attempted, 'a stalled command was picked up by an ordinary drain');
+
+  await outbox.retry('key-1');
+
+  const sent = await store.get('key-1');
+  assert.equal(sent?.state, 'settled');
+  assert.equal(sent?.attempts, 0, 'the attempt count measures one outage, not the command');
+  // Same key, so the warehouse recognises a replay rather than a second pallet.
+  assert.equal(seen.at(-1)?.id, 'key-1');
+});
+
+test('only a stalled command can be retried', async () => {
+  // A refusal is an answer, and sending it again earns the identical no.
+  const store = createMemoryStore();
+  const outbox = new Outbox(store, async () => ({
+    kind: 'refused',
+    code: 'work.task_already_completed',
+    status: 409,
+  }));
+  await outbox.setOwner(OP1);
+  await outbox.submit(completion(1));
+
+  await outbox.retry('key-1');
+
+  assert.equal((await store.get('key-1'))?.state, 'refused');
+});
+
 test('another operator’s work is never sent under the signed-in operator', async () => {
   // Not a preference. The ledger records the credential that posted a movement,
   // so replaying OP001's putaway on OP002's token writes a name into an

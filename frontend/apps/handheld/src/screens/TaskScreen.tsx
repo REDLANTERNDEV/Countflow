@@ -569,8 +569,17 @@ function ConfirmationOutcome({
           </p>
         ) : null}
 
+        {/* A stalled confirmation has not been answered, only given up on, so
+            the operator is offered the retry rather than only the button that
+            throws the record away. See `Outbox.retry`. */}
+        {command.state === 'stalled' ? (
+          <Button variant="primary" onClick={() => void outbox.retry(command.id)}>
+            {t('queue.tryAgain')}
+          </Button>
+        ) : null}
+
         <Button
-          variant="primary"
+          variant={command.state === 'stalled' ? 'secondary' : 'primary'}
           onClick={() => {
             void outbox.acknowledge(command.id);
             onDone();

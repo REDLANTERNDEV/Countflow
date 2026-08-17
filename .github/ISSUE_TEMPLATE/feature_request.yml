@@ -1,0 +1,51 @@
+name: Feature or change proposal
+description: Propose something new, or a change to how something works.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please check [ROADMAP.md](https://github.com/REDLANTERNDEV/Countflow/blob/main/ROADMAP.md)
+        first — several things are deliberately left out, each with the argument
+        for why, and the fastest way to get something built is often to disagree
+        with one of those arguments.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: >
+        What can't be done today, and what it costs somebody in a warehouse.
+        Not the solution yet.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you propose
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: surface
+    attributes:
+      label: Does this touch the published surface?
+      description: >
+        There is no internal API here — anything mapped is a public contract
+        we have promised not to break within v1 ([decision 7](https://github.com/REDLANTERNDEV/Countflow/blob/main/docs/decisions.md#7-the-public-surface-is-the-surface)). If it does, that is
+        fine; it just means the shape needs agreeing before code exists.
+      options:
+        - label: It would add or change an HTTP endpoint
+        - label: It would add or change a coded error
+        - label: It would change the database schema
+        - label: None of these
+
+  - type: textarea
+    id: invariants
+    attributes:
+      label: Anything it would make harder
+      description: >
+        Honest trade-offs welcome — every entry in docs/decisions.md says what it
+        cost. If the proposal sits awkwardly with something in
+        docs/invariants.md, say so here rather than leaving it to review.

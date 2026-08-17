@@ -108,9 +108,16 @@ export function App() {
     setSubmitting(true);
     setErrorCode(null);
 
-    const { data, error } = await api.POST('/api/v1/auth/login', {
+    const { data, error, response } = await api.POST('/api/v1/auth/login', {
       body: { identifier: code, password: secret },
     });
+
+    // A sign-in is the most conclusive answer the warehouse ever gives: the
+    // device just spoke to it. Not saying so left the badge reading offline
+    // after a shift change on a device whose previous operator's queue had
+    // marked it unreachable — with "next job" disabled and nothing on the
+    // screen able to disagree.
+    outbox.noteReachable(!unanswered(response.status));
 
     if (error || !data) {
       const problem = error as { code?: string } | undefined;
@@ -276,7 +283,17 @@ export function App() {
         >
           {t('queue.sendNow')}
         </Button>
-        <Button className="w-full" onClick={() => setScreen({ name: 'queue' })}>
+        {/* Leaves the confirmation as well as choosing the screen behind it.
+            Without that this button appears to do nothing — the queue is set
+            and then covered by this very screen, which is what it looked like
+            the first time somebody pressed it. */}
+        <Button
+          className="w-full"
+          onClick={() => {
+            setScreen({ name: 'queue' });
+            setConfirmingSignOut(false);
+          }}
+        >
           {t('queue.open')}
         </Button>
         <Button className="w-full" onClick={() => void signOut()}>

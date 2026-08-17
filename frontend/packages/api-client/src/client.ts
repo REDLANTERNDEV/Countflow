@@ -32,7 +32,14 @@ export function createCountflowClient(options: CountflowClientOptions) {
     const current = tokenStore.read();
     if (!current) return null;
 
-    const response = await fetch(`${baseUrl}/api/auth/refresh`, {
+    // Versioned, like every other path — and the one call in this package that
+    // is not typed against the generated schema, which is exactly why it went
+    // stale when Phase 7 moved the surface under `/api/v1`. It answered 404, so
+    // every expiring token took `!response.ok` and signed the operator out
+    // instead of being refreshed. On the handheld that means a reload after a
+    // battery swap ends the shift's session with the operator's unsent work
+    // still on the device.
+    const response = await fetch(`${baseUrl}/api/v1/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refreshToken: current.refreshToken }),

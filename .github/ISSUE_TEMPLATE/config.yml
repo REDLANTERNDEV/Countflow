@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/REDLANTERNDEV/Countflow/security
+    about: Please report privately, never as a public issue. See SECURITY.md.
+  - name: Documentation
+    url: https://github.com/REDLANTERNDEV/Countflow/tree/main/docs
+    about: Architecture, the decisions behind it, invariants, gotchas, and the API reference.
+  - name: Integrating with the API
+    url: https://github.com/REDLANTERNDEV/Countflow/tree/main/docs/api
+    about: Authentication, idempotency, the change feed, and both loops worked end to end.

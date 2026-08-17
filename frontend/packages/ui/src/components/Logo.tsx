@@ -8,7 +8,7 @@ import { cn } from '../lib/cn.js';
  * cannot do that. `currentColor` on the primary arc is what makes it work in
  * both modes from one asset.
  *
- * Geometry matches countflow-sembol.svg in the logo pack exactly; only the
+ * Geometry matches countflow-mark.svg in the logo pack exactly; only the
  * colour binding differs.
  */
 export function LogoSymbol({ className, size = 20 }: { className?: string; size?: number }) {

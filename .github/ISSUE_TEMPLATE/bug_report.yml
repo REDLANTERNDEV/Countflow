@@ -1,0 +1,75 @@
+name: Bug report
+description: Something behaves differently from how it is documented or intended.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time. If this is a **security** issue, please close
+        this and use [private reporting](https://github.com/REDLANTERNDEV/Countflow/security)
+        instead.
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what you got instead.
+      placeholder: |
+        Confirmed a putaway on the handheld with the API stopped. Expected the
+        command to queue; the screen showed it as completed.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce
+      description: >
+        Steps against a stack you can describe. `docker compose up` with the
+        default seed is the best starting point, because everyone has it.
+      placeholder: |
+        1. docker compose up
+        2. Sign in to the handheld as operator / OP001
+        3. docker compose stop api
+        4. …
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      placeholder: main @ 67857e7
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part
+      multiple: true
+      options:
+        - Inventory / the stock ledger
+        - Rules engine or a decision trace
+        - Shadow replay
+        - Inbound loop
+        - Outbound loop
+        - Cycle counting
+        - Console
+        - Handheld (including the offline queue)
+        - API surface / integration
+        - Docker, compose, or the demo stack
+        - Documentation
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Logs, responses, or a decision trace
+      description: >
+        The API's problem document (with its `code`), the relevant Seq entry, or
+        the trace behind a decision that went the wrong way. For a wrong ranking,
+        the influence report is usually the fastest thing to read.
+      render: text

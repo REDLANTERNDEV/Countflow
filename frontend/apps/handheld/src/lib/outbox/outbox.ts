@@ -307,6 +307,30 @@ export class Outbox {
     await this.refresh();
   }
 
+  /**
+   * The operator asks for a stalled command to be tried again.
+   *
+   * A stall means "stop holding the queue up", never "give up": the command is
+   * still a record of work somebody did, and the automatic retry stopping is
+   * what puts it in front of a person. Without this there is nothing that
+   * person can do with it — `drain` only walks pending commands, so the one
+   * button on the card would be the one that deletes it, and an API that was
+   * down for four minutes would cost the warehouse a movement it never heard
+   * about. Found by stopping the API for long enough that `STALL_AFTER` was
+   * reached, which is a shorter outage than a shift will meet.
+   *
+   * The attempt count goes back to zero because the count is a measure of one
+   * outage, not of the command.
+   */
+  async retry(id: string): Promise<void> {
+    const command = await this.#store.get(id);
+    if (!command || command.state !== 'stalled') return;
+
+    await this.#store.put({ ...command, state: 'pending', attempts: 0 });
+    await this.refresh();
+    await this.drain();
+  }
+
   /** Clears the "3 sent" line once the shell has shown it. */
   clearLastDrain(): void {
     this.#publish({ lastDrain: null });

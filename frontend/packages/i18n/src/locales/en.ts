@@ -440,6 +440,7 @@ export const en = {
     scannedAt: 'Scanned {{time}}',
     attempts: 'Tried {{count}} times',
     acknowledge: 'Got it',
+    tryAgain: 'Try again',
     said: 'The warehouse says',
     doNow: 'What to do',
     code: 'Code',
@@ -464,7 +465,8 @@ export const en = {
         'The stock is off the shelf and nobody is waiting for it now. Ask your supervisor before you put it back.',
       not_recognised: 'Nothing was posted. Do it again with the right code.',
       not_allowed: 'Sign in again. If it still refuses, your account cannot do this job.',
-      stalled: 'It is still saved here. Show a supervisor if it has not gone by the end of the shift.',
+      stalled:
+        'It is still saved here. Try again when you have a signal, and show a supervisor if it has not gone by the end of the shift.',
       unknown: 'Show this to your supervisor, with the code below.',
     },
 
