@@ -2167,6 +2167,57 @@
         }
       }
     },
+    "/api/v1/rules/disposition/preview": {
+      "post": {
+        "tags": [
+          "Rules"
+        ],
+        "summary": "Run the returns disposition rules without posting anything.",
+        "operationId": "PreviewDisposition",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreviewDispositionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreviewDispositionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/work/tasks": {
       "get": {
         "tags": [
@@ -3199,6 +3250,250 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CancelOrderResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/outbound/returns": {
+      "get": {
+        "tags": [
+          "Outbound"
+        ],
+        "summary": "List customer returns and what has been decided about them.",
+        "operationId": "GetReturns",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/ReturnStatus"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReturnPage"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Outbound"
+        ],
+        "summary": "Book customer returns into the returns bay and raise the inspections.",
+        "operationId": "BookReturn",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BookReturnRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookReturnResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/outbound/returns/{id}": {
+      "get": {
+        "tags": [
+          "Outbound"
+        ],
+        "summary": "Read one return.",
+        "operationId": "GetReturn",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReturnResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/outbound/returns/{id}/lines/{lineId}/disposition": {
+      "post": {
+        "tags": [
+          "Outbound"
+        ],
+        "summary": "Run the disposition rules over an inspected return line and carry the answer out.",
+        "operationId": "DispositionReturnLine",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "lineId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DispositionReturnLineRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DispositionReturnLineResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -4259,6 +4554,115 @@
           }
         }
       },
+      "BookReturnLineRequest": {
+        "required": [
+          "sku",
+          "quantity"
+        ],
+        "type": "object",
+        "properties": {
+          "sku": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "orderLineNumber": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "lotNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "expiryDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "sscc": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "BookReturnRequest": {
+        "required": [
+          "warehouseCode",
+          "reference",
+          "toLocationCode",
+          "lines"
+        ],
+        "type": "object",
+        "properties": {
+          "warehouseCode": {
+            "type": "string"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "toLocationCode": {
+            "type": "string"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BookReturnLineRequest"
+            }
+          },
+          "orderReference": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "customerName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "BookReturnResponse": {
+        "required": [
+          "return",
+          "movements",
+          "inspectionsRaised"
+        ],
+        "type": "object",
+        "properties": {
+          "return": {
+            "$ref": "#/components/schemas/ReturnResponse"
+          },
+          "movements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PostedMovement"
+            }
+          },
+          "inspectionsRaised": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
       "CancelCountPlanRequest": {
         "type": "object",
         "properties": {
@@ -5140,7 +5544,8 @@
           "Allocation",
           "Waving",
           "TaskAssignment",
-          "CycleCount"
+          "CycleCount",
+          "Disposition"
         ],
         "type": "string"
       },
@@ -5221,6 +5626,128 @@
             "items": {
               "$ref": "#/components/schemas/PostedMovement"
             }
+          }
+        }
+      },
+      "Disposition": {
+        "enum": [
+          "Restock",
+          "Quarantine",
+          "Repair",
+          "Scrap"
+        ],
+        "type": "string"
+      },
+      "DispositionReturnLineRequest": {
+        "required": [
+          "condition"
+        ],
+        "type": "object",
+        "properties": {
+          "condition": {
+            "$ref": "#/components/schemas/StockCondition"
+          },
+          "isSealed": {
+            "type": "boolean",
+            "default": false
+          },
+          "isRepairable": {
+            "type": "boolean",
+            "default": false
+          },
+          "disposition": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Disposition"
+              }
+            ]
+          },
+          "quantity": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "DispositionReturnLineResponse": {
+        "required": [
+          "return",
+          "applied",
+          "advisedDisposition",
+          "wasOverridden",
+          "decisionTraceId",
+          "reasons",
+          "consideredCount",
+          "admissibleCount",
+          "movement",
+          "workTaskId",
+          "suggestedLocationCode"
+        ],
+        "type": "object",
+        "properties": {
+          "return": {
+            "$ref": "#/components/schemas/ReturnResponse"
+          },
+          "applied": {
+            "$ref": "#/components/schemas/Disposition"
+          },
+          "advisedDisposition": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Disposition"
+              }
+            ]
+          },
+          "wasOverridden": {
+            "type": "boolean"
+          },
+          "decisionTraceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reasons": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScoreLine"
+            }
+          },
+          "consideredCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "admissibleCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "movement": {
+            "$ref": "#/components/schemas/PostedMovement"
+          },
+          "workTaskId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "suggestedLocationCode": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -5787,6 +6314,7 @@
           "PurchaseOrderReceipt",
           "CustomerReturn",
           "ProductionOutput",
+          "RepairReturn",
           "PutawayComplete",
           "ReplenishmentPull",
           "ConsolidationMove",
@@ -5794,6 +6322,7 @@
           "OrderPick",
           "CustomerDespatch",
           "SupplierReturn",
+          "SentForRepair",
           "CycleCountVariance",
           "StocktakeVariance",
           "DamageFound",
@@ -5985,6 +6514,7 @@
           "allocatedQuantity",
           "outstandingQuantity",
           "pickedQuantity",
+          "returnedQuantity",
           "requiredLotNumber",
           "allocations"
         ],
@@ -6020,6 +6550,10 @@
             "format": "double"
           },
           "pickedQuantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "returnedQuantity": {
             "type": "number",
             "format": "double"
           },
@@ -6408,6 +6942,94 @@
             "items": {
               "$ref": "#/components/schemas/PreviewCountLine"
             }
+          },
+          "consideredCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "admissibleCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "trace": {
+            "$ref": "#/components/schemas/DecisionTraceView"
+          }
+        }
+      },
+      "PreviewDispositionRequest": {
+        "required": [
+          "sku",
+          "quantity",
+          "atLocationCode",
+          "condition"
+        ],
+        "type": "object",
+        "properties": {
+          "sku": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "atLocationCode": {
+            "type": "string"
+          },
+          "condition": {
+            "$ref": "#/components/schemas/StockCondition"
+          },
+          "isSealed": {
+            "type": "boolean",
+            "default": false
+          },
+          "isRepairable": {
+            "type": "boolean",
+            "default": false
+          },
+          "daysSinceDespatch": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "expiryDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          }
+        }
+      },
+      "PreviewDispositionResponse": {
+        "required": [
+          "decisionTraceId",
+          "disposition",
+          "score",
+          "consideredCount",
+          "admissibleCount",
+          "trace"
+        ],
+        "type": "object",
+        "properties": {
+          "decisionTraceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "disposition": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Disposition"
+              }
+            ]
+          },
+          "score": {
+            "type": "number",
+            "format": "double"
           },
           "consideredCount": {
             "type": "integer",
@@ -7111,6 +7733,277 @@
             "type": "string"
           }
         }
+      },
+      "ReturnDispositionResponse": {
+        "required": [
+          "id",
+          "disposition",
+          "quantity",
+          "decisionTraceId",
+          "wasOverridden",
+          "movementId",
+          "workTaskId",
+          "decidedAt",
+          "decidedByUserName",
+          "notes"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "disposition": {
+            "$ref": "#/components/schemas/Disposition"
+          },
+          "quantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "decisionTraceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "wasOverridden": {
+            "type": "boolean"
+          },
+          "movementId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "workTaskId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "decidedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "decidedByUserName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ReturnLineResponse": {
+        "required": [
+          "id",
+          "lineNumber",
+          "sku",
+          "description",
+          "baseUom",
+          "quantity",
+          "dispositionedQuantity",
+          "outstandingQuantity",
+          "lotNumber",
+          "expiryDate",
+          "salesOrderLineId",
+          "inspectionTaskId",
+          "inspectionState",
+          "dispositions"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "lineNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sku": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "baseUom": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "dispositionedQuantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "outstandingQuantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "lotNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "expiryDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "salesOrderLineId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "inspectionTaskId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "inspectionState": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/WorkTaskState"
+              }
+            ]
+          },
+          "dispositions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReturnDispositionResponse"
+            }
+          }
+        }
+      },
+      "ReturnPage": {
+        "required": [
+          "items",
+          "total",
+          "page",
+          "pageSize"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReturnResponse"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "ReturnResponse": {
+        "required": [
+          "id",
+          "reference",
+          "status",
+          "salesOrderReference",
+          "salesOrderId",
+          "customerName",
+          "receivedAtLocationCode",
+          "createdAt",
+          "createdByUserName",
+          "closedAt",
+          "notes",
+          "lines"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ReturnStatus"
+          },
+          "salesOrderReference": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "salesOrderId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "customerName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "receivedAtLocationCode": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdByUserName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "closedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReturnLineResponse"
+            }
+          }
+        }
+      },
+      "ReturnStatus": {
+        "enum": [
+          "Received",
+          "Dispositioned"
+        ],
+        "type": "string"
       },
       "ReverseMovementRequest": {
         "type": "object",
@@ -8483,7 +9376,8 @@
           "Putaway",
           "Replenishment",
           "Pick",
-          "CycleCount"
+          "CycleCount",
+          "Inspection"
         ],
         "type": "string"
       },

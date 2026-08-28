@@ -1,5 +1,6 @@
 using Countflow.Modules.Rules.Allocation;
 using Countflow.Modules.Rules.CycleCount;
+using Countflow.Modules.Rules.Dispositions;
 using Countflow.Modules.Rules.Domain;
 using Countflow.Modules.Rules.Putaway;
 using Countflow.SharedKernel.Results;
@@ -11,7 +12,7 @@ namespace Countflow.Modules.Rules.Features.RuleSets;
 /// What each decision kind's rule set may contain, and whether a given one is
 /// usable.
 /// <para>
-/// The one place the three catalogues are addressed generically, and it is
+/// The one place the four catalogues are addressed generically, and it is
 /// deliberately the *only* one. Everywhere a rule actually runs, the vocabulary
 /// stays typed against its own candidate and context — a putaway rule is written
 /// about locations and an allocation rule about holdings, and neither can appear
@@ -23,13 +24,14 @@ namespace Countflow.Modules.Rules.Features.RuleSets;
 public static class RuleVocabulary
 {
     public static IReadOnlyList<DecisionKind> Kinds { get; } =
-        [DecisionKind.Putaway, DecisionKind.Allocation, DecisionKind.CycleCount];
+        [DecisionKind.Putaway, DecisionKind.Allocation, DecisionKind.CycleCount, DecisionKind.Disposition];
 
     public static IReadOnlyList<string> ConstraintCodes(DecisionKind kind) => kind switch
     {
         DecisionKind.Putaway => PutawayRuleCatalogue.ConstraintCodes,
         DecisionKind.Allocation => AllocationRuleCatalogue.ConstraintCodes,
         DecisionKind.CycleCount => CountRuleCatalogue.ConstraintCodes,
+        DecisionKind.Disposition => DispositionRuleCatalogue.ConstraintCodes,
         _ => []
     };
 
@@ -38,6 +40,7 @@ public static class RuleVocabulary
         DecisionKind.Putaway => PutawayRuleCatalogue.PreferenceCodes,
         DecisionKind.Allocation => AllocationRuleCatalogue.PreferenceCodes,
         DecisionKind.CycleCount => CountRuleCatalogue.PreferenceCodes,
+        DecisionKind.Disposition => DispositionRuleCatalogue.PreferenceCodes,
         _ => []
     };
 
@@ -64,6 +67,7 @@ public static class RuleVocabulary
             DecisionKind.Putaway => (Result)PutawayRuleCatalogue.Build(ruleSet),
             DecisionKind.Allocation => AllocationRuleCatalogue.Build(ruleSet),
             DecisionKind.CycleCount => CountRuleCatalogue.Build(ruleSet),
+            DecisionKind.Disposition => DispositionRuleCatalogue.Build(ruleSet),
             _ => Result.Failure(RulesErrors.NoVocabulary(ruleSet.Kind.ToString()))
         };
 

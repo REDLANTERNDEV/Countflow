@@ -129,6 +129,7 @@ public sealed class OrderDescriber(
             line.AllocatedQuantity,
             line.OutstandingQuantity,
             allocations.Sum(a => a.PickedQuantity),
+            line.ReturnedQuantity,
             // The batch number is Inventory's to know; the order carries the id it
             // was created with, and the console shows it against the allocations
             // where the lot is already resolved.

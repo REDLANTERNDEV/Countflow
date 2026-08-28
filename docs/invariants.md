@@ -247,6 +247,23 @@ expensive way.
   found it, and found it by way of the acceptance test that was *supposed* to
   reproduce the Phase 5 flaw and had quietly stopped doing so. Normalise
   `(position − nearest) / (furthest − nearest)`, never `position / furthest`.
+- **A small field is the same trap from the narrow side, and the way out is an
+  absolute scale.** Disposition ranks four fixed options and often two, so a
+  field-relative normaliser would put its best at 1 and its worst at 0 on *every*
+  decision rather than on an unlucky few — the Phase 5 counting flaw with the
+  luck taken out. Every preference in that vocabulary therefore scores against a
+  scale that exists without the field: fixed values per outcome, or a fraction of
+  the item's own shelf life. The precedent is `putaway.consolidate_same_item`
+  (1.0 / 0.8 / 0.35 / 0.0 against absolute categories since Phase 3), which is the
+  one scoring rule of its kind that has never been one of the five. **Score
+  against a scale that exists without the field**, and a degenerate field has
+  nothing to be degenerate relative to. See
+  [decision 12](decisions.md#12-a-disposition-is-a-verb-and-returns-belong-to-outbound).
+- **`RuleInfluence` is near-useless over a four-element field, and that is known.**
+  `UsesTheFullRange` fires on every categorical preference by construction and
+  `DistinctValues` is 2 or 3 on every line. Do not "fix" the report to be quieter
+  about disposition; it is telling the truth about a field too small to say much
+  about. The instrument is for the vocabularies that rank hundreds.
 - **Check a weight against what it actually did, not against what it says.**
   `RuleInfluence` is the instrument: a rule's worth to a ranking is its weight
   times how far apart it scored the candidates in front of it. Four scoring flaws
@@ -379,11 +396,58 @@ expensive way.
   confirmed are both absent from the trailer, and a despatch built from intentions
   is how a customer is invoiced for stock still in the racking.
 
+### Returns and disposition
+
+- **A return is two events, and the second one waits for a person.** Goods land in
+  a **hold-role** bay at `OnHold` and an `Inspection` task is raised; the
+  disposition runs on what the inspector found. Booking a return into racking is
+  refused, and the condition alone would not save it — a bay that holds sellable
+  stock is a bay somebody eventually releases this into by hand.
+- **A disposition is a verb, not a `StockCondition`.** Restock, quarantine, repair
+  and scrap each resolve to a movement the ledger already knew how to post —
+  `StatusChange` then `Putaway`, `StatusChange` in place, `Transfer` to InTransit,
+  `Scrap`. Wanting `StockCondition.AwaitingRepair` is the signal the two
+  vocabularies have fused, not that the enum is too short. See
+  [decision 12](decisions.md#12-a-disposition-is-a-verb-and-returns-belong-to-outbound).
+- **The rules run on an override too, and the trace is written either way.** An
+  override that skipped the evaluation would destroy the only record of what the
+  system would have done, which is the one thing that makes it reviewable.
+  `WasOverridden` is stored, not derived by comparing against the trace later —
+  a rule set is promotable data and will have moved on.
+- **Scrapping a return needs notes at the endpoint as well as at the ledger.**
+  `ScrapInstruction.Notes` is `required` for a reason and the endpoint checks it
+  first so the answer is a coded refusal rather than a five-hundred. Every other
+  movement is explained by its document; a write-off is explained only by the
+  person who ordered it.
+- **`ReturnedQuantity` is summed over return lines, not over dispositions.** What
+  an order wants to know is how much came back, which is settled the moment the
+  goods are on the ledger. Counting dispositions would leave an order claiming
+  nothing had come back while the pallet sat in the bay waiting for somebody.
+  It is **not** capped at the ordered quantity and does not reduce
+  `AllocatedQuantity`: a return is new supply, not an un-picking, and netting it
+  off would make "what did we ship them" unanswerable.
+- **Returns live in the `outbound` schema.** A return is inbound goods against an
+  outbound document, and `SalesOrderLine.ReturnedQuantity` is a projection over
+  its rows — owning it anywhere else would put that sum across a schema boundary
+  (ADR 2) on the busiest page in the application.
+
 ### The stock ledger
 
 - **One posting path.** Every command goes through `StockLedger.PostAsync`. Adding
   a second way to write a movement removes the only place the invariants are
   enforced.
+- **A `Receipt` may come from Supplier *or* Customer, and nothing else.** Phase 7's
+  correction: until then a customer return credited the **supplier** account while
+  the despatch that sent the goods out had debited the **customer** account, so
+  the customer contra account only ever grew and could never be reconciled — the
+  one account a distribution centre most wants to close, on the one ledger built
+  to close it. `MovementType` is the movement's *shape*; which counterparty it
+  came from is the business fact `MovementReason` carries. Do not widen it
+  further: stock does not come back from having been destroyed, and an inbound
+  correction is an `Adjustment` by name.
+- **A `StatusChange` has to change the status.** Posting one that does not would
+  move stock from a holding to itself — perfectly balanced, asserting nothing —
+  and a history full of those is a history nobody can read.
 - **Locks are taken in `Holding.LockOrderKey` order**, which is what stops two
   opposite transfers deadlocking. Anything that touches more than one balance row
   must sort first.

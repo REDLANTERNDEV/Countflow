@@ -135,6 +135,29 @@ public sealed class SalesOrderLine
     /// </summary>
     public decimal AllocatedQuantity { get; set; }
 
+    /// <summary>
+    /// How much of this line came back, and a projection of the return lines that
+    /// name it rather than a figure anybody sets — the same argument as
+    /// <see cref="AllocatedQuantity"/> one paragraph up, for the same reason.
+    /// <para>
+    /// Kept here rather than answered by asking Inbound, because a return is
+    /// Outbound's document: it is booked against this order, its rows live in this
+    /// schema, and the projection is a sum over a table this module owns. That is
+    /// the whole of why <see cref="Return"/> is not in the inbound module (ADR
+    /// 0002) — the alternative was an order page that resolved every line's returns
+    /// across a schema boundary on every read.
+    /// </para>
+    /// <para>
+    /// It does <b>not</b> reduce <see cref="AllocatedQuantity"/> or reopen the
+    /// order. A returned unit is new supply, not an un-picking: it re-enters stock
+    /// through the disposition, and whether the customer is sent a replacement is a
+    /// new order somebody places. Netting it off the original line would make
+    /// "what did we ship them" unanswerable, which is the one question an order
+    /// exists to answer.
+    /// </para>
+    /// </summary>
+    public decimal ReturnedQuantity { get; set; }
+
     public SalesOrder? Order { get; init; }
 
     public ICollection<OrderLineAllocation> Allocations { get; init; } = [];

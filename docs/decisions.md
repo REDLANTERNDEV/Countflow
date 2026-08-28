@@ -1,10 +1,10 @@
 # Why Countflow is built this way
 
-Eleven decisions that would be expensive to reverse, each with the argument behind
+Twelve decisions that would be expensive to reverse, each with the argument behind
 it and **what it cost**. Where one turned out to be wrong, the correction sits
 next to the claim rather than instead of it.
 
-Source comments cite these as `ADR 0001` … `ADR 0011`; the numbers are the same.
+Source comments cite these as `ADR 0001` … `ADR 0012`; the numbers are the same.
 
 1. [Inventory truth is an append-only ledger](#1-inventory-truth-is-an-append-only-ledger)
 2. [A modular monolith, one schema per module](#2-a-modular-monolith-one-schema-per-module)
@@ -17,6 +17,7 @@ Source comments cite these as `ADR 0001` … `ADR 0011`; the numbers are the sam
 9. [The API publishes operations, not tables](#9-the-api-publishes-operations-not-tables)
 10. [The warehouse owns quantity, the ERP owns value](#10-the-warehouse-owns-quantity-the-erp-owns-value)
 11. [A wave is a sequence of decisions, not a partition](#11-a-wave-is-a-sequence-of-decisions-not-a-partition)
+12. [A disposition is a verb, and returns belong to outbound](#12-a-disposition-is-a-verb-and-returns-belong-to-outbound)
 
 ---
 
@@ -736,6 +737,194 @@ and a judgement this system cannot explain is a judgement it should not make.
 are the same shape — a set carved out of a field of candidates against
 accumulating state — and all three are now vocabulary work on an engine that does
 not need to change to accept them.
+
+---
+
+## 12. A disposition is a verb, and returns belong to outbound
+
+[Decision 11](#11-a-wave-is-a-sequence-of-decisions-not-a-partition) admitted a
+fourth vocabulary on an argument rather than on evidence: that the kernel would
+not have to change to accept one. Returns are the first vocabulary built since,
+and they were chosen to be the least like the other three — so this section is
+partly a design record and partly the receipt.
+
+**The claim held.** `RuleEngine`, `Decision<T>`, `IRule`, `IRuleCandidate`,
+`DecisionJournal`, the trace schema and `ShadowReplay.Compare` were not opened.
+`DispositionRuleCatalogue` is `PutawayRuleCatalogue` with different rule names in
+it; the console's trace component gained the lookup by kind that decision 11
+predicted it would, and no second code path. The costs that were named in advance
+— a second catalogue, a fourth `InputsJson` shape, a fourth replay rebuild —
+are the costs that were paid.
+
+### The candidate is not a row
+
+Putaway ranks two thousand `StorageLocationSnapshot`s; allocation and counting
+rank holdings. All three have a database identity that `IRuleCandidate.Id` can
+simply *be*. A disposition has none: the field is four fixed verbs, so
+`DispositionOption` mints four constant GUIDs by hand and keys them
+`restock` / `quarantine` / `repair` / `scrap`. A deterministic hash of the enum
+name would look tidier and would silently change the day somebody renamed a
+member, and a trace cannot survive that.
+
+Every evaluation considers all four. Narrowing the field to the plausible ones
+before the engine sees it would be the `WHERE` clause
+`FindStorageCandidatesAsync` refuses to be — a candidate excluded by a query never
+appears in a trace, and "why wasn't it just repaired?" is the question this
+decision exists to answer.
+
+**And the field is small enough to be dangerous.** A four-element field walks
+straight into the normalisation trap this codebase has now found five times, and
+it walks into it from the *narrow* side, the way Phase 5's counting travel rule
+did: a field-relative normaliser puts its best candidate at 1 and its worst at 0
+however alike the two really are, and over four options — often two, once the
+constraints have finished — that would be the fingerprint on every decision ever
+made rather than on an unlucky few. The answer is that **every preference in this
+vocabulary scores on an absolute scale.** `disposition.recover_value` returns
+1.0 / 0.7 / 0.3 / 0.0 by outcome; `disposition.shelf_life_headroom` returns a
+fraction of the item's own shelf life, which is the FEFO rule again and for the
+same reason. The precedent is `putaway.consolidate_same_item`, which has scored
+against fixed categories since Phase 3 and is the one travel-adjacent preference
+that has never been one of the five. **Score against a scale that exists without
+the field**, and a degenerate field has nothing to be degenerate relative to.
+
+### A disposition is a verb, not a `StockCondition`
+
+`Available` / `Quarantine` / `Damaged` / `OnHold` / `Expired` already existed, and
+restock and quarantine map onto them cleanly enough that adding `Repair` and
+`Scrap` beside them looks like the small change. It is the wrong one. A condition
+is a state a quantity is **in**; a disposition is an action taken **on** it.
+`Damaged` is a condition and `Scrap` is a verb, and the two coincide for exactly
+two of the four by accident.
+
+The ledger had already drawn that line and was waiting to be asked. Restock is a
+`StatusChange` and then an ordinary `Putaway`; quarantine is a `StatusChange` in
+place, which is what `MovementType.StatusChange`'s own documentation has said
+since Phase 1; repair is a `Transfer` to the InTransit counterparty, which
+`MovementShape` has permitted on either side of a transfer since Phase 1 because
+stock leaving for another site was the first thing that was neither here nor sold;
+scrap is the write-off Phase 5 built. **No new movement type, no new condition.**
+What returns added to `IStockPosting` is two doors onto operations the ledger
+could already perform — `ChangeConditionAsync` and `SendForRepairAsync` — and the
+first of those is a door Phase 1 built the room for and nobody had walked through.
+
+If a future change wants `StockCondition.AwaitingRepair`, that is the signal the
+two vocabularies have fused, not that the enum was too short.
+
+### Returns belong to outbound
+
+A return is inbound goods against an **outbound** document, and ADR 2 says a
+module never reads another's tables. That makes the ownership question real rather
+than clerical, and the deciding argument is
+`SalesOrderLine.ReturnedQuantity`: it is a projection over return lines, so
+whichever module owns the return owns the sum. Put the aggregate in Inbound and
+Outbound has to resolve every order line's returns across a schema boundary on
+every read of an order — a cross-module lookup per line, on the busiest page in
+the application, to answer a question about its own document.
+
+So `Return`, `ReturnLine` and `ReturnLineDisposition` live in the `outbound`
+schema, and the physical half goes through the published doors exactly as a
+despatch does: `IStockPosting` books the goods, `IWorkQueue` raises the
+inspection, `IDispositionAdvisor` decides their fate. Outbound still writes no
+ledger entry, which is the claim it has been able to make since Phase 4.
+
+### A return is two events, not one
+
+The receipt already existed — `ReceiptInstruction.IsReturn` has been on the
+contract since Phase 3 — so the cheap version of this feature was one call at the
+dock that books the goods and dispositions them in the same breath. It is the
+wrong shape, and the reason is visible in what the rules actually score on: sealed
+or opened, repairable or not, what the goods *are* as against what the paperwork
+says. Every one of those is a judgement somebody makes with the carton in their
+hands. A disposition decided at the desk would be decided by somebody who has not
+opened it.
+
+So goods land in a hold-role returns bay at `OnHold` — a condition allocation will
+not sell out of — an `Inspection` task goes into somebody's queue, and the
+disposition waits. `WorkTaskKind.Inspection` is the first kind of directed work
+that moves no stock and posts nothing; what it produces is
+`InspectionFindings`, and that is the whole input to the fourth vocabulary.
+
+### The rules advise; a person may overrule them, and the trace is written either way
+
+The other three advisors are consumed by callers that act on the answer. This one
+is not, because one of its four candidates destroys stock. The endpoint always
+runs the evaluation and always writes the trace, **including when the inspector
+has already said what they want** — an override that skipped the evaluation would
+destroy the only record of what the system would have done, which is the one thing
+that makes an override worth reviewing. `WasOverridden` is stored rather than
+derived by comparing against the trace later, because a rule set is promotable
+data and will have moved on.
+
+Scrap additionally requires notes at the endpoint, mirroring
+`ScrapInstruction.Notes` being `required`: every other movement is explained by
+its document, and a write-off is explained only by the person who ordered it.
+`disposition.scrap_is_not_for_saleable_stock` is the other half of that guard, and
+it is a constraint rather than a heavy weight because every other mistake this
+vocabulary can make is fixed by re-running the decision and this one is a pallet
+in a skip.
+
+### The correction it forced: a return credits Customer
+
+Booking a return posted it **from the Supplier counterparty**, because
+`MovementShape` required a `Receipt` to come from Supplier and nobody had needed
+otherwise. The reason code said `CustomerReturn`, so the information was
+recoverable; the *balance* was not. The despatch had debited Customer and nothing
+ever credited it back, so the customer contra account only ever grew — and the one
+account a distribution centre most wants to reconcile was the one account an
+append-only double-entry ledger ([decision 1](#1-inventory-truth-is-an-append-only-ledger))
+could not close.
+
+`MovementType.Receipt` now permits Supplier **or** Customer. That is a widening of
+a load-bearing guard and it is deliberately narrow: the type is the movement's
+*shape* — goods entering the building from a counterparty — and which counterparty
+is the business fact `MovementReason` already carries. Scrap and Adjustment stay
+out, because stock does not come back from having been destroyed and an inbound
+correction is an Adjustment by name.
+
+**What it costs**
+
+- **`RuleInfluence` says very little about this vocabulary, and that is accepted
+  rather than worked around.** The instrument that caught four of the five scoring
+  flaws measures a rule's realised swing across the admissible field. Over four
+  candidates — often two — `UsesTheFullRange` fires on every categorical
+  preference by construction, `DistinctValues` is 2 or 3 on every line, and
+  `WinningMargin` is arithmetic over a handful of points. The report is not wrong;
+  it is uninformative, and a noisy instrument is one people stop reading. The
+  vocabulary was still built on the engine rather than as a decision table,
+  because the alternative forfeits the trace, the version stamp and replay — which
+  are the three things the exercise is for. But nobody should expect the
+  diagnostic to transfer.
+- **The seeded weights are the least evidence-backed in the system.** Putaway,
+  allocation and counting were tuned against a warehouse being driven by hand.
+  `recover_value` at 0.40 against `handling_cost` at 0.25 is a defensible starting
+  point and nothing more, and the two pull in opposite directions on purpose —
+  which means a warehouse that gets them wrong will not restock slightly too
+  often, it will scrap things. The rules are data and the preview endpoint exists;
+  that is the mitigation, and it is a weaker one than "we watched it run".
+- **A restock is two decisions and two traces.** "Should this go back on a shelf"
+  and "which shelf" are different questions with different rule sets, and the
+  honest answer is two evaluations. Nothing links them: the disposition trace
+  does not name the putaway trace, so "why is this pallet in that bay" and "why is
+  it back in stock at all" are answered separately and a person has to hold both.
+  It is the same weakness decision 11 names for the wave chain, arrived at from a
+  different direction.
+- **`disposition.hazardous_never_restocked` ships disabled and is therefore
+  untested end to end.** It is a real, supported rule that most warehouses should
+  not run, and seeding it switched off is the honest default — a supervisor cannot
+  enable a rule they have never been shown. But the seeded set is shared across
+  the integration database, so no test enables it, and its first real exercise
+  will be in a warehouse that handles regulated goods.
+- **Repair has no return leg.** `MovementReason.RepairReturn` exists and nothing
+  raises it. Goods go out to InTransit and come back through the ordinary receipt
+  path, which conserves stock correctly and does not connect the two ends: nothing
+  says which repair a receipt settles, and nothing chases a vendor who has had a
+  pallet for four months. That is a real gap rather than a scope decision, and it
+  is the first thing to build on top of this.
+- **The condition change and the putaway are not one transaction.** They are in
+  three schemas (ADR 2), so a crash between them leaves stock released to
+  `Available` in the returns bay with no putaway task — visible as a pallet in
+  returns, repairable by a retry, and the same convergent shape the outbound
+  release already has.
 
 ---
 

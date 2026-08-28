@@ -86,6 +86,187 @@ namespace Countflow.Modules.Outbound.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Countflow.Modules.Outbound.Domain.Return", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("ClosedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedByUserName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("CustomerName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<Guid>("ReceivedAtLocationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Reference")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid?>("SalesOrderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("SalesOrderReference")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("WarehouseId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SalesOrderId");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("WarehouseId", "Reference")
+                        .IsUnique();
+
+                    b.ToTable("Returns", "outbound");
+                });
+
+            modelBuilder.Entity("Countflow.Modules.Outbound.Domain.ReturnLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("DispositionedQuantity")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<DateOnly?>("ExpiryDate")
+                        .HasColumnType("date");
+
+                    b.Property<Guid?>("InspectionTaskId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ItemId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("LicensePlateId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("LineNumber")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("LotId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("LotNumber")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<Guid>("ReceiptMovementId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ReturnId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("SalesOrderLineId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ItemId");
+
+                    b.HasIndex("ReceiptMovementId")
+                        .IsUnique();
+
+                    b.HasIndex("SalesOrderLineId");
+
+                    b.HasIndex("ReturnId", "LineNumber")
+                        .IsUnique();
+
+                    b.ToTable("ReturnLines", "outbound", t =>
+                        {
+                            t.HasCheckConstraint("CK_ReturnLines_DispositionWithinLine", "\"DispositionedQuantity\" >= 0 AND \"DispositionedQuantity\" <= \"Quantity\"");
+
+                            t.HasCheckConstraint("CK_ReturnLines_PositiveQuantity", "\"Quantity\" > 0");
+                        });
+                });
+
+            modelBuilder.Entity("Countflow.Modules.Outbound.Domain.ReturnLineDisposition", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("DecidedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DecidedByUserName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<Guid>("DecisionTraceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Disposition")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("IdempotencyKey")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<Guid>("MovementId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<Guid>("ReturnLineId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("WasOverridden")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid?>("WorkTaskId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DecisionTraceId");
+
+                    b.HasIndex("IdempotencyKey")
+                        .IsUnique();
+
+                    b.HasIndex("ReturnLineId", "DecidedAt");
+
+                    b.ToTable("ReturnLineDispositions", "outbound", t =>
+                        {
+                            t.HasCheckConstraint("CK_ReturnLineDispositions_PositiveQuantity", "\"Quantity\" > 0");
+                        });
+                });
+
             modelBuilder.Entity("Countflow.Modules.Outbound.Domain.SalesOrder", b =>
                 {
                     b.Property<Guid>("Id")
@@ -189,6 +370,10 @@ namespace Countflow.Modules.Outbound.Persistence.Migrations
                     b.Property<Guid?>("RequiredLotId")
                         .HasColumnType("uuid");
 
+                    b.Property<decimal>("ReturnedQuantity")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
                     b.Property<Guid>("SalesOrderId")
                         .HasColumnType("uuid");
 
@@ -259,6 +444,28 @@ namespace Countflow.Modules.Outbound.Persistence.Migrations
                     b.Navigation("Line");
                 });
 
+            modelBuilder.Entity("Countflow.Modules.Outbound.Domain.ReturnLine", b =>
+                {
+                    b.HasOne("Countflow.Modules.Outbound.Domain.Return", "Return")
+                        .WithMany("Lines")
+                        .HasForeignKey("ReturnId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Return");
+                });
+
+            modelBuilder.Entity("Countflow.Modules.Outbound.Domain.ReturnLineDisposition", b =>
+                {
+                    b.HasOne("Countflow.Modules.Outbound.Domain.ReturnLine", "Line")
+                        .WithMany("Dispositions")
+                        .HasForeignKey("ReturnLineId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Line");
+                });
+
             modelBuilder.Entity("Countflow.Modules.Outbound.Domain.SalesOrderLine", b =>
                 {
                     b.HasOne("Countflow.Modules.Outbound.Domain.SalesOrder", "Order")
@@ -268,6 +475,16 @@ namespace Countflow.Modules.Outbound.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("Order");
+                });
+
+            modelBuilder.Entity("Countflow.Modules.Outbound.Domain.Return", b =>
+                {
+                    b.Navigation("Lines");
+                });
+
+            modelBuilder.Entity("Countflow.Modules.Outbound.Domain.ReturnLine", b =>
+                {
+                    b.Navigation("Dispositions");
                 });
 
             modelBuilder.Entity("Countflow.Modules.Outbound.Domain.SalesOrder", b =>

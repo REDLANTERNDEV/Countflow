@@ -44,11 +44,18 @@ public sealed class StockPosting(
         var destination = await locations.FindAsync(instruction.ToLocationId, cancellationToken);
         if (destination is null) return Result.Failure<PostedMovement>(InventoryErrors.LocationNotFound);
 
-        // The supplier account belongs to the warehouse the goods are landing in,
-        // so it is derived from the destination rather than asked for.
-        var supplier = await resolve.CounterpartyAsync(
-            destination.WarehouseId, CounterpartyKind.Supplier, cancellationToken);
-        if (supplier.IsFailure) return Result.Failure<PostedMovement>(supplier.Error);
+        // The counterparty account belongs to the warehouse the goods are landing
+        // in, so it is derived from the destination rather than asked for — and
+        // *which* account it is follows from where the goods came from. A return
+        // credits Customer, which is the account the despatch debited; anything
+        // else credits Supplier. Booking a return against Supplier is what this
+        // system did until Phase 7, and it left the customer account growing
+        // forever with nothing that could ever bring it back down.
+        var counterparty = await resolve.CounterpartyAsync(
+            destination.WarehouseId,
+            instruction.IsReturn ? CounterpartyKind.Customer : CounterpartyKind.Supplier,
+            cancellationToken);
+        if (counterparty.IsFailure) return Result.Failure<PostedMovement>(counterparty.Error);
 
         var lot = await resolve.LotAsync(
             item,
@@ -70,10 +77,12 @@ public sealed class StockPosting(
                 ItemId = item.Id,
                 LotId = lot.Value,
                 Quantity = instruction.Quantity,
-                // Stock always leaves the supplier account as Available: from the
-                // supplier's side it was good stock, and booking it into
-                // quarantine is a decision this warehouse made.
-                From = new Holding(supplier.Value.Id, null, InventoryStatus.Available),
+                // Stock always leaves the counterparty account as Available: from
+                // the other side it was good stock, and booking it into quarantine
+                // is a decision this warehouse made. That holds for a return too —
+                // the customer sent back what they believed they had bought, and
+                // what it actually turns out to be is what the inspection is for.
+                From = new Holding(counterparty.Value.Id, null, InventoryStatus.Available),
                 To = new Holding(destination.Id, plate.Value, status),
                 Type = MovementType.Receipt,
                 Reason = instruction.IsReturn
@@ -391,6 +400,118 @@ public sealed class StockPosting(
             ? Result.Failure<PostedMovement>(posted.Error)
             : Describe(posted.Value, instruction.LotId, licensePlateId: null);
     }
+
+    /// <summary>
+    /// Re-books a quantity into a different condition, in place.
+    /// <para>
+    /// Both holdings name the same location, which is what
+    /// <c>MovementShape</c> insists on for a status change and what makes this a
+    /// single conserving entry rather than a loss and a gain. The licence plate
+    /// travels, as it does on a putaway: quarantining a pallet does not stop it
+    /// being that pallet.
+    /// </para>
+    /// </summary>
+    public async Task<Result<PostedMovement>> ChangeConditionAsync(
+        ConditionChangeInstruction instruction,
+        CancellationToken cancellationToken)
+    {
+        if (instruction.FromCondition == instruction.ToCondition)
+        {
+            return Result.Failure<PostedMovement>(InventoryErrors.ConditionUnchanged);
+        }
+
+        var posted = await ledger.PostAsync(
+            new PostingCommand
+            {
+                ItemId = instruction.ItemId,
+                LotId = instruction.LotId,
+                Quantity = instruction.Quantity,
+                From = new Holding(
+                    instruction.LocationId, instruction.LicensePlateId, ToStatus(instruction.FromCondition)),
+                To = new Holding(
+                    instruction.LocationId, instruction.LicensePlateId, ToStatus(instruction.ToCondition)),
+                Type = MovementType.StatusChange,
+                Reason = ReasonFor(instruction.ToCondition),
+                IdempotencyKey = instruction.IdempotencyKey,
+                Actor = ToActor(instruction.Actor),
+                DecisionTraceId = instruction.DecisionTraceId,
+                Notes = instruction.Notes
+            },
+            cancellationToken);
+
+        return posted.IsFailure
+            ? Result.Failure<PostedMovement>(posted.Error)
+            : Describe(posted.Value, instruction.LotId, instruction.LicensePlateId);
+    }
+
+    /// <summary>
+    /// Sends goods out to a repair vendor, against InTransit.
+    /// <para>
+    /// A <see cref="MovementType.Transfer"/> rather than a despatch, and the plate
+    /// goes with it: the pallet is still the company's, still expected back, and
+    /// still recognisable when it arrives. A despatch would settle it against a
+    /// customer who never bought it.
+    /// </para>
+    /// </summary>
+    public async Task<Result<PostedMovement>> SendForRepairAsync(
+        RepairInstruction instruction,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(instruction.Notes))
+        {
+            return Result.Failure<PostedMovement>(InventoryErrors.RepairNotesRequired);
+        }
+
+        var origin = await locations.FindAsync(instruction.FromLocationId, cancellationToken);
+        if (origin is null) return Result.Failure<PostedMovement>(InventoryErrors.LocationNotFound);
+
+        var transit = await resolve.CounterpartyAsync(
+            origin.WarehouseId, CounterpartyKind.InTransit, cancellationToken);
+        if (transit.IsFailure) return Result.Failure<PostedMovement>(transit.Error);
+
+        var status = ToStatus(instruction.Condition);
+
+        var posted = await ledger.PostAsync(
+            new PostingCommand
+            {
+                ItemId = instruction.ItemId,
+                LotId = instruction.LotId,
+                Quantity = instruction.Quantity,
+                From = new Holding(instruction.FromLocationId, instruction.LicensePlateId, status),
+                To = new Holding(transit.Value.Id, instruction.LicensePlateId, status),
+                Type = MovementType.Transfer,
+                Reason = MovementReason.SentForRepair,
+                IdempotencyKey = instruction.IdempotencyKey,
+                Actor = ToActor(instruction.Actor),
+                DecisionTraceId = instruction.DecisionTraceId,
+                Notes = instruction.Notes
+            },
+            cancellationToken);
+
+        return posted.IsFailure
+            ? Result.Failure<PostedMovement>(posted.Error)
+            : Describe(posted.Value, instruction.LotId, instruction.LicensePlateId);
+    }
+
+    /// <summary>
+    /// The ledger's own word for a condition change.
+    /// <para>
+    /// Read off the destination rather than the source, because that is the
+    /// direction the fact runs: stock becoming quarantined is a hold being applied
+    /// whatever it was before, and stock becoming available is a hold being
+    /// released. The one exception is <see cref="StockCondition.Damaged"/>, which is
+    /// not a hold at all — it is somebody finding damage, and the ledger has said so
+    /// since Phase 1.
+    /// </para>
+    /// </summary>
+    private static MovementReason ReasonFor(StockCondition to) => to switch
+    {
+        StockCondition.Damaged => MovementReason.DamageFound,
+        StockCondition.Expired => MovementReason.ExpiryReached,
+        StockCondition.Quarantine or StockCondition.OnHold => MovementReason.QualityHoldApplied,
+        StockCondition.Available => MovementReason.QualityHoldReleased,
+        _ => MovementReason.ManualCorrection
+    };
 
     private static PostedMovement Describe(MovementReceipt receipt, Guid? lotId, Guid? licensePlateId) =>
         new(

@@ -16,7 +16,19 @@ public enum WorkTaskKind
     Putaway = 1,
     Replenishment = 2,
     Pick = 3,
-    CycleCount = 4
+    CycleCount = 4,
+
+    /// <summary>
+    /// Look at what came back and say what it is. Phase 7.
+    /// <para>
+    /// The only kind that moves no stock and posts nothing. What it produces is
+    /// <see cref="InspectionFindings"/> — sealed or opened, repairable or not —
+    /// which is the entire input to the disposition decision and the reason a
+    /// return is two events rather than one. A disposition decided at the dock door
+    /// would be decided by somebody who has not opened the carton.
+    /// </para>
+    /// </summary>
+    Inspection = 5
 }
 
 /// <summary>A job for an operator, raised by whichever module knows it is needed.</summary>

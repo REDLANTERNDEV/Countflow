@@ -1,4 +1,5 @@
 using Countflow.Modules.Outbound.Features.Orders;
+using Countflow.Modules.Outbound.Features.Returns;
 using Countflow.Modules.Outbound.Features.Waves;
 using Countflow.Modules.Outbound.Persistence;
 using Countflow.SharedKernel.Modules;
@@ -13,8 +14,8 @@ namespace Countflow.Modules.Outbound;
 /// The outbound loop: what a customer asked for, which stock was promised to it,
 /// and the work that gets it out of the door.
 /// <para>
-/// An orchestrator, exactly as Inbound is. It owns orders and waves and nothing
-/// else — the stock is chosen by Rules, held and moved by Inventory, and fetched
+/// An orchestrator, exactly as Inbound is. It owns orders, waves and returns and
+/// nothing else — the stock is chosen by Rules, held and moved by Inventory, and fetched
 /// by Work, each through a published contract. Phase 4 was allowed to extend the
 /// ledger no more than Phase 3 was, and this module is where that discipline shows:
 /// it takes a great deal of stock out of the building and contains no code that
@@ -40,6 +41,7 @@ public sealed class OutboundModule : ICountflowModule
         services.AddScoped<IModuleSeeder, OutboundSeeder>();
 
         services.AddScoped<OrderDescriber>();
+        services.AddScoped<ReturnDescriber>();
 
         // Releasing is a service rather than an endpoint body because a wave
         // releases its orders, and a wave that did it through a second path would
@@ -58,6 +60,11 @@ public sealed class OutboundModule : ICountflowModule
         PackOrder.Map(endpoints);
         DespatchOrder.Map(endpoints);
         CancelOrder.Map(endpoints);
+
+        GetReturns.Map(endpoints);
+        GetReturn.Map(endpoints);
+        BookReturn.Map(endpoints);
+        DispositionReturnLine.Map(endpoints);
 
         GetWaves.Map(endpoints);
         CreateWave.Map(endpoints);

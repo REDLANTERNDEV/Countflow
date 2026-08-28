@@ -18,6 +18,9 @@ public enum MovementReason
     CustomerReturn = 2,
     ProductionOutput = 3,
 
+    /// <summary>Back from a repair vendor. The return leg of <see cref="SentForRepair"/>.</summary>
+    RepairReturn = 4,
+
     PutawayComplete = 10,
     ReplenishmentPull = 11,
     ConsolidationMove = 12,
@@ -26,6 +29,13 @@ public enum MovementReason
     OrderPick = 20,
     CustomerDespatch = 21,
     SupplierReturn = 22,
+
+    /// <summary>
+    /// Out to a third party who will fix it and send it back. Not a despatch: the
+    /// stock is still the company's and is still expected, which is why it goes to
+    /// the InTransit counterparty rather than to Customer.
+    /// </summary>
+    SentForRepair = 23,
 
     // ---- Counting ----
 

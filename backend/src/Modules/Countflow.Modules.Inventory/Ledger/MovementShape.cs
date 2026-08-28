@@ -21,9 +21,20 @@ public static class MovementShape
         switch (type)
         {
             case MovementType.Receipt:
+                // Supplier or Customer, and the second one is Phase 7's correction
+                // rather than a loosening. A customer return is the same *shape* —
+                // goods entering the building from a counterparty — and shape is
+                // what this rule is about; which counterparty it came from is the
+                // business fact, and MovementReason already carries it. Until this
+                // changed, every return credited Supplier while the despatch that
+                // sent the goods out had debited Customer, so the customer contra
+                // account grew forever and could never be reconciled. Scrap and
+                // Adjustment stay out: stock does not come *back* from having been
+                // destroyed, and an inbound correction is an Adjustment by name.
                 return Require(
-                    from.Counterparty == CounterpartyKind.Supplier && !to.IsVirtual,
-                    "A receipt moves stock from the Supplier counterparty into a physical location.");
+                    from.Counterparty is CounterpartyKind.Supplier or CounterpartyKind.Customer
+                    && !to.IsVirtual,
+                    "A receipt moves stock from the Supplier or Customer counterparty into a physical location.");
 
             case MovementType.Despatch:
                 return Require(

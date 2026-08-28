@@ -538,10 +538,15 @@ export const en = {
       // column headed "Location" over a list of batches is the sort of small lie
       // that makes a trace harder to read than the thing it explains.
       consideredStock: '{{admissible}} of {{considered}} holdings were admissible',
+      // Four fixed options rather than a field of rows, so the sentence counts
+      // outcomes. Three of four ruled out is the ordinary case and a complete
+      // argument, not a thin one.
+      consideredDisposition: '{{admissible}} of {{considered}} dispositions were admissible',
       chose: 'Chose {{location}}',
       choseNothing: 'Nothing was suitable',
       candidate: 'Location',
       candidateStock: 'Stock',
+      candidateDisposition: 'Disposition',
       rank: 'Rank',
       score: 'Score',
       excludedBy: 'Ruled out by',
@@ -669,6 +674,39 @@ export const en = {
       velocity_band: '{{band}}-class item.',
       share_of_item_stock: '{{units}} here — {{percent}}% of everything we hold of it.',
       travel_distance: 'Zone {{zone}}, {{percent}}% along the route.',
+    },
+
+    // The coded reasons the disposition rules give about one of the four outcomes.
+    // Fixed options rather than places, so these read as verdicts on a course of
+    // action rather than as facts about a shelf.
+    disposition: {
+      // The four outcomes by name, for the badge that says what was chosen.
+      option: {
+        restock: 'restock',
+        quarantine: 'quarantine',
+        repair: 'repair',
+        scrap: 'scrap',
+      },
+      not_good_stock: 'The inspection found it {{condition}}.',
+      packaging_opened: 'The packaging has been opened.',
+      shelf_life_too_short: 'Only {{remaining}}% of its life is left, and {{required}}% is the minimum.',
+      no_repair_route: 'This warehouse has nowhere to send goods for repair.',
+      not_repairable: 'The inspection says it cannot be economically repaired.',
+      still_saleable: 'It is sealed and in date — {{sku}} can still be sold.',
+      hazardous_return: '{{sku}} is hazardous, and the chain of custody broke when it left.',
+      value_fully_recovered: 'Back on the shelf, {{sku}} is worth what it was worth.',
+      value_recovered_after_repair: 'Worth recovering, less the cost of the repair.',
+      value_undecided: 'Holding it keeps the value in play without settling anything.',
+      value_lost: 'Nothing is recovered by destroying it.',
+      handling_trivial: 'One movement and a skip.',
+      handling_deferred: 'Cheap today; somebody has to come back to it.',
+      handling_putaway: 'A release and a putaway of {{units}}.',
+      handling_vendor_round_trip: 'A vendor, a despatch and a receipt weeks later.',
+      days_since_despatch: 'Back after {{days}} days, against a {{window}}-day window.',
+      no_despatch_on_record: 'No order behind it, so nobody knows how long they had it.',
+      shelf_life_left: '{{remaining}}% of its shelf life is left.',
+      shelf_life_unknown: 'No shelf life on file.',
+      shelf_life_not_relevant: 'Shelf life does not bear on this option.',
     },
 
     // Enum values that arrive inside a rule note's arguments. Translated by

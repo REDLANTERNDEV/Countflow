@@ -157,4 +157,20 @@ public static class InventoryErrors
         Error.Validation(
             "inventory.scrap_notes_required",
             "A write-off must say why. Every other movement is explained by its document; this one is not.");
+
+    public static readonly Error RepairNotesRequired =
+        Error.Validation(
+            "inventory.repair_notes_required",
+            "Goods going out for repair must say who is fixing them and what is wrong with them.");
+
+    /// <summary>
+    /// A status change that changes no status. Refused rather than treated as a
+    /// harmless no-op: the ledger would post an entry moving stock from a holding
+    /// to itself, which balances perfectly and asserts nothing, and a history full
+    /// of those is a history nobody can read.
+    /// </summary>
+    public static readonly Error ConditionUnchanged =
+        Error.Validation(
+            "inventory.condition_unchanged",
+            "A status change has to change the status.");
 }

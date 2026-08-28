@@ -10,6 +10,43 @@ features is in [docs/history.md](docs/history.md).
 
 ### Added
 
+- **Returns, and a fourth vocabulary to decide what becomes of them.** Goods a
+  customer sends back are booked into a hold bay, inspected by a person, and then
+  routed by rule to one of four outcomes — restock, quarantine, repair or scrap —
+  with a decision trace behind every one of them. `POST /outbound/returns` books
+  the return and raises the inspections; `POST /outbound/returns/{id}/lines/{lineId}/disposition`
+  runs the rules over what the inspector found and carries the answer out.
+  `POST /rules/disposition/preview` asks the same question with nothing posted.
+
+  **A return is deliberately two events.** The receipt has existed since Phase 3,
+  so the cheap version was one call at the desk that books the goods and decides
+  their fate in the same breath. Everything the rules actually score on — sealed
+  or opened, repairable or not, what the goods *are* as against what the paperwork
+  says — is a judgement somebody makes with the carton in their hands, so a
+  disposition taken at the desk would be taken by somebody who has not opened it.
+  Goods land at `OnHold` in a hold-role bay, which allocation will not sell out
+  of, and an `Inspection` task waits in somebody's queue.
+
+  The rules advise and a supervisor may overrule them, and **the evaluation runs
+  and the trace is written either way** — an override that skipped it would
+  destroy the only record of what the system would have done. Destroying returned
+  stock additionally needs a reason in writing, because every other movement is
+  explained by its document and a write-off is explained only by the person who
+  ordered it.
+
+  Order lines now carry `returnedQuantity`, summed over what came back rather
+  than over what has been decided about it, and separate from what was allocated:
+  a returned unit is new supply, not an un-picking. The reasoning is
+  [decision 12](docs/decisions.md#12-a-disposition-is-a-verb-and-returns-belong-to-outbound).
+
+- **Two operations the ledger could always perform and no contract offered.**
+  `IStockPosting.ChangeConditionAsync` moves a quantity between conditions without
+  moving it anywhere — the `StatusChange` movement Phase 1 built the room for and
+  nobody had walked through — and `SendForRepairAsync` sends goods to a third
+  party against the InTransit counterparty. Neither is a new kind of ledger entry;
+  a disposition is a choice *among movements the system already makes*, which is
+  why it is a concept beside `StockCondition` rather than a set of new conditions.
+
 - **Passwords can be read back before they are sent.** Both sign-in screens carry
   a reveal control in the field. NIST SP 800-63B asks verifiers to offer one: a
   secret nobody can check pushes people towards shorter passwords and towards the
@@ -123,6 +160,19 @@ features is in [docs/history.md](docs/history.md).
   each a failing test rather than something you find later.
 
 ### Fixed
+
+- **A customer return credits the customer account it left from.** Booking one
+  posted it from the **supplier** counterparty, because the ledger's shape rule
+  required every receipt to. The reason code said `CustomerReturn`, so the
+  information was recoverable — but the despatch had debited Customer and nothing
+  ever credited it back, so the customer contra account only ever grew and the one
+  account a distribution centre most wants to reconcile was the one an
+  append-only double-entry ledger could not close.
+
+  `MovementType.Receipt` now permits Supplier or Customer, and nothing else. The
+  type is the movement's *shape* — goods entering the building from a
+  counterparty — and which counterparty is the business fact `MovementReason`
+  already carried.
 
 - **The console's sign-in card was rendering at 214px of its intended 360.** The
   cards size themselves with `min(360px, 100%)`, and `place-items-center` on the

@@ -8,6 +8,14 @@ when you come looking. Phase numbers refer to [history.md](history.md).
 
 ---
 
+- **A namespace that shares a name with a type shadows it inside that namespace.**
+  The disposition vocabulary lives in `Countflow.Modules.Rules.Dispositions`,
+  plural, and the plural is load-bearing. Under a `…Rules.Disposition` namespace
+  every mention of the `Disposition` enum inside it resolves to the *namespace*,
+  so `Disposition.Restock` does not compile and the fix that suggests itself —
+  fully qualifying it as `SharedKernel.Contracts.Disposition.Restock` in every
+  rule — is noise on every line of five files. Name the folder for the collection,
+  not for the type.
 - **TypeScript is pinned to 6.x, not 7.** The 7.x native port does not expose the
   JS compiler API (`ts.factory`), and `openapi-typescript` needs it. Revisit when
   the codegen ecosystem catches up.

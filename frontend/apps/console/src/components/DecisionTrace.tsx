@@ -32,6 +32,20 @@ type Trace = components['schemas']['DecisionTraceView'];
  * a stupid bin" into "the travel weight is too high", which is an argument
  * somebody can act on.
  */
+/**
+ * The suffix each decision kind's nouns are keyed under.
+ *
+ * Empty for the kinds that choose between places, so `rules.trace.candidate` and
+ * `rules.trace.considered` keep the names the handheld's "why here?" also uses —
+ * a fourth vocabulary is not a reason to rename the first one's strings.
+ */
+const CANDIDATE_NOUN: Record<string, string> = {
+  Putaway: '',
+  CycleCount: '',
+  Allocation: 'Stock',
+  Disposition: 'Disposition',
+};
+
 export function DecisionTrace({ trace }: { trace: Trace }) {
   const { t } = useTranslation();
   const locale = currentLocale();
@@ -39,12 +53,26 @@ export function DecisionTrace({ trace }: { trace: Trace }) {
   const admissible = trace.candidates.filter((candidate) => candidate.isAdmissible);
   const excluded = trace.candidates.filter((candidate) => !candidate.isAdmissible);
 
-  // Putaway chooses between empty bins; allocation chooses between holdings of
-  // stock. One component either way — the shape of a trace does not change with
-  // the decision — but a column headed "Location" over a list of batches is the
-  // kind of small lie that makes a trace harder to read than what it explains.
-  const aboutStock = trace.kind === 'Allocation';
-  const candidateLabel = aboutStock ? t('rules.trace.candidateStock') : t('rules.trace.candidate');
+  // Putaway and counting choose between places; allocation chooses between
+  // holdings of stock; disposition chooses between four courses of action. One
+  // component for all four — the shape of a trace does not change with the
+  // decision — but a column headed "Location" over a list of batches, or over the
+  // word "scrap", is the kind of small lie that makes a trace harder to read than
+  // what it explains.
+  //
+  // A lookup rather than the boolean this was when there were two kinds. There is
+  // still exactly one code path; what varies is the noun.
+  const noun = CANDIDATE_NOUN[trace.kind] ?? '';
+  const candidateLabel = t(`rules.trace.candidate${noun}`);
+
+  // Disposition keys are verbs — `restock`, `scrap` — and a badge reading "Chose
+  // scrap" in an English string on a Turkish screen is the half-translated trace
+  // `translateRuleNote` exists to prevent. Everything else is a location code or a
+  // stock key, which is data and stays as it is.
+  const selectedLabel =
+    trace.kind === 'Disposition' && trace.selectedKey
+      ? t(`rules.disposition.option.${trace.selectedKey}`, { defaultValue: trace.selectedKey })
+      : trace.selectedKey;
 
   return (
     <div className="flex flex-col gap-[var(--space-4)]">
@@ -53,7 +81,7 @@ export function DecisionTrace({ trace }: { trace: Trace }) {
           {t('rules.trace.ruleSet', { name: trace.ruleSetName, version: trace.ruleSetVersion })}
         </Badge>
         <span className="text-[length:var(--text-sm)] text-[var(--color-text-secondary)]">
-          {t(aboutStock ? 'rules.trace.consideredStock' : 'rules.trace.considered', {
+          {t(`rules.trace.considered${noun}`, {
             considered: trace.consideredCount,
             admissible: trace.admissibleCount,
           })}
@@ -62,7 +90,7 @@ export function DecisionTrace({ trace }: { trace: Trace }) {
           {formatDateTime(trace.decidedAt, locale)}
         </span>
         {trace.selectedKey ? (
-          <Badge tone="success">{t('rules.trace.chose', { location: trace.selectedKey })}</Badge>
+          <Badge tone="success">{t('rules.trace.chose', { location: selectedLabel })}</Badge>
         ) : (
           <Badge tone="warning">{t('rules.trace.choseNothing')}</Badge>
         )}

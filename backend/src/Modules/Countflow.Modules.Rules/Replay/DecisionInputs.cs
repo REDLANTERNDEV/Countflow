@@ -68,3 +68,37 @@ public sealed record CountPolicyInputs(
     int MaxTasks,
     int AlreadyScheduledCount,
     DateTimeOffset EvaluatedAt);
+
+/// <summary>
+/// What a disposition was asked.
+/// <para>
+/// The fattest of the four, and the only one that stores facts the ledger cannot
+/// reconstruct. The others deliberately store almost nothing about the warehouse
+/// because the warehouse is an append-only history and a copy could drift from it
+/// (ADR 0001); this one stores what an <b>inspector said</b>, and there is no
+/// history to re-derive that from. A person opened a carton once, wrote down what
+/// they saw, and that observation is as much a primary fact as a movement is.
+/// </para>
+/// <para>
+/// <see cref="RepairRouteExists"/> is the exception in the other direction, and it
+/// is recorded for the same reason <see cref="CountPolicyInputs.AlreadyScheduledCount"/>
+/// is: it is present state rather than history, so a replay next year cannot tell
+/// whether the warehouse had a repair vendor last March unless the trace says so.
+/// Without it, replaying a decision that excluded repair would silently re-admit
+/// it and report a change that never happened.
+/// </para>
+/// </summary>
+public sealed record DispositionInputs(
+    Guid WarehouseId,
+    Guid ItemId,
+    string Sku,
+    Guid? LotId,
+    decimal Quantity,
+    Guid AtLocationId,
+    StockCondition FoundCondition,
+    bool IsSealed,
+    bool IsRepairable,
+    int? DaysSinceDespatch,
+    DateOnly? ExpiryDate,
+    bool RepairRouteExists,
+    DateTimeOffset EvaluatedAt);

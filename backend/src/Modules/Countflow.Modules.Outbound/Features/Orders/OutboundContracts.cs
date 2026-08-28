@@ -38,6 +38,7 @@ public sealed record OrderLineResponse(
     decimal AllocatedQuantity,
     decimal OutstandingQuantity,
     decimal PickedQuantity,
+    decimal ReturnedQuantity,
     string? RequiredLotNumber,
     IReadOnlyList<OrderAllocationResponse> Allocations);
 

@@ -1,7 +1,9 @@
 using Countflow.Modules.Rules.Allocation;
 using Countflow.Modules.Rules.CycleCount;
+using Countflow.Modules.Rules.Dispositions;
 using Countflow.Modules.Rules.Features.Allocation;
 using Countflow.Modules.Rules.Features.CycleCount;
+using Countflow.Modules.Rules.Features.Dispositions;
 using Countflow.Modules.Rules.Features.Putaway;
 using Countflow.Modules.Rules.Features.RuleSets;
 using Countflow.Modules.Rules.Features.Traces;
@@ -44,6 +46,7 @@ public sealed class RulesModule : ICountflowModule
         services.AddScoped<PutawayAdvisor>();
         services.AddScoped<AllocationAdvisor>();
         services.AddScoped<CountPolicyAdvisor>();
+        services.AddScoped<DispositionAdvisor>();
 
         // The published boundary (ADR 0002). PutawayAdvisor is also registered by
         // its concrete type, because the preview endpoint in this module needs the
@@ -53,6 +56,7 @@ public sealed class RulesModule : ICountflowModule
         services.AddScoped<IPutawayAdvisor>(sp => sp.GetRequiredService<PutawayAdvisor>());
         services.AddScoped<IAllocationAdvisor>(sp => sp.GetRequiredService<AllocationAdvisor>());
         services.AddScoped<ICountPolicy>(sp => sp.GetRequiredService<CountPolicyAdvisor>());
+        services.AddScoped<IDispositionAdvisor>(sp => sp.GetRequiredService<DispositionAdvisor>());
         services.AddScoped<IDecisionTraceReader, DecisionTraceReader>();
 
         // Phase 6's, and published for the same reason the advisors are: the module
@@ -75,5 +79,6 @@ public sealed class RulesModule : ICountflowModule
         PreviewPutaway.Map(endpoints);
         PreviewAllocation.Map(endpoints);
         PreviewCountPolicy.Map(endpoints);
+        PreviewDisposition.Map(endpoints);
     }
 }

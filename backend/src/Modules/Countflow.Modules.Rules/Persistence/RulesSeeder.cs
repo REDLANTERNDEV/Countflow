@@ -1,5 +1,6 @@
 using Countflow.Modules.Rules.Allocation;
 using Countflow.Modules.Rules.CycleCount;
+using Countflow.Modules.Rules.Dispositions;
 using Countflow.Modules.Rules.Domain;
 using Countflow.Modules.Rules.Putaway;
 using Countflow.SharedKernel.Modules;
@@ -37,6 +38,7 @@ public sealed class RulesSeeder(RulesDbContext dbContext, ILogger<RulesSeeder> l
         await SeedPutawayAsync(cancellationToken);
         await SeedAllocationAsync(cancellationToken);
         await SeedCycleCountAsync(cancellationToken);
+        await SeedDispositionAsync(cancellationToken);
     }
 
     private async Task SeedPutawayAsync(CancellationToken cancellationToken)
@@ -187,14 +189,78 @@ public sealed class RulesSeeder(RulesDbContext dbContext, ILogger<RulesSeeder> l
             ruleSet.Rules.Count);
     }
 
-    private static void Constraint(RuleSet ruleSet, string code, int order) =>
+    private async Task SeedDispositionAsync(CancellationToken cancellationToken)
+    {
+        if (await dbContext.RuleSets.AnyAsync(r => r.Kind == DecisionKind.Disposition, cancellationToken))
+        {
+            logger.LogInformation("Disposition rule set already present; skipping seed");
+            return;
+        }
+
+        var ruleSet = new RuleSet
+        {
+            Kind = DecisionKind.Disposition,
+            Name = "Standard returns disposition",
+            Version = 1,
+            Status = RuleSetStatus.Active,
+            WarehouseId = null,
+            ActivatedAt = DateTimeOffset.UtcNow,
+            Notes = "Shipped default. Recovers value where it can, and will not destroy anything still saleable."
+        };
+
+        dbContext.RuleSets.Add(ruleSet);
+
+        // Saleability first, because it is the cheapest and the most complete
+        // answer about the option a returns desk reaches for first: "the carton was
+        // opened" ends the conversation about restocking, where a shelf-life
+        // argument invites the next question. The scrap guard goes near the end
+        // because it is the rarest — most returns are not saleable, so on most
+        // decisions it has nothing to say.
+        Constraint(ruleSet, DispositionConstraints.RestockNeedsSaleableStock.RuleCode, order: 10);
+        Constraint(ruleSet, DispositionConstraints.ShelfLifeRemaining.RuleCode, order: 20);
+        Constraint(ruleSet, DispositionConstraints.RepairNeedsARoute.RuleCode, order: 30);
+        Constraint(ruleSet, DispositionConstraints.ScrapIsNotForSaleableStock.RuleCode, order: 40);
+
+        // Off by default. A warehouse that handles regulated goods turns it on; one
+        // that does not would otherwise refuse to restock a can of paint.
+        Constraint(ruleSet, DispositionConstraints.HazardousNeverRestocked.RuleCode, order: 50, enabled: false);
+
+        // Recovering value carries the most, and handling cost is deliberately the
+        // second heaviest rather than a rounding term. They pull in opposite
+        // directions on purpose: without the counterweight every awkward return
+        // would be restocked and the returns desk would become a source of stock
+        // nobody wants, and without the first every awkward return would be thrown
+        // away. The two evidence rules decide between them.
+        Preference(ruleSet, DispositionPreferences.RecoverValue.RuleCode, order: 100, weight: 0.40m);
+        Preference(ruleSet, DispositionPreferences.HandlingCost.RuleCode, order: 110, weight: 0.25m);
+        Preference(ruleSet, DispositionPreferences.ReturnFreshness.RuleCode, order: 120, weight: 0.20m);
+        Preference(ruleSet, DispositionPreferences.ShelfLifeHeadroom.RuleCode, order: 130, weight: 0.15m);
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        logger.LogInformation(
+            "Seeded rule set {Name} v{Version} with {Rules} rules",
+            ruleSet.Name,
+            ruleSet.Version,
+            ruleSet.Rules.Count);
+    }
+
+    /// <param name="enabled">
+    /// Seeded switched off for a rule that is real, supported and wrong for most
+    /// warehouses. Leaving it out of the set entirely would be the tidier-looking
+    /// choice and a worse one: a supervisor cannot turn on a rule they have never
+    /// been shown, and the console lists what a set contains rather than what the
+    /// catalogue could offer.
+    /// </param>
+    private static void Constraint(RuleSet ruleSet, string code, int order, bool enabled = true) =>
         ruleSet.Rules.Add(new RuleDefinition
         {
             RuleSetId = ruleSet.Id,
             Code = code,
             Role = RuleRole.Constraint,
             Order = order,
-            Weight = 0m
+            Weight = 0m,
+            IsEnabled = enabled
         });
 
     private static void Preference(RuleSet ruleSet, string code, int order, decimal weight) =>

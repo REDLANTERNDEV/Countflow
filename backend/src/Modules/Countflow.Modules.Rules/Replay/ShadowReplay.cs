@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Countflow.Modules.Rules.Allocation;
 using Countflow.Modules.Rules.CycleCount;
+using Countflow.Modules.Rules.Dispositions;
 using Countflow.Modules.Rules.Domain;
 using Countflow.Modules.Rules.Features.RuleSets;
 using Countflow.Modules.Rules.Persistence;
@@ -243,6 +244,14 @@ public sealed class ShadowReplay(
             CountPolicyInputs counting => await RebuildCountAsync(
                 counting, snapshot, storage, storageById, route, lookups, baselineSet, candidateSet,
                 cancellationToken),
+
+            // No async work and no warehouse state, which is why it does not take
+            // the snapshot the other three do. Every input to a disposition is
+            // either on the trace or on the item, and the candidates are four
+            // constants — so this is the only one of the four that would replay
+            // correctly with the database switched off.
+            DispositionInputs disposition => await RebuildDispositionAsync(
+                disposition, lookups, baselineSet, candidateSet, cancellationToken),
 
             _ => Result.Failure<Comparison>(RulesErrors.NoVocabulary(trace.Kind.ToString()))
         };
@@ -532,10 +541,83 @@ public sealed class ShadowReplay(
             inputs.AlreadyScheduledCount > 0 ? "replay.scheduled_holdings_unknown" : null);
     }
 
+    /// <summary>
+    /// Rebuilds a disposition, which is the cheapest of the four by a wide margin.
+    /// <para>
+    /// The candidates are <see cref="DispositionOption.All"/> — four constants — and
+    /// every input the rules score on was written onto the trace when the decision
+    /// ran, because none of it is derivable from the ledger. An inspector's report
+    /// that a carton was sealed is a primary fact with no history behind it to
+    /// re-derive, which is exactly why <see cref="DispositionInputs"/> is the fattest
+    /// of the four input records and this method is the thinnest of the four
+    /// rebuilds.
+    /// </para>
+    /// <para>
+    /// The one thing it cannot reproduce is the item. Master data is mutable and not
+    /// versioned, so an item whose hazardous flag or shelf life has changed since the
+    /// decision replays against today's values, and the note says so — the same
+    /// honesty the other three rebuilds apply to their own soft spots.
+    /// </para>
+    /// </summary>
+    private static async Task<Result<Comparison>> RebuildDispositionAsync(
+        DispositionInputs inputs,
+        ReplayLookups lookups,
+        RuleSet baselineSet,
+        RuleSet candidateSet,
+        CancellationToken cancellationToken)
+    {
+        var itemsById = await lookups.ItemsAsync([inputs.ItemId], cancellationToken);
+
+        if (itemsById.GetValueOrDefault(inputs.ItemId) is not { } item)
+        {
+            return Result.Failure<Comparison>(RulesErrors.ItemNotFound);
+        }
+
+        var context = new DispositionContext(
+            item,
+            inputs.LotId,
+            inputs.Quantity,
+            inputs.AtLocationId,
+            new InspectionFindings
+            {
+                Condition = inputs.FoundCondition,
+                IsSealed = inputs.IsSealed,
+                IsRepairable = inputs.IsRepairable
+            },
+
+            // Read off the trace rather than looked up now. Whether the warehouse
+            // has a repair vendor is present state, not history, so a replay that
+            // asked the directory would silently re-admit a candidate the original
+            // decision excluded and report a change that never happened.
+            inputs.RepairRouteExists,
+            inputs.DaysSinceDespatch,
+            DispositionAdvisor.RemainingShelfLife(
+                item,
+                inputs.ExpiryDate,
+                // The date the decision ran on, not today. Shelf life is measured
+                // forward from the moment somebody asked, and replaying last
+                // quarter's returns under this morning's date would report every
+                // batch as a quarter closer to expiry than it was.
+                DateOnly.FromDateTime(inputs.EvaluatedAt.UtcDateTime)));
+
+        var baseline = DispositionRuleCatalogue.Build(baselineSet);
+        if (baseline.IsFailure) return Result.Failure<Comparison>(baseline.Error);
+
+        var candidate = DispositionRuleCatalogue.Build(candidateSet);
+        if (candidate.IsFailure) return Result.Failure<Comparison>(candidate.Error);
+
+        return new Comparison(
+            Run(DecisionKind.Disposition, baseline.Value.Stamp, DispositionOption.All, context,
+                baseline.Value.Constraints, baseline.Value.Preferences),
+            Run(DecisionKind.Disposition, candidate.Value.Stamp, DispositionOption.All, context,
+                candidate.Value.Constraints, candidate.Value.Preferences),
+            "replay.item_master_data_current");
+    }
+
     // ---------------------------------------------------------- the machinery
 
     /// <summary>
-    /// One evaluation, reduced to a comparable shape. The only place the three
+    /// One evaluation, reduced to a comparable shape. The only place the four
     /// vocabularies meet, and it stays generic in both the candidate and the context
     /// so that meeting costs them nothing.
     /// </summary>
@@ -674,6 +756,7 @@ public sealed class ShadowReplay(
         DecisionKind.Putaway => TraceJson.Deserialise<PutawayInputs>(json),
         DecisionKind.Allocation => TraceJson.Deserialise<AllocationInputs>(json),
         DecisionKind.CycleCount => TraceJson.Deserialise<CountPolicyInputs>(json),
+        DecisionKind.Disposition => TraceJson.Deserialise<DispositionInputs>(json),
         _ => null
     };
 
@@ -682,6 +765,7 @@ public sealed class ShadowReplay(
         PutawayInputs putaway => putaway.WarehouseId,
         AllocationInputs allocation => allocation.WarehouseId,
         CountPolicyInputs counting => counting.WarehouseId,
+        DispositionInputs disposition => disposition.WarehouseId,
         _ => Guid.Empty
     };
 
@@ -691,6 +775,7 @@ public sealed class ShadowReplay(
         PutawayInputs putaway => $"{putaway.Sku} ×{putaway.Quantity:0.###}",
         AllocationInputs allocation => $"{allocation.Sku} ×{allocation.Quantity:0.###}",
         CountPolicyInputs counting => $"up to {counting.MaxTasks} counts",
+        DispositionInputs disposition => $"{disposition.Sku} ×{disposition.Quantity:0.###} returned",
         _ => string.Empty
     };
 

@@ -602,6 +602,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/rules/disposition/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Run the returns disposition rules without posting anything. */
+        post: operations["PreviewDisposition"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/work/tasks": {
         parameters: {
             query?: never;
@@ -876,6 +893,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/outbound/returns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List customer returns and what has been decided about them. */
+        get: operations["GetReturns"];
+        put?: never;
+        /** Book customer returns into the returns bay and raise the inspections. */
+        post: operations["BookReturn"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/outbound/returns/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read one return. */
+        get: operations["GetReturn"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/outbound/returns/{id}/lines/{lineId}/disposition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Run the disposition rules over an inspected return line and carry the answer out. */
+        post: operations["DispositionReturnLine"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/outbound/waves": {
         parameters: {
             query?: never;
@@ -1120,6 +1189,32 @@ export interface components {
             /** Format: int64 */
             lastMovementSequence: number;
         };
+        BookReturnLineRequest: {
+            sku: string;
+            /** Format: double */
+            quantity: number;
+            /** Format: int32 */
+            orderLineNumber?: null | number;
+            lotNumber?: null | string;
+            /** Format: date */
+            expiryDate?: null | string;
+            sscc?: null | string;
+        };
+        BookReturnRequest: {
+            warehouseCode: string;
+            reference: string;
+            toLocationCode: string;
+            lines: components["schemas"]["BookReturnLineRequest"][];
+            orderReference?: null | string;
+            customerName?: null | string;
+            notes?: null | string;
+        };
+        BookReturnResponse: {
+            return: components["schemas"]["ReturnResponse"];
+            movements: components["schemas"]["PostedMovement"][];
+            /** Format: int32 */
+            inspectionsRaised: number;
+        };
         CancelCountPlanRequest: {
             reason?: null | string;
         };
@@ -1359,7 +1454,7 @@ export interface components {
             secret: string;
         };
         /** @enum {string} */
-        DecisionKind: "Putaway" | "Allocation" | "Waving" | "TaskAssignment" | "CycleCount";
+        DecisionKind: "Putaway" | "Allocation" | "Waving" | "TaskAssignment" | "CycleCount" | "Disposition";
         DecisionTraceView: {
             /** Format: uuid */
             id: string;
@@ -1381,6 +1476,36 @@ export interface components {
         DespatchOrderResponse: {
             order: components["schemas"]["SalesOrderResponse"];
             movements: components["schemas"]["PostedMovement"][];
+        };
+        /** @enum {string} */
+        Disposition: "Restock" | "Quarantine" | "Repair" | "Scrap";
+        DispositionReturnLineRequest: {
+            condition: components["schemas"]["StockCondition"];
+            /** @default false */
+            isSealed: boolean;
+            /** @default false */
+            isRepairable: boolean;
+            disposition?: null | components["schemas"]["Disposition"];
+            /** Format: double */
+            quantity?: null | number;
+            notes?: null | string;
+        };
+        DispositionReturnLineResponse: {
+            return: components["schemas"]["ReturnResponse"];
+            applied: components["schemas"]["Disposition"];
+            advisedDisposition: null | components["schemas"]["Disposition"];
+            wasOverridden: boolean;
+            /** Format: uuid */
+            decisionTraceId: string;
+            reasons: components["schemas"]["ScoreLine"][];
+            /** Format: int32 */
+            consideredCount: number;
+            /** Format: int32 */
+            admissibleCount: number;
+            movement: components["schemas"]["PostedMovement"];
+            /** Format: uuid */
+            workTaskId: null | string;
+            suggestedLocationCode: null | string;
         };
         DockReceiptRequest: {
             sku: string;
@@ -1527,7 +1652,7 @@ export interface components {
             refreshToken: string;
         };
         /** @enum {string} */
-        MovementReason: "PurchaseOrderReceipt" | "CustomerReturn" | "ProductionOutput" | "PutawayComplete" | "ReplenishmentPull" | "ConsolidationMove" | "LocationReorganisation" | "OrderPick" | "CustomerDespatch" | "SupplierReturn" | "CycleCountVariance" | "StocktakeVariance" | "DamageFound" | "QualityHoldApplied" | "QualityHoldReleased" | "RecallHold" | "ExpiryReached" | "WriteOffDamaged" | "WriteOffExpired" | "Destroyed" | "ManualCorrection" | "ReversalOfEntry" | "TransferOut" | "TransferIn";
+        MovementReason: "PurchaseOrderReceipt" | "CustomerReturn" | "ProductionOutput" | "RepairReturn" | "PutawayComplete" | "ReplenishmentPull" | "ConsolidationMove" | "LocationReorganisation" | "OrderPick" | "CustomerDespatch" | "SupplierReturn" | "SentForRepair" | "CycleCountVariance" | "StocktakeVariance" | "DamageFound" | "QualityHoldApplied" | "QualityHoldReleased" | "RecallHold" | "ExpiryReached" | "WriteOffDamaged" | "WriteOffExpired" | "Destroyed" | "ManualCorrection" | "ReversalOfEntry" | "TransferOut" | "TransferIn";
         MovementReceiptResponse: {
             /** Format: uuid */
             movementId: string;
@@ -1586,6 +1711,8 @@ export interface components {
             outstandingQuantity: number;
             /** Format: double */
             pickedQuantity: number;
+            /** Format: double */
+            returnedQuantity: number;
             requiredLotNumber: null | string;
             allocations: components["schemas"]["OrderAllocationResponse"][];
         };
@@ -1701,6 +1828,33 @@ export interface components {
             /** Format: uuid */
             decisionTraceId: string;
             lines: components["schemas"]["PreviewCountLine"][];
+            /** Format: int32 */
+            consideredCount: number;
+            /** Format: int32 */
+            admissibleCount: number;
+            trace: components["schemas"]["DecisionTraceView"];
+        };
+        PreviewDispositionRequest: {
+            sku: string;
+            /** Format: double */
+            quantity: number;
+            atLocationCode: string;
+            condition: components["schemas"]["StockCondition"];
+            /** @default false */
+            isSealed: boolean;
+            /** @default false */
+            isRepairable: boolean;
+            /** Format: int32 */
+            daysSinceDespatch?: null | number;
+            /** Format: date */
+            expiryDate?: null | string;
+        };
+        PreviewDispositionResponse: {
+            /** Format: uuid */
+            decisionTraceId: string;
+            disposition: null | components["schemas"]["Disposition"];
+            /** Format: double */
+            score: number;
             /** Format: int32 */
             consideredCount: number;
             /** Format: int32 */
@@ -1905,6 +2059,77 @@ export interface components {
         ResolveScanRequest: {
             barcode: string;
         };
+        ReturnDispositionResponse: {
+            /** Format: uuid */
+            id: string;
+            disposition: components["schemas"]["Disposition"];
+            /** Format: double */
+            quantity: number;
+            /** Format: uuid */
+            decisionTraceId: string;
+            wasOverridden: boolean;
+            /** Format: uuid */
+            movementId: string;
+            /** Format: uuid */
+            workTaskId: null | string;
+            /** Format: date-time */
+            decidedAt: string;
+            decidedByUserName: null | string;
+            notes: null | string;
+        };
+        ReturnLineResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: int32 */
+            lineNumber: number;
+            sku: string;
+            description: string;
+            baseUom: string;
+            /** Format: double */
+            quantity: number;
+            /** Format: double */
+            dispositionedQuantity: number;
+            /** Format: double */
+            outstandingQuantity: number;
+            lotNumber: null | string;
+            /** Format: date */
+            expiryDate: null | string;
+            /** Format: uuid */
+            salesOrderLineId: null | string;
+            /** Format: uuid */
+            inspectionTaskId: null | string;
+            inspectionState: null | components["schemas"]["WorkTaskState"];
+            dispositions: components["schemas"]["ReturnDispositionResponse"][];
+        };
+        ReturnPage: {
+            items: components["schemas"]["ReturnResponse"][];
+            /** Format: int32 */
+            total: number;
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            pageSize: number;
+        };
+        ReturnResponse: {
+            /** Format: uuid */
+            id: string;
+            reference: string;
+            status: components["schemas"]["ReturnStatus"];
+            salesOrderReference: null | string;
+            /** Format: uuid */
+            salesOrderId: null | string;
+            customerName: null | string;
+            receivedAtLocationCode: string;
+            /** Format: date-time */
+            createdAt: string;
+            createdByUserName: null | string;
+            /** Format: date-time */
+            closedAt: null | string;
+            notes: null | string;
+            lines: components["schemas"]["ReturnLineResponse"][];
+        };
+        /** @enum {string} */
+        ReturnStatus: "Received" | "Dispositioned";
         ReverseMovementRequest: {
             notes?: null | string;
         };
@@ -2263,7 +2488,7 @@ export interface components {
             decision: null | components["schemas"]["DecisionTraceView"];
         };
         /** @enum {string} */
-        WorkTaskKind: "Putaway" | "Replenishment" | "Pick" | "CycleCount";
+        WorkTaskKind: "Putaway" | "Replenishment" | "Pick" | "CycleCount" | "Inspection";
         WorkTaskPage: {
             items: components["schemas"]["WorkTaskResponse"][];
             /** Format: int32 */
@@ -3845,6 +4070,48 @@ export interface operations {
             };
         };
     };
+    PreviewDisposition: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PreviewDispositionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PreviewDispositionResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     GetWorkTasks: {
         parameters: {
             query?: {
@@ -4542,6 +4809,170 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CancelOrderResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetReturns: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["ReturnStatus"];
+                page?: number;
+                pageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReturnPage"];
+                };
+            };
+        };
+    };
+    BookReturn: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BookReturnRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookReturnResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetReturn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReturnResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    DispositionReturnLine: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                id: string;
+                lineId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DispositionReturnLineRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DispositionReturnLineResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
             /** @description Not Found */

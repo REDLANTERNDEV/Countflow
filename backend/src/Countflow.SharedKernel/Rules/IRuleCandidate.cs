@@ -29,7 +29,27 @@ public enum DecisionKind
     /// entirely a matter of policy and every warehouse's policy is different.
     /// </para>
     /// </summary>
-    CycleCount = 5
+    CycleCount = 5,
+
+    /// <summary>
+    /// What becomes of a unit that came back. Phase 7, and the fourth vocabulary.
+    /// <para>
+    /// The first decision kind whose candidates are not <i>things</i>. Putaway
+    /// ranks bins, allocation and counting rank holdings; this ranks four fixed
+    /// outcomes — restock, quarantine, repair, scrap — which exist only as a
+    /// vocabulary and have no row anywhere. That is what makes it the real test of
+    /// <c>decision 11</c>'s claim: if the engine can rank a closed set of verbs the
+    /// same way it ranks two thousand shelves, "a new vocabulary needs no change to
+    /// the kernel" is a property rather than a coincidence.
+    /// </para>
+    /// <para>
+    /// It is also the first field small enough that <see cref="RuleInfluence"/>
+    /// tells you very little about it. See
+    /// <c>docs/decisions.md § 12</c>, where that is accepted rather than worked
+    /// around.
+    /// </para>
+    /// </summary>
+    Disposition = 6
 }
 
 /// <summary>

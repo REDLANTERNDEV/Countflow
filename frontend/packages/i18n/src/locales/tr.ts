@@ -523,9 +523,12 @@ export const tr: Catalogue = {
       ruleSet: '{{name}} s{{version}}',
       considered: '{{considered}} raftan {{admissible}} tanesi uygun bulundu',
       consideredStock: '{{considered}} stok kaydından {{admissible}} tanesi uygun bulundu',
+      // Satır alanı yerine dört sabit seçenek olduğu için cümle sonuçları sayar.
+      consideredDisposition: '{{considered}} elden çıkarma seçeneğinden {{admissible}} tanesi uygun bulundu',
       chose: '{{location}} seçildi',
       choseNothing: 'Uygun raf bulunamadı',
       candidate: 'Raf',
+      candidateDisposition: 'Elden çıkarma',
       candidateStock: 'Stok',
       rank: 'Sıra',
       score: 'Puan',
@@ -649,6 +652,38 @@ export const tr: Catalogue = {
       velocity_band: '{{band}} sınıfı ürün.',
       share_of_item_stock: 'Burada {{units}} adet — bu üründen elimizdekinin %{{percent}} kadarı.',
       travel_distance: '{{zone}} bölgesi, rotanın %{{percent}} noktası.',
+    },
+
+    // Elden çıkarma kurallarının dört sonuçtan biri hakkında verdiği kodlu
+    // gerekçeler.
+    disposition: {
+      // Rozetin ne seçildiğini söyleyebilmesi için dört sonucun adı.
+      option: {
+        restock: 'rafa geri koy',
+        quarantine: 'karantinaya al',
+        repair: 'onarıma gönder',
+        scrap: 'hurdaya ayır',
+      },
+      not_good_stock: 'Muayene {{condition}} olduğunu tespit etti.',
+      packaging_opened: 'Ambalaj açılmış.',
+      shelf_life_too_short: 'Ömrünün yalnızca %{{remaining}}’i kalmış, en az %{{required}} gerekiyor.',
+      no_repair_route: 'Bu depoda onarıma gönderilecek bir yer yok.',
+      not_repairable: 'Muayeneye göre ekonomik olarak onarılamaz.',
+      still_saleable: 'Ambalajı kapalı ve tarihi geçmemiş — {{sku}} hâlâ satılabilir.',
+      hazardous_return: '{{sku}} tehlikeli madde; depodan çıktığı anda zilyetlik zinciri koptu.',
+      value_fully_recovered: 'Rafa geri konduğunda {{sku}} eski değerinde.',
+      value_recovered_after_repair: 'Onarım maliyeti düşüldükten sonra kurtarmaya değer.',
+      value_undecided: 'Beklettiğimizde değer korunur ama hiçbir şey çözülmez.',
+      value_lost: 'İmha edildiğinde hiçbir değer kurtarılmaz.',
+      handling_trivial: 'Tek bir hareket ve hurda konteyneri.',
+      handling_deferred: 'Bugün ucuz; birinin sonra geri dönmesi gerekiyor.',
+      handling_putaway: '{{units}} için bir serbest bırakma ve bir yerleştirme.',
+      handling_vendor_round_trip: 'Bir tedarikçi, bir sevkiyat ve haftalar sonra bir mal kabul.',
+      days_since_despatch: '{{window}} günlük pencereye karşılık {{days}} gün sonra döndü.',
+      no_despatch_on_record: 'Arkasında sipariş yok, müşterinin ne kadar elinde tuttuğu bilinmiyor.',
+      shelf_life_left: 'Raf ömrünün %{{remaining}}’i kalmış.',
+      shelf_life_unknown: 'Raf ömrü kayıtlı değil.',
+      shelf_life_not_relevant: 'Raf ömrü bu seçenek için belirleyici değil.',
     },
 
     token: {

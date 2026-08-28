@@ -84,7 +84,19 @@ public sealed record ReceiptInstruction
 
     public StockCondition Condition { get; init; } = StockCondition.Available;
 
-    /// <summary>A customer return rather than a purchase-order receipt. Same movement, different reason code.</summary>
+    /// <summary>
+    /// A customer return rather than a purchase-order receipt.
+    /// <para>
+    /// Changes the counterparty as well as the reason code, and that correction
+    /// arrived with Phase 7. Until then a return credited the <b>Supplier</b>
+    /// account while the despatch that sent the goods out had debited the
+    /// <b>Customer</b> account — so the customer contra account only ever grew, and
+    /// the one thing an append-only double-entry ledger is for (ADR 0001) was
+    /// unavailable on the one account a distribution centre most wants to
+    /// reconcile. A return now credits Customer, and
+    /// <c>MovementShape</c> permits it.
+    /// </para>
+    /// </summary>
     public bool IsReturn { get; init; }
 
     public required string IdempotencyKey { get; init; }
@@ -297,6 +309,98 @@ public enum ScrapCause
     Destroyed = 3
 }
 
+/// <summary>
+/// Moves a quantity from one condition to another without moving it anywhere.
+/// <para>
+/// The operation the ledger has been able to post since Phase 1 —
+/// <c>MovementType.StatusChange</c>, whose own documentation reads "quarantine,
+/// release, write-off to damaged" — and which no published contract offered a door
+/// onto until returns needed one. Quarantining a returned pallet is not a new
+/// ledger capability; it is the first caller with a reason to ask for it.
+/// </para>
+/// <para>
+/// Both conditions are named rather than only the destination. A caller that said
+/// only "make this quarantined" would be asking the ledger to guess which of the
+/// bay's holdings it meant, and a bay can hold the same item in two conditions at
+/// once — which is the same reason an allocation key is location, batch and
+/// condition rather than just location.
+/// </para>
+/// </summary>
+public sealed record ConditionChangeInstruction
+{
+    public required Guid ItemId { get; init; }
+
+    public Guid? LotId { get; init; }
+
+    public required Guid LocationId { get; init; }
+
+    public Guid? LicensePlateId { get; init; }
+
+    public required decimal Quantity { get; init; }
+
+    public required StockCondition FromCondition { get; init; }
+
+    public required StockCondition ToCondition { get; init; }
+
+    public required string IdempotencyKey { get; init; }
+
+    public required PostingActor Actor { get; init; }
+
+    /// <summary>
+    /// The decision behind it, when there was one. Nullable rather than required,
+    /// unlike <see cref="PutawayInstruction.DecisionTraceId"/>: a supervisor
+    /// releasing a hold by hand is a legitimate status change with no rule set
+    /// involved, and the disposition path supplies its trace anyway.
+    /// </summary>
+    public Guid? DecisionTraceId { get; init; }
+
+    public string? Notes { get; init; }
+}
+
+/// <summary>
+/// Sends goods out to a third party who is expected to send them back.
+/// <para>
+/// A transfer to the InTransit counterparty, not a despatch — and the difference
+/// is the point rather than a technicality. A despatch ends the warehouse's
+/// interest in the stock and settles it against a customer; goods away for repair
+/// are still the company's, still expected, and still owed a receipt. The ledger
+/// already draws exactly that line: <c>MovementShape</c> has permitted InTransit on
+/// either side of a <c>Transfer</c> since Phase 1, because stock leaving for
+/// another site was the first thing that was neither here nor sold.
+/// </para>
+/// <para>
+/// What comes back comes back as an ordinary receipt against the same counterparty,
+/// which is why no second instruction is needed for the return leg.
+/// </para>
+/// </summary>
+public sealed record RepairInstruction
+{
+    public required Guid ItemId { get; init; }
+
+    public Guid? LotId { get; init; }
+
+    public required Guid FromLocationId { get; init; }
+
+    public Guid? LicensePlateId { get; init; }
+
+    public required decimal Quantity { get; init; }
+
+    public StockCondition Condition { get; init; } = StockCondition.Damaged;
+
+    public required string IdempotencyKey { get; init; }
+
+    public required PostingActor Actor { get; init; }
+
+    public Guid? DecisionTraceId { get; init; }
+
+    /// <summary>
+    /// Who is fixing it, and what is wrong with it. Required for the same reason
+    /// <see cref="ScrapInstruction.Notes"/> is: nothing else in the system explains
+    /// why a pallet left the building without being sold.
+    /// </summary>
+    public required string Notes { get; init; }
+}
+
 /// <summary>One item and batch leaving the building.</summary>
 public sealed record DespatchLine(
     Guid ItemId,
@@ -400,5 +504,24 @@ public interface IStockPosting
     /// <summary>Destroys stock, against the Scrap counterparty.</summary>
     Task<Result<PostedMovement>> ScrapAsync(
         ScrapInstruction instruction,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Changes what a quantity <i>is</i> without changing where it is.
+    /// <para>
+    /// The odd shape on a contract of movements, and it earns its place the same
+    /// way <see cref="CountAsync"/> does: it is a real ledger entry with a real
+    /// counterparty rule, and the alternative — a caller reaching for an adjustment
+    /// out and an adjustment in — would post two movements that between them claim
+    /// stock was destroyed and then created.
+    /// </para>
+    /// </summary>
+    Task<Result<PostedMovement>> ChangeConditionAsync(
+        ConditionChangeInstruction instruction,
+        CancellationToken cancellationToken);
+
+    /// <summary>Sends stock out for repair, against the InTransit counterparty.</summary>
+    Task<Result<PostedMovement>> SendForRepairAsync(
+        RepairInstruction instruction,
         CancellationToken cancellationToken);
 }

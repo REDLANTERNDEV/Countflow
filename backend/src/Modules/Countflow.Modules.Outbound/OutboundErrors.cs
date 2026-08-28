@@ -98,6 +98,48 @@ public static class OutboundErrors
     public static readonly Error WaveNotReleasable =
         Error.Conflict("outbound.wave_not_releasable", "That wave has already been released or cancelled.");
 
+    public static readonly Error ReturnNotFound =
+        Error.NotFound("outbound.return_not_found", "No return with that identifier.");
+
+    public static readonly Error ReturnLineNotFound =
+        Error.NotFound("outbound.return_line_not_found", "That return has no such line.");
+
+    /// <summary>
+    /// Stock nobody has inspected must not land anywhere it could be allocated
+    /// from. The condition alone would not save it — a bay that holds sellable
+    /// stock is a bay somebody eventually releases this into by hand.
+    /// </summary>
+    public static Error NotAReturnsLocation(string code) =>
+        Error.Validation(
+            "outbound.not_a_returns_location",
+            $"Location {code} is not a hold bay, so returned goods cannot be booked into it.");
+
+    public static Error MoreThanOutstanding(decimal asked, decimal outstanding) =>
+        Error.Validation(
+            "outbound.more_than_outstanding",
+            $"Only {outstanding} of that line is still awaiting a decision; {asked} was asked for.");
+
+    /// <summary>
+    /// Every option was refused. The trace is the useful half of the answer — it
+    /// names what ruled each of the four out — so its id travels with the error
+    /// rather than leaving the caller to guess.
+    /// </summary>
+    public static Error NoAdmissibleDisposition(Guid traceId) =>
+        Error.Conflict(
+            "outbound.no_admissible_disposition",
+            $"The rules refused every disposition for this line. Decision trace {traceId} says why each one failed.");
+
+    /// <summary>
+    /// The endpoint's half of a rule the ledger already enforces:
+    /// <c>ScrapInstruction.Notes</c> is required, because a write-off is explained
+    /// only by the person who ordered it. Checked here too so the answer is a coded
+    /// validation failure rather than a five-hundred from the posting contract.
+    /// </summary>
+    public static readonly Error ScrapNeedsNotes =
+        Error.Validation(
+            "outbound.scrap_needs_notes",
+            "Destroying returned stock must say why. Every other disposition is explained by its document.");
+
     public static Error OrderNotWaveable(string reference) =>
         Error.Conflict(
             "outbound.order_not_waveable",
