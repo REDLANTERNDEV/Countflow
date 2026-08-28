@@ -5,22 +5,22 @@ picking one up starts from the argument rather than from scratch.
 
 ## Open, ranked
 
-### 1. `DecisionKind.Waving`, and what it would cost the engine
+### 1. The waving vocabulary
 
-Deferred out of four phases on the same grounds, and the grounds *are* the work.
-The three existing vocabularies — putaway, allocation, cycle count — **rank a
-field and pick a winner**, which is exactly what `Decision<T>` is. A wave
-**partitions a set of orders**: no winner, no losers, and no "the constraint that
-excluded each loser".
+The design question this item opened with — whether a wave needs a new kernel
+shape — is settled and no longer open. It does not:
+[decision 11](docs/decisions.md#11-a-wave-is-a-sequence-of-decisions-not-a-partition)
+admits waving as a fourth vocabulary on the unchanged engine, and states what
+that costs.
 
-So the first deliverable is a decision, not a rule file: extend `Decision<T>`,
-add a sibling `Partition<T>` carrying its own kind of trace, or refuse waving on
-the merits and write down why. Whatever comes out must keep the invariant that a
-result cannot exist without its trace, and must not turn the console's trace
-component into a two-case switch. `TaskAssignment` is named in the same enum and
-has the same shape of problem.
+What is left is the build, and it is ordinary vocabulary work: a `WavingContext`
+over the wave being filled, constraints and preferences written about a
+`SalesOrder`, a catalogue, an advisor that fills to a cap and seeds the next
+wave, a fourth rebuild in `ShadowReplay`, and the seeding trap that decision names
+in advance. `DecisionKind.TaskAssignment`, batch picking and cluster picking are
+the same shape and come after it.
 
-**Sizeable. Start by writing the decision down, not by opening a pull request.**
+**Sizeable, and now unblocked.**
 
 ### 2. Re-slotting a mixed pallet
 
@@ -81,5 +81,7 @@ the ledger runs.
 ## How to pick something up
 
 Open an issue saying which item and how you plan to approach it, especially for
-1 and 2 — both change shared machinery, and the design conversation is cheaper
-before the code exists. [CONTRIBUTING.md](CONTRIBUTING.md) has the rest.
+2 — it changes shared machinery, and the design conversation is cheaper before
+the code exists. That conversation has already happened for 1, and its outcome is
+[decision 11](docs/decisions.md#11-a-wave-is-a-sequence-of-decisions-not-a-partition).
+[CONTRIBUTING.md](CONTRIBUTING.md) has the rest.

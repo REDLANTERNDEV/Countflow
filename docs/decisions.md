@@ -1,10 +1,10 @@
 # Why Countflow is built this way
 
-Ten decisions that would be expensive to reverse, each with the argument behind
+Eleven decisions that would be expensive to reverse, each with the argument behind
 it and **what it cost**. Where one turned out to be wrong, the correction sits
 next to the claim rather than instead of it.
 
-Source comments cite these as `ADR 0001` … `ADR 0010`; the numbers are the same.
+Source comments cite these as `ADR 0001` … `ADR 0011`; the numbers are the same.
 
 1. [Inventory truth is an append-only ledger](#1-inventory-truth-is-an-append-only-ledger)
 2. [A modular monolith, one schema per module](#2-a-modular-monolith-one-schema-per-module)
@@ -16,6 +16,7 @@ Source comments cite these as `ADR 0001` … `ADR 0010`; the numbers are the sam
 8. [The handheld writes to a durable queue](#8-the-handheld-writes-to-a-durable-queue)
 9. [The API publishes operations, not tables](#9-the-api-publishes-operations-not-tables)
 10. [The warehouse owns quantity, the ERP owns value](#10-the-warehouse-owns-quantity-the-erp-owns-value)
+11. [A wave is a sequence of decisions, not a partition](#11-a-wave-is-a-sequence-of-decisions-not-a-partition)
 
 ---
 
@@ -614,6 +615,127 @@ method, and never ask us what anything is worth.
   The reversal is not "add a column"; it is "add a column and accept that the
   books start today". Which is the reason this is written down as a decision
   rather than left to look like an omission.
+
+## 11. A wave is a sequence of decisions, not a partition
+
+Waving was deferred out of four phases on the same objection, and the objection
+was worth taking seriously. The three vocabularies that exist rank a field of
+candidates and hand back a ranking; a wave *partitions a set of orders*, and a
+partition has no winner, no losers, and no "the constraint that excluded each
+loser". The shape genuinely does not fit `Decision<T>` as stated, which is why
+`DecisionKind.Waving` has sat in the enum since Phase 3 with no vocabulary behind
+it and a `Wave` that is a grouping somebody made by hand.
+
+The objection rests on a premise, and the premise is false.
+
+**Two of the three vocabularies already produce sets rather than winners.**
+Allocation walks the engine's ranking taking what each holding has until the
+demand is met; cycle counting takes the top `N` and stops. Neither picks a
+winner. What both do is put every scrap of judgement into the *ranking*, which is
+traced, and leave the *consumption* of that ranking deterministic and dumb —
+`Fill` and `Take` are each a short walk down the ranking, and each carries a
+comment saying that anything cleverer would be judgement the trace could not
+reach.
+The set is not a second kind of answer. It is a ranking, consumed.
+
+**And putaway already scores a candidate against accumulating state.**
+`putaway.consolidate_same_item` asks what the bin already holds, and prefers a
+bin holding the same lot over one holding the same item over an empty one. A rule
+that judges a candidate against what has already been put somewhere is not a new
+capability the engine needs; it is the oldest preference in the catalogue.
+
+**So waving is admitted as a fourth vocabulary, and nothing in the kernel
+changes.** The candidates are the orders not yet waved. The context is *the wave
+being filled* — the same shape as `PutawayContext.Occupancy`. Constraints refuse
+orders that cannot join this wave (carrier cut-off passed, wrong ship date, wave
+at its cap) and say which. Preferences score fit against the wave so far: shared
+carrier, shared zone, pick-density overlap, urgency against the cut-off. Then the
+wave is filled by taking from the top until the cap, which is `Take` with a
+different limit. Seed the next wave, run again. **A partition of `N` orders into
+`K` waves is `K` evaluations of the engine that already exists**, each one a
+ranking, each one traced by construction, each one replayable, each one read by
+`RuleInfluence` exactly as the other three are.
+
+`Decision<T>` keeps its internal constructor and its meaning. The journal, the
+trace schema and the published `DecisionTraceView` are untouched. The console's
+trace component gains a label for a third kind of candidate and no second code
+path — the `aboutStock` boolean becomes a lookup by kind, which is the change
+allocation already made once and is copy rather than structure. `ShadowReplay`
+needs a fourth rebuild and a fourth `InputsJson` shape, which is the price
+[decision 4](#4-every-decision-carries-its-reasoning) already names and accepts.
+
+The door stays narrow the way the other three do: the advisor hands back a
+`WaveAdvice` whose trace id is a `required Guid`, so rule-driven waving cannot
+express an unexplained grouping. `SalesOrder.WaveId` stays nullable, because a
+wave a supervisor built by hand legitimately has no decision behind it — the same
+split, for the same reason, as the nullable trace column on the ledger beside the
+required one on `PutawayInstruction`.
+
+**Why not the other two.** Extending `Decision<T>` with a grouping was the
+obvious move and it fails on the pillar waving exists to serve: a partition has
+no winner, so `Decision.Winner` becomes a property that means nothing on one kind
+in four, `SelectedCandidateKey` goes null on the trace, and `ShadowReplay.Compare`
+— which is keyed on the winner, and treats two nulls as agreement — would report
+every waving replay as `Unchanged`, silently and permanently. The one instrument
+built to catch rule flaws would be blind on the newest vocabulary and would not
+say so. A sibling `Partition<T>` is the honest version of the same idea and costs
+more than it looks: a second trace shape, a second comparison vocabulary in
+replay because `Changed`/`Reordered`/`Lost` says nothing about a grouping, no
+`RuleInfluence` at all because swing and margin are ranking arithmetic, and a
+console that branches — if not inside the trace component then across the five
+pages that render one. Underneath all of that it builds the container for a
+judgement that has no explanation to put in it: if a wave is chosen by optimising
+over the whole open order book, "why is this order in this wave" has no per-order
+answer, only an objective function. That is the thing
+[decision 4](#4-every-decision-carries-its-reasoning) exists to refuse, and it is
+[decision 10](#10-the-warehouse-owns-quantity-the-erp-owns-value)'s rule one
+floor over: a number this system cannot check is a number it should not store,
+and a judgement this system cannot explain is a judgement it should not make.
+
+**What it costs**
+
+- **The wave is greedy, and Countflow will not produce the optimal one.** The
+  result depends on which order seeds each wave, and a better partition will
+  usually exist. This is the trade `Fill` and `Take` each already made, and it is
+  a larger gap here than it is for either of them — the distance between a greedy
+  grouping and an optimal one is real money in picker-hours. It is declined on
+  the merits, in the same register as the valuation split rather than as a
+  limitation to be paid off later: an optimiser cannot be traced, and an untraced
+  wave is one a supervisor starts overriding.
+- **"Why is this order in this wave" is answerable; "why are there three waves
+  and not two" is not.** The first is one trace. The second is a property of the
+  sequence, and no single evaluation produced it. A supervisor will ask the
+  second question, and the honest answer is a chain of traces rather than a
+  document.
+- **The chain is not a first-class object.** Every link is trace-guaranteed by
+  construction, but nothing forces the chain to be complete the way
+  `PutawayInstruction.DecisionTraceId` forces a single decision to be explained.
+  That is a genuinely weaker guarantee than the other three vocabularies have,
+  and it is weaker because the composition happens in the advisor rather than in
+  the type.
+- **Trace volume goes up an order of magnitude per run.** One putaway is one
+  trace; one waving run is one trace per wave, each with its own retained sample
+  of the losing field. The retention policy that
+  [decision 4](#4-every-decision-carries-its-reasoning) says traces will
+  eventually need stops being theoretical here.
+- **The first input that is a previous decision's output.** `WavingInputs` has to
+  record the wave's membership as of that evaluation or replay cannot rebuild the
+  context. It is a list of order ids and it is recordable, but it is the first
+  time a decision's inputs include something the system itself decided, and a
+  replay of wave three is only meaningful if waves one and two replayed the same
+  way.
+- **The seeding trap is known in advance and will still have to be paid for.**
+  The first order into a wave is scored against an empty context, which is a
+  degenerate field — and the rule for those is already written down: a degenerate
+  field must score **best, not worst**. This codebase has found that same
+  normalisation flaw five times, most recently inside the fix for the fourth. It
+  will be waiting at the seed of every wave. See
+  [invariants.md § The rules engine](invariants.md#the-rules-engine).
+
+**What it unlocks.** Batch picking, cluster picking and `DecisionKind.TaskAssignment`
+are the same shape — a set carved out of a field of candidates against
+accumulating state — and all three are now vocabulary work on an engine that does
+not need to change to accept them.
 
 ---
 
