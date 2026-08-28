@@ -1,10 +1,10 @@
 # Why Countflow is built this way
 
-Eight decisions that would be expensive to reverse, each with the argument behind
+Ten decisions that would be expensive to reverse, each with the argument behind
 it and **what it cost**. Where one turned out to be wrong, the correction sits
 next to the claim rather than instead of it.
 
-Source comments cite these as `ADR 0001` … `ADR 0008`; the numbers are the same.
+Source comments cite these as `ADR 0001` … `ADR 0010`; the numbers are the same.
 
 1. [Inventory truth is an append-only ledger](#1-inventory-truth-is-an-append-only-ledger)
 2. [A modular monolith, one schema per module](#2-a-modular-monolith-one-schema-per-module)
@@ -14,6 +14,8 @@ Source comments cite these as `ADR 0001` … `ADR 0008`; the numbers are the sam
 6. [The simulator is a client, not a module](#6-the-simulator-is-a-client-not-a-module)
 7. [The public surface is the surface](#7-the-public-surface-is-the-surface)
 8. [The handheld writes to a durable queue](#8-the-handheld-writes-to-a-durable-queue)
+9. [The API publishes operations, not tables](#9-the-api-publishes-operations-not-tables)
+10. [The warehouse owns quantity, the ERP owns value](#10-the-warehouse-owns-quantity-the-erp-owns-value)
 
 ---
 
@@ -518,6 +520,100 @@ already stored under the key it was born with. It is that a reload takes away a
 half-typed count — the one piece of work on the device with no record anywhere —
 and that `skipWaiting` lets an incoming worker drop the old precache under a page
 that is still running. So the update is applied when the device is quiet.
+
+---
+
+## 9. The API publishes operations, not tables
+
+Every widely used open-source system in this field generates its HTTP surface
+from its data model. Frappe derives a REST resource from every DocType; Odoo's
+`execute_kw` exposes the ORM's own methods — `search`, `read`, `create`, `write`,
+`unlink` — over every model; InvenTree serves generated viewsets over its Django
+models. The convenience is real, and it is why those systems are pleasant to
+integrate against: one convention to learn, no endpoint to write, and anything
+the schema holds is reachable the day it is added.
+
+Countflow's 58 paths are written by hand, and each of them names something that
+happens in a warehouse rather than a table that stores it.
+
+**A generated surface and [decision 1](#1-inventory-truth-is-an-append-only-ledger) cannot both hold.** The ledger has exactly
+one posting path, and that path publishes *operations*: `IStockPosting` offers
+`ReceiveAsync`, `PickAsync` and `CountAsync`, never `PostAsync(movementType, …)`.
+The shape is what carries the guarantees — a pick names the reservation it
+discharges, so picking stock nobody promised is unexpressible rather than
+rejected after the fact. Generated CRUD over `StockMovement` is a second door
+onto that table with no operation behind it: the caller supplies a type and two
+locations, and every question the operation was answering becomes a field that
+may or may not be filled in.
+
+**And a generated surface publishes storage, which is not the contract.**
+`PutawayInstruction.DecisionTraceId` is a `required Guid` — the published
+contract cannot express an unexplained directed movement. The ledger column
+behind it is deliberately nullable, because an ad-hoc transfer legitimately has
+no decision behind it. Two different shapes, and the stricter one is the one
+outsiders are held to. A surface derived from the schema would publish the
+nullable column and lose the distinction, which means the guarantee in
+[decision 4](#4-every-decision-carries-its-reasoning) would survive in the C# and quietly not survive over HTTP.
+
+This is the same argument [decision 7](#7-the-public-surface-is-the-surface) makes about a second, curated API,
+pointed the other way: there, the risk was a parallel surface that drifts; here,
+it is a generic surface that is accidentally more permissive than the one it
+generalises.
+
+**What it costs**
+
+- **Every endpoint is somebody's afternoon.** There is no generic escape hatch,
+  so a projection nobody anticipated is a change to this repository rather than
+  a query an integrator writes.
+- **A model with no operation behind it is invisible from outside**, which is
+  intended, but it means "read every field of every table" is not something this
+  API can do, and for some integrations that is the whole requirement.
+- The surface grows with use cases rather than with the schema, so the gap
+  between what the system knows and what it will tell you is real and permanent.
+  `GET /inventory/changes` is the deliberate relief valve: a cursor over every
+  quantity change ever made, for integrators who need to build a view we did not.
+
+---
+
+## 10. The warehouse owns quantity, the ERP owns value
+
+Odoo and ERPNext both carry money on the stock ledger — a valuation method per
+item, a cost on every movement, and postings into the general ledger as stock
+moves. It is the obvious next column: the ledger already has the quantity and the
+timestamp, and FIFO valuation wants exactly the history this table already is.
+
+`StockMovement` has a quantity and no price, and that is deliberate.
+
+**A movement's value is not a warehouse observation.** The floor knows a pallet
+went from a dock to a rack. What it was worth depends on purchase price, landed
+cost, the currency on the day, and an accounting policy — none of which anybody
+in the building sees, and all of which the ERP already holds. A number this
+system cannot check is a number it should not store, and the system already
+refuses this class of thing one floor down: available-to-promise is computed from
+on-hand minus open claims rather than stored, because a second number is a second
+number to drift. A cost carried here and a cost carried in the ERP is that same
+mistake across a network boundary, where the drift is harder to see and nobody
+owns the reconciliation.
+
+**The ledger's shape is what makes the split cheap.** `/inventory/changes` is a
+cursor over every quantity change this warehouse has ever made, so an ERP can
+value our movements against its own costs, on its own schedule, with its own
+method, and never ask us what anything is worth.
+
+**What it costs**
+
+- **There is no valuation report, no COGS, and no perpetual-inventory posting.**
+  "What is the stock in this building worth tonight" is not a question this
+  system can answer, and for a warehouse manager used to reading that number off
+  one screen, the answer is now in a different application.
+- **Countflow cannot be the system of record for a business with no ERP.** That
+  is a real segment, and this decision declines it.
+- **Reversing this gets more expensive every day it stands.** The ledger is
+  append-only, so a cost column added later is null for all of history — and
+  history is precisely where FIFO and moving-average valuation are computed from.
+  The reversal is not "add a column"; it is "add a column and accept that the
+  books start today". Which is the reason this is written down as a decision
+  rather than left to look like an omission.
 
 ---
 

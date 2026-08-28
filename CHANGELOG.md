@@ -8,7 +8,182 @@ features is in [docs/history.md](docs/history.md).
 
 ## [Unreleased]
 
-Nothing yet. See [ROADMAP.md](ROADMAP.md) for what is deliberately open.
+### Added
+
+- **Passwords can be read back before they are sent.** Both sign-in screens carry
+  a reveal control in the field. NIST SP 800-63B asks verifiers to offer one: a
+  secret nobody can check pushes people towards shorter passwords and towards the
+  clipboard, and it matters most where this app is used — a gloved thumb on a
+  handheld in a cold aisle, where a mistyped character is invisible and the only
+  feedback is a failed sign-in that looks like a forgotten password.
+
+  Hidden until asked, every time, and the state is never persisted: a device off
+  a charging rack must not come back up showing the last operator's password, and
+  an aisle is a public place. `PasswordInput` is `type="button"` — inside a form
+  that is one attribute away from being the default button, where revealing the
+  password would post it — and its target follows the density, so it is 44px in
+  the console's sign-in and a full 52px on the handheld.
+
+- **Language and theme, on the handheld.** The console has had both since Phase 3
+  and the handheld had neither, which left the two settings that are *most*
+  physical — what language the person holding the device reads, and whether the
+  screen is legible under a loading bay's floodlight or in a chilled aisle before
+  dawn — changeable only from a desk the operator does not sit at. Both sit at
+  the foot of the sign-in screen and of Home, sharing the console's storage keys
+  and its per-device reasoning: a handheld off a charging rack keeps what the
+  shift set on it, rather than inheriting the preference of whoever signs in.
+
+  On the sign-in screen as well as behind it, deliberately. Somebody who cannot
+  read the language the device is currently in has to be able to change it
+  *before* they can sign in, not after.
+
+### Changed
+
+- **The handheld is sized for a handheld again.** Its controls have always been
+  52px, but the type inside them came from `--text-sm` — a step the components
+  named directly, so it read 13px in the console's 30px control and only 15px in
+  the handheld's 52px one. The height scaled with density and the type did not,
+  which is why every handheld screen looked like a desktop form stretched to fit.
+
+  Control text and labels now come from `--control-text`, `--control-text-sm` and
+  `--label-text`, which each density points at the step that suits its own
+  control height. The console is unchanged to the pixel by construction — its
+  roles resolve to exactly the steps its components used to name. On the handheld
+  control text goes 15px → 18px, labels 13px → 16px, and the type scale steps up
+  with them (headings 30px → 34px), clearing the 16px floor for reading at arm's
+  length through safety glasses. Verified with no overflow at 375px and at 320px.
+
+  The console keeps its scale everywhere it is reading tables, and gets a third
+  one — `comfortable`, 44px controls with 16px type — on its sign-in screen. That
+  screen holds two fields, and a scale sized to fit rows renders it as a fragment
+  of an interface rather than the whole of one. It is the only density scoped to
+  a container rather than set on `<html>`; the rest of the console measured
+  identical after the change.
+
+- **The online marker is gone; only offline is drawn.** The connectivity marker
+  was a filled badge in both states, so a normal shift carried a green pill at
+  the top of every screen — including sign-in, where it also stretched to the
+  full width of the page, being a flex child in a column. `Badge`'s own rule is
+  that a marker used for flavour is one operators stop reading as signal, which
+  is what an always-on "everything is fine" becomes. Losing the link is news and
+  keeps its badge, permanently rather than as a toast, for the reason it always
+  had. Working normally is not news, so its absence now *is* the online state and
+  the sign-in screen carries nothing. `common.online` is retired from both
+  catalogues.
+
+- **Theme and language follow the device until somebody says otherwise.** Both
+  defaults were already meant to be "whatever this machine prefers", and one of
+  them was not. `i18next-browser-languagedetector` was configured to cache what
+  it *detected* into the same slot a deliberate choice is written to, so the
+  first launch persisted the raw navigator tag — `en-US` — and every launch
+  afterwards read that back as though the operator had picked it. A device later
+  switched to Turkish went on showing English forever. Detection no longer writes
+  anything; `setLanguage` is the only thing that does, and a stored value that is
+  not an exact supported code is cleared at start-up as the artefact it is, so
+  the fix reaches installs that have already run.
+
+  The pre-paint theme script in both apps also fell back to a hardcoded theme
+  when reading storage threw — light in the two `index.html` copies, dark in the
+  `themeBootstrapScript` they have drifted from. It now resolves the system
+  preference first and treats that as the floor, so the only thing that overrides
+  the OS is an explicit choice. All three copies say the same thing again.
+
+- **The handheld signs in like anything else does.** The operator code sat in a
+  `ScanField`, which holds its own value and only hands it over on Enter — so
+  keying the code and then the password left "Sign in" greyed out, with nothing
+  on screen saying that an Enter nobody had asked for was the missing step. It is
+  now an ordinary two-field `<form>`: the code field is autofocused and controlled
+  like any other input, Enter submits, and a password manager can fill the pair.
+
+  A form is the better shape for a badge as well, not a concession against one. A
+  keyboard-wedge scanner types the code and ends with Enter, and Enter lands on
+  the password rather than submitting a half-filled form — so scanning and keying
+  arrive in the same place and neither asks the operator to know which one the
+  screen was expecting. The submit button is disabled only while the request is
+  in flight: implicit submission is skipped when a form's default button is
+  disabled, so greying it out until both fields were full would have made Enter
+  do nothing at the end of a scan, which is exactly when the password is empty.
+
+- **The console navigates from a side rail, not a top bar.** Fifteen flat
+  destinations in one horizontal row had two problems and only one of them was
+  mobile. At 375px, fourteen of the fifteen sat outside the viewport with no
+  scrollable ancestor — reachable only by panning the whole page sideways, tables
+  and all. And at *any* width, fifteen siblings are a lookup rather than a glance;
+  the row was already wrapping to two lines at 1280px.
+
+  The rail groups them — master data, operations, insight, setup, with the scan
+  test and the tour set apart at the bottom as the old bar's `ml-auto` did — and
+  collapses to an icon strip, persisted per device like the theme. Under `lg` it
+  becomes a drawer behind a 44px control, so the console stays desktop-first (the
+  handheld is still what the floor uses) without being unusable on the tablet a
+  supervisor actually checks an order on.
+
+  `apps/console/test/navigation.test.mjs` checks both directions between the
+  router and the rail: a page nobody links to and a link that goes nowhere are
+  each a failing test rather than something you find later.
+
+### Fixed
+
+- **The console's sign-in card was rendering at 214px of its intended 360.** The
+  cards size themselves with `min(360px, 100%)`, and `place-items-center` on the
+  page grid shrink-wraps the row holding them to its own content — so their
+  `100%` resolved against a width their content had just decided, and the card
+  settled wherever that circle happened to land. The row takes the grid area with
+  `w-full` now and `justify-center` still centres the cards, so the percentage
+  means the screen again. Verified at 1280px (360px, as intended) and at 375px,
+  where it clamps to 339 with no overflow.
+
+- **Every field beside a scan field was impossible to type in.** `ScanField`
+  keeps focus for the barcode scanner and took it back from *anything* that
+  received it, so focus reached the neighbouring input and was pulled out a tick
+  later — the handheld's sign-in password, receiving's quantity and dock, and a
+  task's override reason all read as inputs that ignored taps. It now asks where
+  focus went: a text field the operator deliberately moved into keeps it, while
+  focus that went nowhere, or to a button, still comes back — a scanner left
+  pointing at a button would fire it with the Enter that ends every scan.
+  `packages/ui/test/focus.test.ts` covers the rule and asserts `ScanField` still
+  consults it.
+
+- **Filled buttons were unreadable.** `primary` used `--color-accent-text` — the
+  terracotta darkened to be legible *on a surface* — as its label colour *on the
+  terracotta fill*: 1.34:1 in light and 1.50:1 in dark, against AA's 4.5:1. The
+  console's main action, in both themes. `--color-accent-on` (white, 4.56:1)
+  existed for exactly this and had never been referenced. `danger` had the same
+  defect one line below and failed in dark only, at 2.88:1, so `--color-danger`
+  now has a fill triplet beside it rather than doubling as both a text and a fill
+  colour. Dark's `--color-accent-hover` deepens instead of lightening, because
+  lightening it left a white label at 3.79:1.
+
+  `packages/ui/test/contrast.test.mjs` now derives every filled variant's
+  fill/foreground pair from the component source and fails under 4.5:1 in either
+  theme — including a variant that writes its foreground outside the token system,
+  which is how the danger button hid.
+
+- **CI could not restore.** `Testcontainers.PostgreSql` 4.13.0 brings in SSH.NET
+  2025.1.0, whose `ScpClient.Download` does not validate the paths a remote server
+  sends (GHSA-q939-rpr3-3284). NuGet audit runs during restore and
+  `TreatWarningsAsErrors` is on, so the advisory failed the backend job. Upstream
+  had already moved: 4.14.0 depends on the fixed 2026.0.0.
+
+- **A request body that will not bind is a `400`, not a `500`.** Two defects, one
+  symptom. System.Text.Json's defaults respected neither the arity nor the
+  nullable annotations of a contract's constructor, so a body that omitted a
+  required field — or sent an explicit `null` for one — bound it to `null` and the
+  first `Trim()` downstream threw: `POST /auth/login` with `identifier` misspelt
+  answered `http.unexpected_error`, as did six other endpoints across five
+  modules. And under Development the framework rethrows a binding failure as an
+  exception, which the exception handler turned into a `500` regardless — so
+  `http.malformed_request`, documented since Phase 7, had never actually been
+  emitted by the stack `docker compose up` runs. Both are fixed in the host, so
+  every endpoint gets it: the contracts now require exactly the fields the OpenAPI
+  document already marked `required`, and Development answers what production
+  answers. No published schema changed.
+
+  A *blank* identifier is unaffected and deliberately so — it is a well-formed
+  request naming nobody, and still gets the same opaque
+  `auth.invalid_credentials` as naming somebody who does not exist.
+
+See [ROADMAP.md](ROADMAP.md) for what is deliberately open.
 
 ## [1.0.0] — 2026-08-12
 

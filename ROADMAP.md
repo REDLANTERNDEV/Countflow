@@ -71,8 +71,12 @@ person for a week before it runs unattended.
 
 Countflow is a WMS for a single-company distribution centre. What that rules out
 — labour management, slotting optimisation, 3PL billing, robotics, yard
-scheduling, multi-tenancy — is listed on the [front page](README.md#scope), and
-it is a scope decision rather than a backlog.
+scheduling, inventory valuation, multi-tenancy — is listed on the
+[front page](README.md#scope), and it is a scope decision rather than a backlog.
+Valuation is argued at length in
+[decision 10](docs/decisions.md#10-the-warehouse-owns-quantity-the-erp-owns-value),
+because it is the one on this list that gets more expensive to reverse the longer
+the ledger runs.
 
 ## How to pick something up
 

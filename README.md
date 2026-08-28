@@ -374,8 +374,8 @@ Countflow is a WMS for a **single-company distribution centre** — the warehous
 module of an ERP, built standalone and integration-ready.
 
 Deliberately out of scope: labour management, slotting optimisation, 3PL billing,
-robotics/WCS integration, yard and dock scheduling, carrier rate shopping, and
-multi-tenant hosting. [ROADMAP.md](ROADMAP.md) says what is open and why it was
+robotics/WCS integration, yard and dock scheduling, carrier rate shopping,
+inventory valuation and costing, and multi-tenant hosting. [ROADMAP.md](ROADMAP.md) says what is open and why it was
 left, including the things that were refused on their merits.
 
 ## Contributing
