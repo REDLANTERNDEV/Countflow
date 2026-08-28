@@ -101,6 +101,35 @@ already assumed the answer.
   beside the catalogue — those drift — and not at the next dock receipt, which is
   where an unvalidated set fails: at a rack, in front of an operator, with a receipt
   half done.
+- **A label template on the floor is evidence, not a document.** Only a `Draft` can
+  be edited, for the reason a rule set can only be edited as a draft — an `Active`
+  template is what the building is printing and an `Archived` one is what every
+  `LabelPrint` it produced still names, and that print is the system's only account
+  of a physical object somebody may still be holding. Templates are never deleted.
+- **A label template is validated by rendering it through the real renderer**, at
+  the moment somebody presses save — the same trick, and the same argument, as
+  building a rule set through the real catalogue. The specimen it renders against
+  carries **every optional field absent**, because a pallet labelled before it was
+  built is the layout's hardest case and its least likely test.
+- **A field the kind does not publish is a hard failure; a field with no value
+  prints as nothing.** The two are never collapsed. An unknown code is somebody
+  renaming something and would otherwise print a pallet label with no batch number
+  on it; an absent value is a mixed pallet having nothing honest to say, and the
+  position stays occupied so the layout does not reflow.
+- **A label never asserts what the ledger does not.** A pallet holding two SKUs has
+  no SKU, no batch and no expiry on its label and no GS1 content block in its
+  barcode — it says "mixed". A part-case pallet carries no AI 37, because the count
+  is not an integer and rounding it puts a number in a barcode that a customer's
+  system will believe.
+- **Printing is recorded and is never a movement.** Nothing moved, so ADR 0001 keeps
+  it out of the ledger for the reason a reservation and a clean count are kept out.
+  It is recorded anyway, because a reprint means two physical objects each claiming
+  to be one pallet. See [decision 13](decisions.md#13-a-label-kind-is-code-a-label-template-is-data).
+- **An SSCC serial is allocated once and never reissued.** It is drawn from a
+  PostgreSQL sequence precisely because `nextval` survives a rollback. A warehouse
+  with no GS1 company prefix is refused rather than given a default — a made-up
+  prefix is another company's, and the label scans. Exhaustion is a refusal, never a
+  wrap. See [decision 14](decisions.md#14-countflow-issues-its-own-licence-plates).
 - **Every write the handheld makes goes through the durable queue, online or
   not.** There is no offline branch in any screen. A queue reached only when
   `navigator.onLine` is false has never run on the happy path, and a confirmation
@@ -431,6 +460,33 @@ expensive way.
   its rows — owning it anywhere else would put that sum across a schema boundary
   (ADR 2) on the busiest page in the application.
 
+### Labels and printing
+
+- **A label kind is code and a label template is data**, and the line between them
+  is `PalletLabelFields` — a binding contract, not a suggestion. Adding a field is a
+  change to this repository, and that is the price of a template that can be checked
+  before it is used ([decision 13](decisions.md#13-a-label-kind-is-code-a-label-template-is-data)).
+- **The binder asks, the caller does not assemble.** `PalletLabelBinder` gathers a
+  label's facts through four published contracts and no project references. A caller
+  supplies the subject and the site; everything else it would have had to know —
+  including that AI 02 is the *case* GTIN — lives in one place.
+- **`Gs1ElementString` owns separator placement, and callers never concatenate AIs
+  by hand.** A predefined-length element must not be followed by FNC1 and a variable
+  one must be. Get it backwards and the symbol still prints, still scans, and
+  decodes into the wrong fields.
+- **Every value written into ZPL goes through the hex escape.** `^`, `~` and `\` are
+  ZPL control characters, so a description reading `WIDGET ^ BRACKET` ends the field
+  and runs the rest as commands — printing a label missing everything after the
+  caret, without an error anywhere.
+- **Only an active template may print; a preview may name a draft.** A preview also
+  mints nothing and creates no licence plate: looking at a label is not making one.
+- **Printing is the moment a licence plate becomes real.** Before labels a plate
+  came into being as a side effect of posting stock; a printed label exists whether
+  or not stock ever follows, so `ILicensePlateRegistry.EnsureAsync` is `Ensure` and
+  not `Create` — a reprint lands on the plate the first print made.
+- **Transport is not here and is not missing.** Generation is verified by asserting
+  on the ZPL, with no printer. See [ROADMAP.md](../ROADMAP.md).
+
 ### The stock ledger
 
 - **One posting path.** Every command goes through `StockLedger.PostAsync`. Adding
@@ -579,6 +635,9 @@ source and deliberately not in the repository.
   receiving knows it is holding 12 units, not 1.
 - **Zone codes are unique within an area, not globally.** Every DC has a "DOCK"
   zone in both receiving and shipping — look zones up by (area, zone).
+- **A pallet label's AI 02 is the case's GTIN, not the item's, and AI 37 counts
+  cases and not base units.** The corollary of the GTIN note above, and the place it
+  is most often got wrong: 48 base units of a 12-pack is four trade items.
 - **Everything converts to base units at the edge.** Nothing downstream of
   `ResolveScan` should reason about packaging levels.
 - Expiry tracking implies lot tracking: an expiry date belongs to a batch.

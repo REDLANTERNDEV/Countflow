@@ -6,6 +6,7 @@
     <ProjectReference Include="../Modules/Countflow.Modules.Identity/Countflow.Modules.Identity.csproj" />
     <ProjectReference Include="../Modules/Countflow.Modules.Inbound/Countflow.Modules.Inbound.csproj" />
     <ProjectReference Include="../Modules/Countflow.Modules.Inventory/Countflow.Modules.Inventory.csproj" />
+    <ProjectReference Include="../Modules/Countflow.Modules.Labels/Countflow.Modules.Labels.csproj" />
     <ProjectReference Include="../Modules/Countflow.Modules.MasterData/Countflow.Modules.MasterData.csproj" />
     <ProjectReference Include="../Modules/Countflow.Modules.Outbound/Countflow.Modules.Outbound.csproj" />
     <ProjectReference Include="../Modules/Countflow.Modules.Replay/Countflow.Modules.Replay.csproj" />

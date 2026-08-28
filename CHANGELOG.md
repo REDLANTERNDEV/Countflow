@@ -10,6 +10,49 @@ features is in [docs/history.md](docs/history.md).
 
 ### Added
 
+- **A pallet has a printable identity.** `POST /labels/prints` generates a GS1
+  logistics label as ZPL from a template held as data, and records that somebody
+  made one. At a blind receipt — no advice note, no supplier label — the warehouse
+  **mints its own SSCC** on the company's GS1 prefix, so the pallet has a readable
+  licence plate before it is built rather than an identifier only the database
+  could see.
+
+  **A label kind is code and a label template is data**, and the split is the one
+  the rules engine already draws. A kind fixes the binding contract — which facts
+  are fetched, from where, and what each is called; `GET /labels/kinds` publishes
+  the list. A template arranges those facts on the paper, and is a record rather
+  than a deploy: clone, edit, preview, promote, exactly as a rule set. Only a draft
+  is editable, and a template is validated **by rendering it** against a specimen
+  pallet carrying no contents, so a broken layout is refused at the moment somebody
+  presses save rather than at a rack with a pallet waiting.
+
+  A label never claims what the ledger does not. A pallet holding two SKUs prints
+  "mixed" instead of naming one of them, and its barcode carries the SSCC alone; a
+  part-case pallet carries no case count, because the number would not be an
+  integer. On a single-SKU pallet the barcode carries the batch, the expiry, the
+  case GTIN and the case count — and AI 02 is the *case's* GTIN, never the loose
+  unit's.
+
+  **A reprint is recorded as a reprint.** Printing moves no stock, so it is not a
+  ledger entry; it is recorded anyway, because a second label means two physical
+  objects each claiming to be the same pallet, and `GET /labels/prints?reprintsOnly=true`
+  is the question somebody asks afterwards. Every print stamps the template's name
+  and version, so a label from last year still says what produced it. A retried
+  print — a handheld's outbox will send one — returns the label it already made and
+  is not counted as a reprint.
+
+  **Transport is deliberately not included.** The endpoint returns ZPL; sending it
+  to a printer over a socket, a local agent, WebUSB or a cloud service are four
+  options with different trade-offs, and none is needed to verify the generator.
+  See [ROADMAP.md](ROADMAP.md).
+
+  New: `GET /labels/kinds`, `GET|POST /labels/templates`,
+  `GET|PUT /labels/templates/{id}`, `POST /labels/templates/{id}/promote`,
+  `POST /labels/templates/{id}/archive`, `POST /labels/renderings`,
+  `GET|POST /labels/prints`. Warehouses gain a GS1 company prefix and an SSCC
+  extension digit; a site without a prefix is refused rather than issued another
+  company's numbers.
+
 - **Returns, and a fourth vocabulary to decide what becomes of them.** Goods a
   customer sends back are booked into a hold bay, inspected by a person, and then
   routed by rule to one of four outcomes — restock, quarantine, repair or scrap —

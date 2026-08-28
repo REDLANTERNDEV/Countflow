@@ -29,6 +29,13 @@ public sealed class MasterDataDbContext(DbContextOptions<MasterDataDbContext> op
 
         builder.HasDefaultSchema(SchemaName);
 
+        // The SSCC serial reference, and the one number in this system that is
+        // deliberately not transactional. A sequence keeps counting through a
+        // rollback, which everywhere else would be a leak and here is the
+        // requirement: a serial handed out and then abandoned must never come
+        // back, because the label may already have been printed. See ISsccMint.
+        builder.HasSequence<long>(Integration.SsccMint.SequenceName, SchemaName).StartsAt(1).IncrementsBy(1);
+
         builder.Entity<Warehouse>(warehouse =>
         {
             warehouse.HasKey(w => w.Id);
@@ -36,6 +43,7 @@ public sealed class MasterDataDbContext(DbContextOptions<MasterDataDbContext> op
             warehouse.Property(w => w.Name).HasMaxLength(200).IsRequired();
             warehouse.Property(w => w.City).HasMaxLength(100);
             warehouse.Property(w => w.CountryCode).HasMaxLength(2);
+            warehouse.Property(w => w.Gs1CompanyPrefix).HasMaxLength(10);
             warehouse.HasIndex(w => w.Code).IsUnique();
         });
 

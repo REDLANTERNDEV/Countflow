@@ -2,6 +2,7 @@ using Countflow.Modules.Counting;
 using Countflow.Modules.Identity;
 using Countflow.Modules.Inbound;
 using Countflow.Modules.Inventory;
+using Countflow.Modules.Labels;
 using Countflow.Modules.MasterData;
 using Countflow.Modules.Outbound;
 using Countflow.Modules.Replay;
@@ -46,6 +47,11 @@ public static class ModuleCatalog
         // Phase 6. The first module that asks nothing of the warehouse at all: it
         // reads decisions Rules has already made and history Inventory has already
         // written, and asks what a different rule set would have done with them.
-        new ReplayModule()
+        new ReplayModule(),
+        // Printable identity. The last module in the list and the only one whose
+        // output is a physical object: it reads items, plates and sites through
+        // published contracts and emits ZPL. It publishes nothing, and the
+        // transport that sends that ZPL to a printer is deliberately not here.
+        new LabelsModule()
     ];
 }

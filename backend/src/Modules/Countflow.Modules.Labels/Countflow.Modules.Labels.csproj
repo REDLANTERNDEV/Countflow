@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <!-- SharedKernel only, exactly as every module since Phase 3. Rendering a
+         pallet label needs an item's description, a plate's contents and a site's
+         GS1 prefix, which live in three other schemas — and all three arrive
+         through published contracts (IItemDirectory, IStockQuery, ISsccMint,
+         ILicensePlateRegistry). There is a project reference to none of them, so
+         "the generator asks" cannot quietly become "the generator joins"
+         (ADR 0002). -->
+    <ProjectReference Include="../../Countflow.SharedKernel/Countflow.SharedKernel.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+  </ItemGroup>
+
+</Project>

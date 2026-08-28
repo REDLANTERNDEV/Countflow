@@ -210,3 +210,45 @@ built minutes ago has nothing admissible yet.
 |---|---|---|
 | `item.not_found` · `warehouse.not_found` | 404 | |
 | `import.malformed_csv` | 400 | `detail` names the row. |
+| `masterdata.warehouse_not_found` | 404 | |
+| `masterdata.no_company_prefix` | 409 | The site has no GS1 company prefix, so it cannot issue an SSCC. Configuration, not your request. |
+| `masterdata.invalid_company_prefix` · `masterdata.invalid_extension_digit` | 409 | The prefix on file is not six to ten digits, or the extension digit is outside 0–9. |
+| `masterdata.sscc_serial_exhausted` | 409 | Every serial the prefix has room for has been issued. A further prefix has to be bought from GS1; serials are never reused. |
+
+## Labels
+
+Most of these arrive when a template is **saved**, not when a label is printed — a
+template is validated by rendering it, so a layout that could not print is refused
+in the editor rather than at a rack.
+
+| Code | Status | Means |
+|---|---|---|
+| `labels.template_not_found` · `labels.warehouse_not_found` · `labels.item_not_found` | 404 | |
+| `labels.template_not_editable` | 409 | Only a draft is editable. Clone, edit the copy, promote that. |
+| `labels.template_not_promotable` | 409 | Only a draft can be promoted. |
+| `labels.no_active_template` | 409 | Nothing is on the floor for that kind and site. Promote one. |
+| `labels.template_empty` · `labels.template_has_no_extent` | 400 | |
+| `labels.unknown_field` | 400 | The template names a field its kind does not publish. Never printed blank — see `GET /labels/kinds` for the list. |
+| `labels.no_vocabulary` | 400 | This build has no fields for that label kind. |
+| `labels.duplicate_element_order` | 400 | Draw order decides overlap, so two elements cannot share one. |
+| `labels.element_off_label` | 400 | The element starts outside the label's extent. |
+| `labels.invalid_rotation` | 400 | `N`, `R`, `I` or `B`. |
+| `labels.text_is_both` · `labels.text_has_nothing` | 400 | A text element prints a caption or a field, exactly one. |
+| `labels.barcode_has_no_symbology` · `labels.barcode_has_no_field` | 400 | |
+| `labels.box_has_no_extent` · `labels.unknown_element_type` | 400 | |
+| `labels.barcode_field_empty` | 409 | A plain Code 128 over a field this subject has no value for. A barcode encoding nothing scans as nothing while looking like one. |
+| `labels.invalid_sscc` | 400 | Check digit. |
+| `labels.idempotency_key_required` | 400 | |
+
+## GS1 encoding
+
+Raised while **building** a barcode's data, and reached through the label
+endpoints. `gs1.empty_value`, `gs1.value_too_long` and `gs1.non_numeric` are the
+same codes scanning raises, deliberately — one idea, one code.
+
+| Code | Status | Means |
+|---|---|---|
+| `gs1.no_elements` | 400 | |
+| `gs1.unknown_ai` | 400 | An application identifier this build cannot encode. |
+| `gs1.duplicate_ai` | 400 | |
+| `gs1.wrong_fixed_length` | 400 | A predefined-length AI given the wrong number of characters. Nothing terminates one, so a short value swallows the head of the next element. |

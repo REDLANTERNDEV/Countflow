@@ -43,6 +43,38 @@ public sealed class ItemDirectory(MasterDataDbContext dbContext) : IItemDirector
     }
 
     /// <summary>
+    /// Every packaging level on file for one item, ordered by how much it holds.
+    /// <para>
+    /// Ordered by <c>BaseUnitQuantity</c> rather than by the enum, because the
+    /// enum is a name for a rung and the quantity is the rung. A catalogue that
+    /// records an Inner of 12 and a Case of 6 is wrong, but it is wrong in the
+    /// data, and a label picking "the smallest level above a unit" should read
+    /// what the catalogue says rather than what its enum implies.
+    /// </para>
+    /// </summary>
+    public async Task<IReadOnlyList<PackSnapshot>> PackagingAsync(
+        Guid itemId,
+        CancellationToken cancellationToken)
+    {
+        var rows = await dbContext.PackConfigurations
+            .AsNoTracking()
+            .Where(p => p.ItemId == itemId)
+            .OrderBy(p => p.BaseUnitQuantity)
+            .Select(p => new { p.ItemId, p.Level, p.BaseUnitQuantity, p.Gtin, p.IsReceivingUnit })
+            .ToListAsync(cancellationToken);
+
+        return
+        [
+            .. rows.Select(r => new PackSnapshot(
+                r.ItemId,
+                ToLevel(r.Level),
+                r.BaseUnitQuantity,
+                r.Gtin,
+                r.IsReceivingUnit))
+        ];
+    }
+
+    /// <summary>
     /// Reads only the columns the contract exposes, and reads the Each pack
     /// level's envelope alongside them.
     /// <para>
@@ -140,6 +172,14 @@ public sealed class ItemDirectory(MasterDataDbContext dbContext) : IItemDirector
         AbcClass.A => AbcBand.A,
         AbcClass.B => AbcBand.B,
         _ => AbcBand.C
+    };
+
+    private static PackLevel ToLevel(PackagingLevel level) => level switch
+    {
+        PackagingLevel.Each => PackLevel.Each,
+        PackagingLevel.Inner => PackLevel.Inner,
+        PackagingLevel.Case => PackLevel.Case,
+        _ => PackLevel.Pallet
     };
 
     private static TemperatureBand ToBand(TemperatureClass temperature) => temperature switch

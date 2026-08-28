@@ -75,6 +75,35 @@ public sealed class StockQuery(InventoryDbContext dbContext, IItemDirectory item
         return [.. rows.Select(r => new PlateLine(r.ItemId, r.LotId, ToCondition(r.Status), r.Quantity))];
     }
 
+    /// <summary>
+    /// Everything on a plate, wherever it is. The location comes back on each line
+    /// because a plate has no location of its own — see <c>LicensePlate</c>, which
+    /// refuses a <c>CurrentLocationId</c> for exactly this reason (ADR 0001).
+    /// </summary>
+    public async Task<IReadOnlyList<PlateHolding>> PlateHoldingsAsync(
+        Guid licensePlateId,
+        CancellationToken cancellationToken)
+    {
+        var rows = await dbContext.StockBalances
+            .AsNoTracking()
+            .Where(b => b.LicensePlateId == licensePlateId && b.Quantity > 0)
+            .OrderBy(b => b.ItemId)
+            .ThenBy(b => b.LotId)
+            .ThenBy(b => b.Status)
+            .Select(b => new { b.ItemId, b.LotId, b.LocationId, b.Status, b.Quantity })
+            .ToListAsync(cancellationToken);
+
+        return
+        [
+            .. rows.Select(r => new PlateHolding(
+                r.ItemId,
+                r.LotId,
+                r.LocationId,
+                ToCondition(r.Status),
+                r.Quantity))
+        ];
+    }
+
     public async Task<Guid?> FindLicensePlateAsync(string sscc, CancellationToken cancellationToken)
     {
         var normalised = sscc.Trim();

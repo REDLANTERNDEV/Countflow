@@ -33,6 +33,12 @@ public sealed class MasterDataModule : ICountflowModule
         services.AddScoped<IItemDirectory, ItemDirectory>();
         services.AddScoped<ILocationDirectory, LocationDirectory>();
         services.AddScoped<IWarehouseDirectory, WarehouseDirectory>();
+
+        // The mint is a write, and the only one this module publishes. It is here
+        // rather than in Inventory because a GS1 company prefix is an attribute of
+        // the company operating the site — reference data, typed in once — and
+        // minting is arithmetic over it. See ISsccMint.
+        services.AddScoped<ISsccMint, SsccMint>();
     }
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints)

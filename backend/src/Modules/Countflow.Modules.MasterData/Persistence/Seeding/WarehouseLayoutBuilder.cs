@@ -25,6 +25,11 @@ public sealed class WarehouseLayoutBuilder
         {
             Code = "WH1",
             Name = "Rotterdam Distribution Centre",
+            // The same fictional prefix ItemCatalogueBuilder puts on its GTINs —
+            // not allocated to anyone real. Without one the seeded site cannot
+            // mint an SSCC, and a pallet label at a blind receipt is the first
+            // thing anybody tries. See ISsccMint.
+            Gs1CompanyPrefix = "509876",
             City = "Rotterdam",
             CountryCode = "NL"
         };

@@ -23,6 +23,8 @@ namespace Countflow.Modules.MasterData.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.HasSequence("sscc_serial", "masterdata");
+
             modelBuilder.Entity("Countflow.Modules.MasterData.Domain.Area", b =>
                 {
                     b.Property<Guid>("Id")
@@ -309,6 +311,10 @@ namespace Countflow.Modules.MasterData.Persistence.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("Gs1CompanyPrefix")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
@@ -316,6 +322,9 @@ namespace Countflow.Modules.MasterData.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
+
+                    b.Property<int>("SsccExtensionDigit")
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 

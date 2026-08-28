@@ -1067,6 +1067,128 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/labels/kinds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The label kinds, and the fields a template of each may print. */
+        get: operations["GetLabelKinds"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/labels/templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List label templates. */
+        get: operations["GetLabelTemplates"];
+        put?: never;
+        /** Create a draft label template, optionally cloned from an existing one. */
+        post: operations["CreateLabelTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/labels/templates/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One label template, with its elements. */
+        get: operations["GetLabelTemplate"];
+        /** Replace a draft label template's elements. */
+        put: operations["ReplaceLabelTemplate"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/labels/templates/{id}/promote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Activate a draft label template, archiving the one it replaces. */
+        post: operations["PromoteLabelTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/labels/templates/{id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Archive a label template without deleting it. */
+        post: operations["ArchiveLabelTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/labels/renderings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Render a label without recording a print or minting an SSCC. */
+        post: operations["PreviewLabel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/labels/prints": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Labels that were printed, newest first. */
+        get: operations["GetLabelPrints"];
+        put?: never;
+        /** Generate a label and record the print. Mints an SSCC when none is supplied. */
+        post: operations["PrintLabel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1189,6 +1311,8 @@ export interface components {
             /** Format: int64 */
             lastMovementSequence: number;
         };
+        /** @enum {string} */
+        BarcodeSymbology: "Gs1128" | "Gs1DataMatrix" | "Code128";
         BookReturnLineRequest: {
             sku: string;
             /** Format: double */
@@ -1393,6 +1517,28 @@ export interface components {
              */
             maxTasks: number;
             notes?: null | string;
+        };
+        CreateLabelTemplateRequest: {
+            kind: components["schemas"]["LabelKind"];
+            name: string;
+            /**
+             * Format: int32
+             * @default 0
+             */
+            widthDots: number;
+            /**
+             * Format: int32
+             * @default 0
+             */
+            heightDots: number;
+            /** Format: uuid */
+            warehouseId?: null | string;
+            /** Format: int32 */
+            darkness?: null | number;
+            notes?: null | string;
+            /** Format: uuid */
+            cloneFromTemplateId?: null | string;
+            elements?: null | components["schemas"]["LabelElementRequest"][];
         };
         CreateOrderLineRequest: {
             sku: string;
@@ -1613,6 +1759,116 @@ export interface components {
             isActive: boolean;
             packConfigurations: components["schemas"]["PackConfigurationResponse"][];
         };
+        LabelElementRequest: {
+            type: components["schemas"]["LabelElementType"];
+            /** Format: int32 */
+            order: number;
+            /** Format: int32 */
+            x: number;
+            /** Format: int32 */
+            y: number;
+            /** @default N */
+            rotation: string;
+            fieldCode?: null | string;
+            literal?: null | string;
+            /** Format: int32 */
+            fontHeight?: null | number;
+            /** Format: int32 */
+            fontWidth?: null | number;
+            symbology?: null | components["schemas"]["BarcodeSymbology"];
+            /** Format: int32 */
+            barcodeHeight?: null | number;
+            /** @default true */
+            showInterpretation: boolean;
+            /** Format: int32 */
+            widthDots?: null | number;
+            /** Format: int32 */
+            heightDots?: null | number;
+            /** Format: int32 */
+            thicknessDots?: null | number;
+        };
+        LabelElementResponse: {
+            /** Format: uuid */
+            id: string;
+            type: string;
+            /** Format: int32 */
+            order: number;
+            /** Format: int32 */
+            x: number;
+            /** Format: int32 */
+            y: number;
+            rotation: string;
+            fieldCode: null | string;
+            literal: null | string;
+            /** Format: int32 */
+            fontHeight: null | number;
+            /** Format: int32 */
+            fontWidth: null | number;
+            symbology: null | string;
+            /** Format: int32 */
+            barcodeHeight: null | number;
+            showInterpretation: boolean;
+            /** Format: int32 */
+            widthDots: null | number;
+            /** Format: int32 */
+            heightDots: null | number;
+            /** Format: int32 */
+            thicknessDots: null | number;
+        };
+        /** @enum {string} */
+        LabelElementType: "Text" | "Barcode" | "Box";
+        LabelFieldResponse: {
+            code: string;
+            title: string;
+            isAlwaysPresent: boolean;
+        };
+        /** @enum {string} */
+        LabelKind: "Pallet";
+        LabelKindResponse: {
+            kind: string;
+            fields: components["schemas"]["LabelFieldResponse"][];
+        };
+        LabelPrintResponse: {
+            /** Format: uuid */
+            id: string;
+            kind: string;
+            sscc: string;
+            /** Format: uuid */
+            templateId: string;
+            templateName: string;
+            /** Format: int32 */
+            templateVersion: number;
+            isReprint: boolean;
+            payloadHash: string;
+            /** Format: date-time */
+            printedAt: string;
+            printedBy: string;
+        };
+        LabelTemplateResponse: {
+            /** Format: uuid */
+            id: string;
+            kind: string;
+            name: string;
+            /** Format: int32 */
+            version: number;
+            status: string;
+            /** Format: uuid */
+            warehouseId: null | string;
+            /** Format: int32 */
+            widthDots: number;
+            /** Format: int32 */
+            heightDots: number;
+            /** Format: int32 */
+            darkness: null | number;
+            notes: null | string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            activatedAt: null | string;
+            elements: components["schemas"]["LabelElementResponse"][];
+        };
+        /** @enum {string} */
+        LabelTemplateStatus: "Draft" | "Active" | "Archived";
         LedgerChangePage: {
             changes: components["schemas"]["StockMovementResponse"][];
             /** Format: int64 */
@@ -1861,6 +2117,13 @@ export interface components {
             admissibleCount: number;
             trace: components["schemas"]["DecisionTraceView"];
         };
+        PreviewLabelRequest: {
+            kind: components["schemas"]["LabelKind"];
+            warehouseCode: string;
+            sscc: string;
+            /** Format: uuid */
+            templateId?: null | string;
+        };
         PreviewPutawayRequest: {
             sku: string;
             /** Format: double */
@@ -1880,6 +2143,26 @@ export interface components {
             /** Format: int32 */
             admissibleCount: number;
             trace: components["schemas"]["DecisionTraceView"];
+        };
+        PrintLabelRequest: {
+            kind: components["schemas"]["LabelKind"];
+            warehouseCode: string;
+            sscc?: null | string;
+        };
+        PrintedLabelResponse: {
+            zpl: string;
+            kind: string;
+            sscc: string;
+            /** Format: uuid */
+            templateId: string;
+            templateName: string;
+            /** Format: int32 */
+            templateVersion: number;
+            isReprint: boolean;
+            /** Format: uuid */
+            printId: null | string;
+            /** Format: date-time */
+            printedAt: string;
         };
         ProblemDetails: {
             type?: null | string;
@@ -1964,6 +2247,17 @@ export interface components {
             tasksRaised: number;
             /** Format: double */
             shortfallQuantity: number;
+        };
+        ReplaceLabelTemplateRequest: {
+            elements: components["schemas"]["LabelElementRequest"][];
+            name?: null | string;
+            notes?: null | string;
+            /** Format: int32 */
+            widthDots?: null | number;
+            /** Format: int32 */
+            heightDots?: null | number;
+            /** Format: int32 */
+            darkness?: null | number;
         };
         ReplaceRuleSetRequest: {
             rules: components["schemas"]["RuleDraftRequest"][];
@@ -5412,6 +5706,430 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetLabelKinds: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabelKindResponse"][];
+                };
+            };
+        };
+    };
+    GetLabelTemplates: {
+        parameters: {
+            query?: {
+                kind?: components["schemas"]["LabelKind"];
+                status?: components["schemas"]["LabelTemplateStatus"];
+                warehouseId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabelTemplateResponse"][];
+                };
+            };
+        };
+    };
+    CreateLabelTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateLabelTemplateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabelTemplateResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetLabelTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabelTemplateResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ReplaceLabelTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReplaceLabelTemplateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabelTemplateResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    PromoteLabelTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabelTemplateResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ArchiveLabelTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabelTemplateResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    PreviewLabel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PreviewLabelRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrintedLabelResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetLabelPrints: {
+        parameters: {
+            query?: {
+                sscc?: string;
+                kind?: components["schemas"]["LabelKind"];
+                reprintsOnly?: boolean;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LabelPrintResponse"][];
+                };
+            };
+        };
+    };
+    PrintLabel: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PrintLabelRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrintedLabelResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

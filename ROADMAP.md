@@ -67,6 +67,38 @@ A plan is raised by a supervisor pressing a button. A nightly job is a cron entr
 away and was deliberately left out: a counting policy should be watched by a
 person for a week before it runs unattended.
 
+### 8. A label has no way to reach a printer
+
+`POST /labels/prints` returns ZPL and stops there, which was a deliberate cut
+([decision 13](docs/decisions.md#13-a-label-kind-is-code-a-label-template-is-data)):
+generation is fully verifiable by asserting on the markup, and transport is a
+separate problem with four candidate answers that do not resemble each other.
+
+A **direct socket to port 9100** is trivial and puts the API on the warehouse LAN,
+which is a networking commitment rather than a feature. A **local print agent** is
+the answer most WMS vendors reach and costs an installer, an update path and a
+support surface on every site. **WebUSB** puts the printer next to the person who
+pressed the button and works only in Chromium, over HTTPS, with the device
+physically attached. **Cloud print** outsources all of it and adds a dependency
+that decides whether pallets can be labelled.
+
+The shape of the cut is what makes this cheap to pick up: nothing above the
+generator knows a printer exists, so whichever lands consumes the `zpl` field and
+changes no code in `Modules/Labels`. Which one is right is a question about a
+particular building, and there is no default worth guessing.
+
+### 9. Only one label kind exists
+
+`LabelKind` has a single member. Location labels for rack faces and carton labels
+for pick-and-pack are both obvious next kinds, and each is a binding contract plus
+a binder — the deliberate cost of
+[decision 13](docs/decisions.md#13-a-label-kind-is-code-a-label-template-is-data)
+being paid a second time. That the pallet kind dropped in without touching the
+renderer, the vocabulary seam or the template lifecycle is untested until a second
+one does; one kind proves nothing, which is the same thing
+[decision 4](docs/decisions.md#4-every-decision-carries-its-reasoning) says about
+one rule set.
+
 ## Out of scope
 
 Countflow is a WMS for a single-company distribution centre. What that rules out

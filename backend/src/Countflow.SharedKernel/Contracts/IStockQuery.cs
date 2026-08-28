@@ -102,6 +102,29 @@ public sealed record OccupancyLine(Guid LocationId, Guid ItemId, Guid? LotId, de
 public sealed record PlateLine(Guid ItemId, Guid? LotId, StockCondition Condition, decimal Quantity);
 
 /// <summary>
+/// One item and lot on a licence plate, together with where it is sitting.
+/// <para>
+/// The location travels with the line because <c>LicensePlate</c> deliberately has
+/// no <c>CurrentLocationId</c> (ADR 0001) — where a plate is, is where its
+/// balances are. A caller that already knows the location wants
+/// <see cref="PlateLine"/> and the cheaper query behind it; a caller that has only
+/// an SSCC in its hand, which is every reprint, has to be told.
+/// </para>
+/// <para>
+/// A plate genuinely can be in two places at once here, and the shape admits it
+/// rather than picking one: a pallet broken down across two bays is several
+/// holdings under one licence plate, and a label that silently named the first of
+/// them would be a label asserting something the ledger does not.
+/// </para>
+/// </summary>
+public sealed record PlateHolding(
+    Guid ItemId,
+    Guid? LotId,
+    Guid LocationId,
+    StockCondition Condition,
+    decimal Quantity);
+
+/// <summary>
 /// A batch, as another module needs to display it.
 /// <para>
 /// Lots live in Inventory because an expiry date belongs to stock rather than to
@@ -139,6 +162,16 @@ public interface IStockQuery
     Task<IReadOnlyList<PlateLine>> PlateContentsAsync(
         Guid licensePlateId,
         Guid locationId,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Everything posted against a licence plate, wherever it is. Empty for a
+    /// plate that has been labelled and not yet filled — the ordinary state of a
+    /// pallet between the label coming off the printer and the first case going on
+    /// it, and the reason this returns a list rather than refusing.
+    /// </summary>
+    Task<IReadOnlyList<PlateHolding>> PlateHoldingsAsync(
+        Guid licensePlateId,
         CancellationToken cancellationToken);
 
     /// <summary>Resolves a scanned SSCC to a licence plate.</summary>

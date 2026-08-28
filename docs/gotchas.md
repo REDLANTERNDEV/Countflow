@@ -151,6 +151,27 @@ when you come looking. Phase numbers refer to [history.md](history.md).
   every refusal returns before `SaveChangesAsync`.** A suite that only ever
   asserts refusals has not tested the method — that generalises well past this
   file, and it is worth checking for elsewhere.
+- **`^`, `~` and `\` in label data are ZPL commands, and getting it wrong is
+  silent.** An item description reading `WIDGET ^ BRACKET` ends the field and runs
+  the rest as commands: no exception, no odd-looking output, just a label missing
+  everything after the caret. `ZplRenderer` emits `^FH\` and hex-escapes all three
+  — and `_` first, or it would be read as the start of an escape. This is the
+  failure a ZPL blob with placeholders in it cannot be protected from, and the
+  reason a label template here is a structured element list
+  ([decision 13](decisions.md#13-a-label-kind-is-code-a-label-template-is-data)).
+- **A GS1 element string's FNC1 goes after variable-length AIs only.** AI 10 needs a
+  separator, AI 00 and AI 17 must not have one, and a string that gets it backwards
+  scans perfectly into the wrong fields. `Gs1ElementString` owns the placement;
+  nothing else concatenates AIs.
+- **`nextval` is deliberately outside the transaction, and that is why the SSCC
+  serial uses one.** A serial drawn and then rolled back must not come back — the
+  label may already be on a pallet. Anywhere else in this codebase that behaviour
+  would be a bug; see [decision 14](decisions.md#14-countflow-issues-its-own-licence-plates).
+- **`Gs1Errors` reuses the parser's codes where the meaning is the same.**
+  `gs1.empty_value`, `gs1.value_too_long` and `gs1.non_numeric` are shared between
+  parsing a scan and building a symbol. Coining a second code for one idea is how
+  `en.ts` ends up with two entries nobody keeps in step — the duplicate-key error
+  from `tsc` is the only thing that catches it.
 - **Do not truncate a UUIDv7 for uniqueness.** A v7's leading hex digits are its
   millisecond timestamp, so `Guid.CreateVersion7().ToString("N")[..8]` collides
   for anything created in the same millisecond. A service account's operator code

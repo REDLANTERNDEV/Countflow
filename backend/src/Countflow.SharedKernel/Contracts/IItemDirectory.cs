@@ -88,4 +88,45 @@ public interface IItemDirectory
     Task<IReadOnlyDictionary<Guid, ItemSnapshot>> FindManyAsync(
         IReadOnlyCollection<Guid> ids,
         CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Every packaging level recorded for an item, cheapest level first. Empty
+    /// when the catalogue holds no pack rows at all, which is a real state and not
+    /// an error: an item can be received and stored perfectly well with nothing but
+    /// a base unit, and it is only a label claiming a case count that needs more.
+    /// </summary>
+    Task<IReadOnlyList<PackSnapshot>> PackagingAsync(Guid itemId, CancellationToken cancellationToken);
 }
+
+/// <summary>
+/// A rung of an item's packaging hierarchy. Mirrors MasterData's
+/// <c>PackagingLevel</c>, published for the reason <see cref="TemperatureBand"/>
+/// is: a logistics label has to say how many <i>trade items</i> a pallet holds,
+/// and "trade item" is a packaging level rather than a base unit.
+/// </summary>
+public enum PackLevel
+{
+    Each = 1,
+    Inner = 2,
+    Case = 3,
+    Pallet = 4
+}
+
+/// <summary>
+/// One packaging level of one item, reduced to what a label needs of it.
+/// <para>
+/// The GTIN is here rather than on <see cref="ItemSnapshot"/> because a GTIN
+/// identifies a packaging level and not an item — the domain note this codebase
+/// keeps repeating, and the one a logistics label gets wrong most often. AI 02 on
+/// a pallet label means "GTIN of the trade items contained", which is the case's
+/// GTIN and never the loose unit's, and AI 37 is a count of those same trade
+/// items, which is why <paramref name="BaseUnitQuantity"/> travels beside it: the
+/// ledger holds base units and the label has to divide.
+/// </para>
+/// </summary>
+public sealed record PackSnapshot(
+    Guid ItemId,
+    PackLevel Level,
+    int BaseUnitQuantity,
+    string? Gtin,
+    bool IsReceivingUnit);

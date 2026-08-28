@@ -65,6 +65,7 @@ public sealed class InventoryModule : ICountflowModule
         // stays single no matter how many modules come to depend on it.
         services.AddScoped<IStockPosting, StockPosting>();
         services.AddScoped<IStockQuery, StockQuery>();
+        services.AddScoped<ILicensePlateRegistry, LicensePlateRegistry>();
         services.AddScoped<IStockAvailability, StockAvailability>();
         services.AddScoped<IStockReservations, StockReservations>();
         services.AddScoped<IStockCounts, StockCounts>();

@@ -4131,6 +4131,577 @@
           }
         }
       }
+    },
+    "/api/v1/labels/kinds": {
+      "get": {
+        "tags": [
+          "Labels"
+        ],
+        "summary": "The label kinds, and the fields a template of each may print.",
+        "operationId": "GetLabelKinds",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LabelKindResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/labels/templates": {
+      "get": {
+        "tags": [
+          "Labels"
+        ],
+        "summary": "List label templates.",
+        "operationId": "GetLabelTemplates",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/LabelKind"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/LabelTemplateStatus"
+            }
+          },
+          {
+            "name": "warehouseId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LabelTemplateResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Labels"
+        ],
+        "summary": "Create a draft label template, optionally cloned from an existing one.",
+        "operationId": "CreateLabelTemplate",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateLabelTemplateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LabelTemplateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/labels/templates/{id}": {
+      "get": {
+        "tags": [
+          "Labels"
+        ],
+        "summary": "One label template, with its elements.",
+        "operationId": "GetLabelTemplate",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LabelTemplateResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Labels"
+        ],
+        "summary": "Replace a draft label template\u0027s elements.",
+        "operationId": "ReplaceLabelTemplate",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplaceLabelTemplateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LabelTemplateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/labels/templates/{id}/promote": {
+      "post": {
+        "tags": [
+          "Labels"
+        ],
+        "summary": "Activate a draft label template, archiving the one it replaces.",
+        "operationId": "PromoteLabelTemplate",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LabelTemplateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/labels/templates/{id}/archive": {
+      "post": {
+        "tags": [
+          "Labels"
+        ],
+        "summary": "Archive a label template without deleting it.",
+        "operationId": "ArchiveLabelTemplate",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LabelTemplateResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/labels/renderings": {
+      "post": {
+        "tags": [
+          "Labels"
+        ],
+        "summary": "Render a label without recording a print or minting an SSCC.",
+        "operationId": "PreviewLabel",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreviewLabelRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrintedLabelResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/labels/prints": {
+      "post": {
+        "tags": [
+          "Labels"
+        ],
+        "summary": "Generate a label and record the print. Mints an SSCC when none is supplied.",
+        "operationId": "PrintLabel",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrintLabelRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrintedLabelResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Labels"
+        ],
+        "summary": "Labels that were printed, newest first.",
+        "operationId": "GetLabelPrints",
+        "parameters": [
+          {
+            "name": "sscc",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/LabelKind"
+            }
+          },
+          {
+            "name": "reprintsOnly",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LabelPrintResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -4553,6 +5124,14 @@
             "format": "int64"
           }
         }
+      },
+      "BarcodeSymbology": {
+        "enum": [
+          "Gs1128",
+          "Gs1DataMatrix",
+          "Code128"
+        ],
+        "type": "string"
       },
       "BookReturnLineRequest": {
         "required": [
@@ -5308,6 +5887,67 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "CreateLabelTemplateRequest": {
+        "required": [
+          "kind",
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/LabelKind"
+          },
+          "name": {
+            "type": "string"
+          },
+          "widthDots": {
+            "type": "integer",
+            "format": "int32",
+            "default": 0
+          },
+          "heightDots": {
+            "type": "integer",
+            "format": "int32",
+            "default": 0
+          },
+          "warehouseId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "darkness": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "cloneFromTemplateId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "elements": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/LabelElementRequest"
+            }
           }
         }
       },
@@ -6142,6 +6782,404 @@
             }
           }
         }
+      },
+      "LabelElementRequest": {
+        "required": [
+          "type",
+          "order",
+          "x",
+          "y"
+        ],
+        "type": "object",
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/LabelElementType"
+          },
+          "order": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "x": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "y": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "rotation": {
+            "type": "string",
+            "default": "N"
+          },
+          "fieldCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "literal": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "fontHeight": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "fontWidth": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "symbology": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/BarcodeSymbology"
+              }
+            ]
+          },
+          "barcodeHeight": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "showInterpretation": {
+            "type": "boolean",
+            "default": true
+          },
+          "widthDots": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "heightDots": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "thicknessDots": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "LabelElementResponse": {
+        "required": [
+          "id",
+          "type",
+          "order",
+          "x",
+          "y",
+          "rotation",
+          "fieldCode",
+          "literal",
+          "fontHeight",
+          "fontWidth",
+          "symbology",
+          "barcodeHeight",
+          "showInterpretation",
+          "widthDots",
+          "heightDots",
+          "thicknessDots"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "type": "string"
+          },
+          "order": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "x": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "y": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "rotation": {
+            "type": "string"
+          },
+          "fieldCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "literal": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "fontHeight": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "fontWidth": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "symbology": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "barcodeHeight": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "showInterpretation": {
+            "type": "boolean"
+          },
+          "widthDots": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "heightDots": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "thicknessDots": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "LabelElementType": {
+        "enum": [
+          "Text",
+          "Barcode",
+          "Box"
+        ],
+        "type": "string"
+      },
+      "LabelFieldResponse": {
+        "required": [
+          "code",
+          "title",
+          "isAlwaysPresent"
+        ],
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "isAlwaysPresent": {
+            "type": "boolean"
+          }
+        }
+      },
+      "LabelKind": {
+        "enum": [
+          "Pallet"
+        ],
+        "type": "string"
+      },
+      "LabelKindResponse": {
+        "required": [
+          "kind",
+          "fields"
+        ],
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LabelFieldResponse"
+            }
+          }
+        }
+      },
+      "LabelPrintResponse": {
+        "required": [
+          "id",
+          "kind",
+          "sscc",
+          "templateId",
+          "templateName",
+          "templateVersion",
+          "isReprint",
+          "payloadHash",
+          "printedAt",
+          "printedBy"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "sscc": {
+            "type": "string"
+          },
+          "templateId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "templateName": {
+            "type": "string"
+          },
+          "templateVersion": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "isReprint": {
+            "type": "boolean"
+          },
+          "payloadHash": {
+            "type": "string"
+          },
+          "printedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "printedBy": {
+            "type": "string"
+          }
+        }
+      },
+      "LabelTemplateResponse": {
+        "required": [
+          "id",
+          "kind",
+          "name",
+          "version",
+          "status",
+          "warehouseId",
+          "widthDots",
+          "heightDots",
+          "darkness",
+          "notes",
+          "createdAt",
+          "activatedAt",
+          "elements"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "status": {
+            "type": "string"
+          },
+          "warehouseId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "widthDots": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "heightDots": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "darkness": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "activatedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "elements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LabelElementResponse"
+            }
+          }
+        }
+      },
+      "LabelTemplateStatus": {
+        "enum": [
+          "Draft",
+          "Active",
+          "Archived"
+        ],
+        "type": "string"
       },
       "LedgerChangePage": {
         "required": [
@@ -7044,6 +8082,32 @@
           }
         }
       },
+      "PreviewLabelRequest": {
+        "required": [
+          "kind",
+          "warehouseCode",
+          "sscc"
+        ],
+        "type": "object",
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/LabelKind"
+          },
+          "warehouseCode": {
+            "type": "string"
+          },
+          "sscc": {
+            "type": "string"
+          },
+          "templateId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          }
+        }
+      },
       "PreviewPutawayRequest": {
         "required": [
           "sku",
@@ -7115,6 +8179,77 @@
           },
           "trace": {
             "$ref": "#/components/schemas/DecisionTraceView"
+          }
+        }
+      },
+      "PrintLabelRequest": {
+        "required": [
+          "kind",
+          "warehouseCode"
+        ],
+        "type": "object",
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/LabelKind"
+          },
+          "warehouseCode": {
+            "type": "string"
+          },
+          "sscc": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "PrintedLabelResponse": {
+        "required": [
+          "zpl",
+          "kind",
+          "sscc",
+          "templateId",
+          "templateName",
+          "templateVersion",
+          "isReprint",
+          "printId",
+          "printedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "zpl": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "sscc": {
+            "type": "string"
+          },
+          "templateId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "templateName": {
+            "type": "string"
+          },
+          "templateVersion": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "isReprint": {
+            "type": "boolean"
+          },
+          "printId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "printedAt": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },
@@ -7408,6 +8543,53 @@
           "shortfallQuantity": {
             "type": "number",
             "format": "double"
+          }
+        }
+      },
+      "ReplaceLabelTemplateRequest": {
+        "required": [
+          "elements"
+        ],
+        "type": "object",
+        "properties": {
+          "elements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LabelElementRequest"
+            }
+          },
+          "name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "widthDots": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "heightDots": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "darkness": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
           }
         }
       },
@@ -9628,6 +10810,9 @@
     },
     {
       "name": "Replay"
+    },
+    {
+      "name": "Labels"
     }
   ]
 }

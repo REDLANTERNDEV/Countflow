@@ -53,7 +53,7 @@ is not repeated here. What is specific to working in this repository as an agent
 All nine phases of the original plan are complete — see
 [CHANGELOG.md](CHANGELOG.md) for what that means feature by feature, and
 [ROADMAP.md](ROADMAP.md) for what was deliberately left out. Last full
-verification: 247 backend tests, 36 frontend tests, both apps typecheck, 62
+verification: 298 backend tests, 36 frontend tests, both apps typecheck, 69
 versioned paths with no OpenAPI drift, and the containerised stack driven by hand
 with the API stopped and restarted under a live handheld.
 
@@ -61,3 +61,12 @@ Returns and the fourth rule vocabulary landed after that plan and are the first
 test of [decision 11](docs/decisions.md#11-a-wave-is-a-sequence-of-decisions-not-a-partition)'s
 claim that a new vocabulary needs no change to the kernel; the receipt is
 [decision 12](docs/decisions.md#12-a-disposition-is-a-verb-and-returns-belong-to-outbound).
+
+`Modules/Labels` landed after that and is the tenth module: pallet labels generated
+as ZPL from templates held as data, with the warehouse minting its own SSCCs. It is
+where ADR 0004's "configuration is data, vocabulary is code" split was tested
+*outside* the rules engine, and it did not transfer whole — see
+[decision 13](docs/decisions.md#13-a-label-kind-is-code-a-label-template-is-data)
+for which half survived, and
+[decision 14](docs/decisions.md#14-countflow-issues-its-own-licence-plates) for the
+commitment that came with it. Transport to an actual printer is deliberately open.

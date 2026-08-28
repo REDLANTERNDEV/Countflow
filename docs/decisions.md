@@ -1,10 +1,10 @@
 # Why Countflow is built this way
 
-Twelve decisions that would be expensive to reverse, each with the argument behind
+Fourteen decisions that would be expensive to reverse, each with the argument behind
 it and **what it cost**. Where one turned out to be wrong, the correction sits
 next to the claim rather than instead of it.
 
-Source comments cite these as `ADR 0001` … `ADR 0012`; the numbers are the same.
+Source comments cite these as `ADR 0001` … `ADR 0014`; the numbers are the same.
 
 1. [Inventory truth is an append-only ledger](#1-inventory-truth-is-an-append-only-ledger)
 2. [A modular monolith, one schema per module](#2-a-modular-monolith-one-schema-per-module)
@@ -18,6 +18,8 @@ Source comments cite these as `ADR 0001` … `ADR 0012`; the numbers are the sam
 10. [The warehouse owns quantity, the ERP owns value](#10-the-warehouse-owns-quantity-the-erp-owns-value)
 11. [A wave is a sequence of decisions, not a partition](#11-a-wave-is-a-sequence-of-decisions-not-a-partition)
 12. [A disposition is a verb, and returns belong to outbound](#12-a-disposition-is-a-verb-and-returns-belong-to-outbound)
+13. [A label kind is code, a label template is data](#13-a-label-kind-is-code-a-label-template-is-data)
+14. [Countflow issues its own licence plates](#14-countflow-issues-its-own-licence-plates)
 
 ---
 
@@ -938,3 +940,145 @@ A section with no cost stated is an advertisement rather than a decision record.
 And when one of these turns out to be wrong, add the correction next to the claim
 rather than editing the claim away — how a plausible belief survived is usually
 the useful part.
+
+---
+
+## 13. A label kind is code, a label template is data
+
+Nothing in the warehouse carried a printable identity. `LicensePlateId` ran
+through every contract as a column with no label behind it, so a pallet had an
+identifier the system knew and the floor could not read.
+
+The obvious move is the one [decision 4](#4-every-decision-carries-its-reasoning)
+already made for rules: hold label templates as data, so a new label is a record
+rather than a deploy. **That claim is half right, and the half that is wrong is the
+half that decides the architecture.**
+
+A rule set is data because `RuleDefinition.Code` names an implementation that is
+code. The configuration moves; the vocabulary does not. Applied to labels, the
+same split says a **label kind** — pallet, location, carton — is code, because a
+kind is a *binding contract*: which facts the system will go and fetch, from which
+published surface, and what each is called. A **label template** is data, and what
+it buys is layout and site variation: a customer who wants their part number in
+40-point type, a site whose printer takes 4×6 rather than 4×8. Those are the edits
+that otherwise happen at six in the morning with a pallet waiting.
+
+A kind invented in a console would be a template that can reference anything, and a
+template that can reference anything needs an expression language to reference it
+with — which is the trade `RuleDefinition` already refuses, and refuses harder
+here, because **the check is the whole safety story**. A template is validated by
+*rendering it* against a specimen, the way a rule set is validated by *building
+it*, and there is nothing to render against if the fields are not known in advance.
+
+**So the template is a structured element list, not a ZPL string with holes in it.**
+A pasted blob out of a label designer is cheaper by a wide margin and untestable
+past "a string came out". Three things decided it the other way, and only the third
+is about tooling. A GS1 barcode needs FNC1 in some positions and not others
+depending on which AIs are present, so a `${sscc}` hole cannot be filled correctly
+without re-parsing the designer's output. Values have to be escaped — a caret in an
+item description is a ZPL command, and in a blob it silently truncates the label,
+which does not throw and does not look wrong until a customer rejects a pallet. And
+a template that renders can be rendered against a specimen carrying every optional
+field absent, which is the pallet a layout is most likely to break on and least
+likely to be designed against: the one labelled before it was built.
+
+**The binder asks; the caller does not assemble.** A pallet label wants a SKU, a
+description, a batch, an expiry, a quantity and an SSCC, which belong to MasterData,
+Inventory and the receipt across three schemas. Handing that to callers means every
+future caller reassembling it with its own idea of which GTIN goes on a pallet — and
+AI 02 is the GTIN of the *contained trade items*, the case's and never the loose
+unit's, which is the single most common way a logistics label is wrong. So the
+kind's binder gathers it through published contracts (ADR 0002), and the caller
+supplies only what a caller can know: which subject, at which site.
+
+**Its own module.** It has the outward shape of Rules — versioned, promotable, with
+a draft/active/archived life — but a label makes no judgement: no candidates,
+nothing excluded, no trace, so filing it there would borrow the machinery for the
+resemblance rather than the reason. MasterData is the closer fit for a template and
+the wrong home for a `LabelPrint`, which is an operational event rather than
+reference data, and MasterData has no promotion lifecycle to lend. Under
+[decision 2](#2-a-modular-monolith-one-schema-per-module) a module costs one
+schema, one `DbContext` and one line in `ModuleCatalog`, and it buys not having to
+make either of those two mistakes.
+
+**Printing is recorded, and it is not a movement.** ADR 0001's own test settles the
+second half: printing moves no stock, so a ledger entry would put a fact that is not
+about a quantity into an append-only record of quantities — the same reasoning that
+keeps a reservation and a no-variance count out. But a reprint means two physical
+objects in the building each claiming to be the same pallet, with goods received
+twice against one licence plate at the end of it, and "who printed the second one"
+is the first question anybody asks. So `LabelPrint` is its own table, stamped with
+the template's id, name and version exactly as a decision trace stamps its rule
+set's — because the template will be superseded and a print from last year has to go
+on saying what produced the piece of paper somebody is holding.
+
+**What it costs**
+
+- **A second language nobody asked for.** A warehouse that has a design its label
+  software produced cannot paste it in. That is the real price of the structured
+  template, and it is not paid back until the first template that would have been
+  silently broken.
+- **A new label kind is a change to this repository**, which is exactly the claim
+  the original issue wanted to avoid making. It is made deliberately, and the
+  narrower promise — layouts without a deploy — is the one that survives contact
+  with `RuleDefinition`'s argument.
+- Every optional field is a way a layout can come out blank, so a template author
+  has to design for absence. `LabelFieldDefinition.IsAlwaysPresent` is published so
+  they can, and the specimen is built to make ignoring it fail at save time.
+- **Transport is deliberately absent.** A direct socket to port 9100, a local print
+  agent, WebUSB and cloud print have genuinely different trade-offs and none of
+  them is needed to verify a generator — the ZPL is the output, and asserting on it
+  needs no hardware. See [ROADMAP.md](../ROADMAP.md).
+
+---
+
+## 14. Countflow issues its own licence plates
+
+Printing a pallet label at a dock does not work without answering where the SSCC
+comes from, and the answer was not in the system. `DockReceiptRequest.Sscc` is
+optional and `StockReferenceResolver` creates a licence plate only when one is
+supplied, so a **blind receipt** — no advice note, no supplier label, the commonest
+receipt in a real warehouse — produced a pallet with no `LicensePlateId` at all.
+Not a plate without a label: no plate.
+
+Three ways out. Refuse to print without a supplier SSCC, which makes the first
+target useless on exactly the receipts that need it most. Print an internal
+identifier as a plain barcode, which gives one pallet two identities and quietly
+contradicts what `Sscc` is documented to be. Or **mint**.
+
+**So a warehouse issues SSCCs on the company's own GS1 prefix**, held as
+`Warehouse.Gs1CompanyPrefix` — reference data somebody is given by GS1 and types in
+once. A site with no prefix is refused rather than given a plausible default: a
+made-up prefix produces eighteen structurally valid digits belonging to somebody
+else's company, which is worse than no label, because it scans, resolves, and is
+wrong everywhere outside this building.
+
+**This is the only thing Countflow emits that it cannot correct.** Everything else
+can be fixed by a compensating entry; an SSCC goes out of the door stuck to a pallet
+and is read by a haulier, a customer and possibly a customs system. So the rule is
+stricter than anywhere else in the codebase: **a serial reference is allocated once
+and never reissued** — not after a rollback, not after a failed print. That is why
+it comes from a PostgreSQL sequence rather than a `MAX(serial) + 1`: `nextval` does
+not roll back with the transaction that drew from it, which is normally a nuisance
+and here is the entire point. Burning a serial nobody used costs nothing. Two
+pallets carrying one SSCC costs a customer receiving goods against a licence plate
+that already means something else.
+
+And it fixes when a plate becomes real. Until now that was a side effect of posting
+stock; printing inverts it, because the label is made *before* the pallet is built
+and from the moment it exists there is an object in the building carrying that
+number. `ILicensePlateRegistry.EnsureAsync` is the published seam, and it is
+`Ensure` rather than `Create` because a reprint must land on the plate the first
+print made.
+
+**What it costs**
+
+- **A configuration step with no sensible default.** A fresh install cannot print a
+  pallet label until somebody enters a GS1 prefix, and the refusal has to be legible
+  enough that they know what to go and buy.
+- The serial space is finite and its size depends on the prefix — a ten-digit prefix
+  leaves six digits and a million pallets. Exhaustion is a refusal, and the remedy
+  is a purchase from GS1 rather than a code change.
+- **Licence plates now exist with no stock on them**, which is a state nothing
+  before this could produce. It is the correct state for a printed-and-unfilled
+  pallet, and every reader of a plate has to tolerate it.

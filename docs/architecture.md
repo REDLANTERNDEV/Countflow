@@ -76,10 +76,21 @@ docs/                        this documentation and the API reference
   work, counts, and both are already somebody else's surface.
 - `Modules/Replay` — replay runs and what each comparison found. Publishes
   nothing: its output is an argument, and arguments are read by people.
+- `Modules/Labels` — label templates, the ZPL renderer and the record of what was
+  printed. Publishes nothing yet: it is a reader of four other modules and its
+  output is a piece of paper. The seam where data stops and code starts is
+  `LabelVocabulary` — a **kind** is a binding contract in code, a **template** is
+  data ([decision 13](decisions.md#13-a-label-kind-is-code-a-label-template-is-data)).
+  Transport is deliberately elsewhere, which is to say nowhere yet.
 - `Countflow.Simulator` — a console project that runs a warehouse forwards by
   **driving the HTTP API** ([decision 6](decisions.md#6-the-simulator-is-a-client-not-a-module)). References nothing, so it cannot cross a
   module boundary, and every state it reaches is one a real operator could have
   reached.
+- `SharedKernel/Gs1` — GS1 identifiers in both directions: `Gs1Parser` reads what a
+  scanner sends, `Gs1ElementString` builds what a symbol has to say. The second is
+  the more dangerous of the two — a parser that errs rejects a scan, a builder that
+  errs prints two thousand unreadable pallets — which is why FNC1 placement lives
+  there and nowhere else.
 - `SharedKernel/Rules` — the pure rules engine ([decision 4](decisions.md#4-every-decision-carries-its-reasoning)), and
   `RuleInfluence`, which reads a ranking back and says which rules produced it.
   Stateless and synchronous, so replay runs it over history with no database in
