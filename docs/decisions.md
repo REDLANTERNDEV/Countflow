@@ -1082,3 +1082,262 @@ print made.
 - **Licence plates now exist with no stock on them**, which is a state nothing
   before this could produce. It is the correct state for a printed-and-unfilled
   pallet, and every reader of a plate has to tolerate it.
+
+
+## 15. Sequence the picks that were claimed together
+
+Allocation chooses stock; routing orders the resulting work. These are separate
+operations. A per-bin ordinal cannot express S-Shape when an aisle is skipped,
+so routing operates over a set, using the full zone grid and a registered
+strategy (`route.sequence_ordinal`, `route.s_shape`, `route.return`, or
+`route.midpoint`). Zone settings are data; adding a strategy is code.
+
+The Work module locks a bounded set of ready picks in one warehouse and priority
+band, then sequences exactly the rows it claimed. A pick tour records the owner,
+original stop count, strategy applied per zone, fallback reason, and travel
+estimates. Travel steps are an ordinal proxy, not metres or elapsed time, and
+savings may be negative. Missing geometry yields unknown measurements rather
+than invented numbers. Unsupported geometry falls back to sequence order at
+claim time; configuration saves refuse unsupported settings.
+
+Claims use an operator-scoped retry key and a transaction-scoped advisory lock
+for concurrent retries of that key. Releases keep completed stops and return
+only unfinished tasks. Completion and release lock task rows to prevent a
+release overwriting a completed stop. Transactions run through EF's execution
+strategy. No cross-module table joins are introduced.
+
+A handheld may work already claimed, cached stops out of signal. Completion
+still uses the durable outbox. Claiming and releasing need a server response;
+a tour with unsent or unresolved physical confirmations cannot be released
+from the handheld. The device shows queued confirmations separately from
+accepted completion. The existing single-task flow remains available.
+
+
+## 16. Persist a run before invoking its handler
+
+Recurring schedules are deployment configuration and handlers are code, rather
+than a general-purpose executable job editor. A Jobs module owns the scheduling
+state, while registered handlers call published module contracts in a fresh
+service scope. Inventory reconciliation is the first handler, replacing its
+private timer without changing its settings or read-only behavior.
+
+A dedicated, nonpooled PostgreSQL session holds a job-specific advisory lock.
+The runner persists a pending run ID before invoking the handler and retains it
+across failure, cancellation, and process restart. Failed attempts use bounded
+backoff; successful runs advance from completion instead of replaying every
+missed interval. A failure in one job does not stop independent jobs.
+
+The boundary is at-least-once. A handler may finish while the runner cannot save
+its success, or lose its lock connection while still executing. Therefore a
+write handler must pass the run's stable key to its owning module's idempotent
+operation. A scheduler cannot manufacture exactly-once warehouse effects.
+
+Dispatch tracks each in-flight job independently, so a blocked handler does not
+delay other schedules. Every attempt writes a fresh concurrency token before execution;
+success and failure saves reject stale attempts after lock loss, preserving a
+replacement run’s identity and due time.
+
+
+## 17. A scheduled count is an ordinary policy plan
+
+Automatic counting is opt-in per warehouse through the supervisor's Counting
+screen. The policy should be observed before activation; installing the runner
+does not enable any warehouse. Persisted schedules supply a bounded task budget
+and elapsed cadence, rather than a second source of rules or a cron calendar.
+Counting publishes configured warehouse instances of its code handler through a
+scoped catalog. Jobs tracks them independently, so a blocked warehouse does not
+stall other schedules. Global runner settings remain separate from the editor.
+
+Each warehouse's pending run ID is saved before CountPlanning starts. Plan lines
+derive their enqueue keys from that plan key, so restart and lost acknowledgements
+converge on the same tasks. Partial enqueues leave the warehouse pending until
+retry repairs them. A reserved system actor identifies the origin; a human still
+performs the count. Disabling stops future plans without abandoning pending work.
+
+Manual and automatic planning, schedule editing, and cancellation share a
+warehouse lock. Scheduler state uses a concurrency token to reject stale saves
+after lock loss. A warehouse fence rotates in the transaction of each planning
+write, guarding even manual intent creation after a competing lease. Cancellation resolves every intended enqueue before withdrawing
+its task, so even a stale planner later receives an already-cancelled keyed task.
+Retry does not resurrect a closed plan. No transaction spans module writes.
+
+## 18. Min/max replenishment is reserved warehouse work
+
+A fixed pick face has one item and an opt-in supervisor policy. Classic min/max
+uses physical on-hand plus outstanding incoming replenishment: below minimum,
+raise work toward maximum. Outbound allocations do not reduce this threshold;
+order-demand replenishment is a separate strategy. This follows the distinction
+in [Oracle WMS](https://docs.oracle.com/en/cloud/saas/warehouse-management/26a/owmol/overview-of-replenishment.html)
+and [Dynamics 365](https://learn.microsoft.com/en-us/dynamics365/supply-chain/warehousing/replenishment).
+Incoming work counts before reading stock, so an overlapping completion can
+conservatively delay a top-up but cannot disappear from both observations.
+
+Replenishment owns its policies and durable plans. The Jobs catalog probes each
+configured face independently. A face session lock and policy concurrency fence
+serialize configuration, planning, and cancellation. Intent is saved before
+cross-module effects, with stable keys per line for Inventory reservations and
+Work tasks. Bulk-only sourcing is a mandatory allocation constraint retained in
+the normal decision trace and shadow replay, rather than a configurable rule
+that could accidentally source another pick face.
+
+A plan uses at most 50 source holdings and can raise a partial top-up. The
+unfilled quantity stays visible; exhausted bulk creates no empty plan. The next
+probe reevaluates the remaining need. Quantities remain base units, with no
+rounding above the face maximum or known volume/weight limits. Full-pallet and
+case-rounding strategies are not inferred from a min/max policy.
+
+The handheld confirms the fixed destination through the existing durable outbox.
+Inventory posts a Replenishment movement and consumes its source reservation;
+Work then records completion. A lost acknowledgement replays the same movement,
+including the consumed reservation's identity. Cancellation resolves intended
+keyed tasks first, atomically refuses if any task is assigned, and releases stock
+only after withdrawal. Disabling a policy stops new plans but lets pending intent
+recover and existing work finish. No transaction spans module writes.
+
+## 19. Webhooks deliver a saved slice of the ledger
+
+Inventory publishes its existing change feed through a contract; the HTTP pull
+surface and stability watermark remain unchanged. Webhooks owns subscriptions,
+immutable deliveries, and inbound trigger requests. Each subscriber advances its
+cursor in the same transaction that saves a batch body, before network I/O. Its
+pending batch blocks later batches, including after dead-lettering. An operator
+can pause or retry it without skipping stock changes.
+
+Delivery is at-least-once. A successful receiver may lose its acknowledgement, or
+a worker may lose its lease while sending. Every retry has the same delivery ID
+and exact UTF-8 body, with a base64 HMAC-SHA256 digest. Receivers deduplicate by
+ID and validate the raw bytes with a constant-time digest comparison. Signed
+challenge/echo verification proves control of the receiver before activation.
+
+Network destinations are public HTTPS by default. Exact origin allowlists are
+explicit deployment exceptions, not user-controlled settings. DNS answers are
+validated and the selected address is pinned to the socket; redirects and proxies
+are disabled. Responses and overall requests are bounded. Signing secrets are
+issued once and stored encrypted with a separately configured AES-GCM key.
+Production must persist that key across restarts and replicas.
+
+Inbound capability URLs store only a token hash, are issued once, can be revoked,
+and are excluded from application request logs and incoming traces. They queue
+read-only inventory reconciliation, chosen explicitly for this first version.
+A required caller retry key resolves to one durable request. The Jobs catalog
+executes requests through the registered Inventory handler, without another
+posting path or knowledge of Inventory tables. Reconciliation observations may
+repeat if their acknowledgement is lost; stock is never changed by this trigger.
+
+## 20. Operational dashboards keep their denominators
+
+The existing Accuracy screen remains the diagnostic view. Operations adds a fixed
+warehouse dashboard with a bounded 7/30/90-day selector, completed work, current
+backlog, count accuracy, and storage occupancy. It composes owning-module reads
+rather than introducing a cross-schema reporting service or query builder.
+
+Throughput uses completion time, not task creation time. Backlog includes ready
+and assigned work of every age. Daily buckets are UTC calendar days, with today
+explicitly partial; zeros are measured zeros and all dates remain present. Work
+aggregates in PostgreSQL with a covering index for warehouse/completion time.
+The count-accuracy query receives the same window and retains its counted
+sample denominator. An unmeasured accuracy rate is not perfect accuracy.
+
+Density is a current observation, independent of the historical window. Slot
+occupancy is stocked active bulk/pick-face locations over eligible locations,
+excluding inactive area/zone hierarchies. Group by zone identity, not code:
+several areas can contain AMB. The location contract supplies area metadata;
+Inventory never joins MasterData's tables. Cube utilization is reported only
+when every relevant capacity and occupied item volume is known, without masking
+values above 100 percent. Missing measurements remain null.
+
+The UI refreshes every 30 seconds, keeps errors visible, and stamps the oldest
+Work/storage observation it shows. These independently observed figures are not
+a transactional warehouse snapshot. Optional definitions open through circled-i
+help; quantities, denominators, empty states, and failed-refresh status stay visible.
+
+## 21. A camera inspects a barcode; it does not confirm warehouse work
+
+The handheld has a read-only barcode screen using native `BarcodeDetector` and
+its existing GS1 resolver. The purpose is demonstrability on an ordinary phone;
+a keyboard-wedge scanner remains the floor input. Native capability varies, so
+DataMatrix support is checked before camera permission and unsupported devices
+retain manual entry. There is no fallback decoder dependency or uploaded video.
+
+A decoded GTIN is not a receipt or a task confirmation. Catalogue packaging,
+tracking values and warnings remain visible for inspection, without guessing a
+quantity or posting stock. Camera and keyboard strings use the same server
+parser, including group separators. Multiple distinct codes require reframing,
+and cancellation owns the permission/setup/detection races as well as the live
+stream. Offline capture can wait for an explicit resolution retry; it cannot
+claim that an unknown barcode was recognised.
+
+## 22. Cardinal grammar belongs to the locale, not the screen
+
+Countflow already uses i18next, whose cardinal selection follows
+[`Intl.PluralRules`](https://www.i18next.com/translation-function/plurals).
+Plural families use `_one`/`_other` in both catalogues, even where Turkish's
+numbered nouns have the same wording. `translateCount` constrains callers to
+those families and requires a finite number. Display formatting cannot masquerade
+as a numeric count; neutral total labels use a separate interpolation argument.
+
+Rules send day/hour values as strings. Their translation adapter supplies a
+numeric count for selection while retaining every named argument. Malformed
+values fall back to the other form rather than crashing a decision trace. Several
+independent counts in one summary use concise labelled quantities, avoiding a
+second plural engine or deeply nested interpolation. Tests inspect actual
+catalogue objects so inline keys, quoted keys, and complete placeholder paths
+are checked as well as standalone lines.
+
+## 23. FIFO ages a physical holding, not an accounting layer
+
+FIFO fills the undated-stock rotation gap with `allocation.fifo`, an opt-in
+preference using original receipt age. Existing policies remain unchanged.
+Original age survives internal transfers, consistent with
+[warehouse receipt-date guidance](https://docs.oracle.com/cd/E18727-01/doc.121/e13434/T210618T210921.htm);
+choosing a location by its oldest age also follows
+[location-directive FIFO](https://learn.microsoft.com/en-us/dynamics365/supply-chain/warehousing/location-directive-inventory-picking-aging).
+This does not add LIFO or inventory valuation.
+
+Countflow allocates one holding at a time. When several receipts share that
+coordinate, the holding retains its earliest age until empty; it does not claim
+an individually identified FIFO layer remains after a partial draw. Unknown-origin
+stock, such as a discovered adjustment, remains unknown. Known dates normalize
+across the allocation field like its travel preference; configured weights may
+trade rotation against travel or a pick face. Missing ages stay neutral and the
+trace says so, rather than inventing a receipt date.
+
+Inventory owns the rebuildable age field on balances, updated under the same
+locks and transaction as quantities. One pure age transition serves live posting
+and the historical fold. A migration adds the nullable field and a one-time
+completion marker; the migrator reuses the historical fold and bulk-writes derived
+ages atomically. It leaves ledger entries and quantities untouched, and declines
+to claim an age for a drifted quantity. Live and shadow allocation use the same
+age window, so replay measures the historical policy instead of today's stock.
+
+## 24. A blind count observes a whole bin
+
+A holding-shaped task cannot discover an unexpected item in an allegedly empty
+bin. BinCount is an additive location-only Work kind. A supervisor chooses the
+physical bin and supplies a reason; this is explicitly a manual audit, rather
+than a rule evaluation with a fictitious decision trace. Existing policy-led
+holding counts remain unchanged.
+
+The operator observes all holdings, distinguishing item, lot, pallet and condition,
+or explicitly confirms empty. Inventory reconciles the union of observations and
+positive book holdings; absence is an observed zero. Work never reads Inventory
+tables. The narrow blind-count contract returns an opaque movement version and
+an immutable confirmation receipt.
+
+Stock cannot move unnoticed between the start and confirmation: a changed bin
+version refuses the audit and requests a recount. A claim ID also fences old
+offline observations after release/reclaim or restart. Inventory briefly takes a
+table lock on balances when capturing the baseline and when comparing versions
+and posting the whole correction. Baseline capture first drains in-flight writers:
+an earlier sequence may commit after a later one on a different holding. This
+serializes stock writers during baseline capture and confirmation. The input
+accepts up to 200 observed holdings. It excludes phantom holdings and preserves atomicity using the
+existing posting engine. The ledger can participate in its module's enclosing
+transaction, while ordinary postings retain their existing transaction ownership.
+
+Agreements, variances and the bin receipt commit together. The receipt retains
+the exact original findings, including an empty-bin observation, and refuses a
+changed payload under the same key. Work closes only afterward. If that final
+write fails, the saved confirmation retries against Inventory's receipt. Release
+and restart refuse to invalidate a confirmation already recorded. Draft captures
+and queued confirmations are isolated by operator and claim on the device.

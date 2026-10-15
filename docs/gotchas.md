@@ -8,6 +8,13 @@ when you come looking. Phase numbers refer to [history.md](history.md).
 
 ---
 
+- **A job can keep its ID but change its run record after a restart.** PostgreSQL
+  truncates timestamps to microseconds; .NET clocks can carry 100-nanosecond
+  ticks. Normalize Jobs timestamps before assignment, including the complete
+  due-time calculation after adding an interval. Otherwise the first handler
+  sees precision its resumed run cannot retain. The regression clock includes
+  seven sub-microsecond ticks explicitly: platform clock precision must not hide
+  this persistence mismatch.
 - **A namespace that shares a name with a type shadows it inside that namespace.**
   The disposition vocabulary lives in `Countflow.Modules.Rules.Dispositions`,
   plural, and the plural is load-bearing. Under a `…Rules.Disposition` namespace
@@ -346,3 +353,23 @@ when you come looking. Phase numbers refer to [history.md](history.md).
   it silently threw away 11 receipts of 28. A lot number is also **a batch**, so its
   expiry is drawn once and remembered — two deliveries of `L812-0102` claiming
   different expiry dates is a 409, and correctly so.
+
+- **Explicit EF transactions must run inside the execution strategy.** The
+  Npgsql provider enables retries; beginning a transaction around a normal
+  query without `CreateExecutionStrategy().ExecuteAsync` fails at runtime.
+  Clear the tracker before retrying a unit that may already have saved entities.
+
+- **Grouped UTC dates need an actual SQL conversion.** Npgsql's
+  `DateTimeOffset.UtcDateTime` is only a CLR-side conversion. Grouping its `.Date`
+  can retain a DateTimeOffset reader mapping and fail with a coercion error.
+  `DateTimeOffset.DateTime` translates to `AT TIME ZONE 'UTC'`; the throughput
+  query uses that conversion and is tested with a non-UTC database timezone.
+  See [Npgsql translations](https://www.npgsql.org/efcore/mapping/translations.html).
+
+### A portalled camera video mounts after its opener's effect
+
+Radix Sheet mounts its portal content separately. An effect on the opener can
+see an empty video ref, return, and never run again even though the video later
+appears. The seeded camera-video test exposed a blank preview with no stream and
+no error. Camera setup belongs to a component inside the portal, whose mounted
+video it owns; cleanup there also handles dismissal and late permission grants.

@@ -67,11 +67,7 @@ export function InboundPage() {
 
   return (
     <>
-      <PageHead title={t('inbound.title')} count={total} />
-
-      <p className="mb-[var(--space-4)] max-w-[72ch] text-[length:var(--text-sm)] text-[var(--color-text-secondary)]">
-        {t('inbound.subtitle')}
-      </p>
+      <PageHead help={t('inbound.subtitle')} title={t('inbound.title')} count={total} />
 
       <div className="mb-[var(--space-4)] flex flex-wrap items-center gap-[var(--space-3)]">
         <Select

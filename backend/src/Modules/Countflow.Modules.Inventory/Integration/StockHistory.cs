@@ -87,7 +87,8 @@ public sealed class StockHistory(InventoryDbContext dbContext, LedgerReplay repl
                 m.FromStatus,
                 m.ToLocationId,
                 m.ToLicensePlateId,
-                m.ToStatus))
+                m.ToStatus,
+                m.Type))
             .AsAsyncEnumerable()
             .GetAsyncEnumerator(cancellationToken);
 
@@ -177,28 +178,34 @@ public sealed class StockHistory(InventoryDbContext dbContext, LedgerReplay repl
     /// </summary>
     private static void Apply(Dictionary<HoldingKey, Cell> holdings, Posting posting)
     {
+        var sourceKey = new HoldingKey(posting.ItemId, posting.LotId, posting.FromLocationId, posting.FromLicensePlateId, posting.FromStatus);
+        var incomingAge = ReceiptAge.Incoming(posting.Type, posting.OccurredAt, holdings.GetValueOrDefault(sourceKey).FirstReceivedAt);
         Fold(
             holdings,
             new HoldingKey(posting.ItemId, posting.LotId, posting.ToLocationId, posting.ToLicensePlateId, posting.ToStatus),
             posting.Quantity,
-            posting);
+            posting,
+            incomingAge);
 
         Fold(
             holdings,
             new HoldingKey(posting.ItemId, posting.LotId, posting.FromLocationId, posting.FromLicensePlateId, posting.FromStatus),
             -posting.Quantity,
-            posting);
+            posting,
+            null);
     }
 
     private static void Fold(
         Dictionary<HoldingKey, Cell> holdings,
         HoldingKey key,
         decimal delta,
-        Posting posting)
+        Posting posting,
+        DateTimeOffset? incomingAge)
     {
         var current = holdings.GetValueOrDefault(key);
 
-        holdings[key] = new Cell(current.Quantity + delta, posting.Sequence, posting.OccurredAt);
+        holdings[key] = new Cell(current.Quantity + delta, posting.Sequence, posting.OccurredAt,
+            ReceiptAge.After(current.Quantity, current.FirstReceivedAt, delta, incomingAge));
     }
 
     private static WarehouseAsOf Snapshot(
@@ -239,7 +246,7 @@ public sealed class StockHistory(InventoryDbContext dbContext, LedgerReplay repl
                 ToCondition(key.Status),
                 cell.Quantity,
                 cell.LastMovementSequence,
-                cell.LastMovedAt));
+                cell.LastMovedAt) { FirstReceivedAt = cell.FirstReceivedAt });
 
             if (open.TryGetValue(balanceId, out var claim))
             {
@@ -357,7 +364,7 @@ public sealed class StockHistory(InventoryDbContext dbContext, LedgerReplay repl
         Guid? LicensePlateId,
         InventoryStatus Status);
 
-    private readonly record struct Cell(decimal Quantity, long LastMovementSequence, DateTimeOffset LastMovedAt);
+    private readonly record struct Cell(decimal Quantity, long LastMovementSequence, DateTimeOffset LastMovedAt, DateTimeOffset? FirstReceivedAt);
 
     private sealed record Posting(
         long Sequence,
@@ -370,7 +377,8 @@ public sealed class StockHistory(InventoryDbContext dbContext, LedgerReplay repl
         InventoryStatus FromStatus,
         Guid ToLocationId,
         Guid? ToLicensePlateId,
-        InventoryStatus ToStatus);
+        InventoryStatus ToStatus,
+        MovementType Type);
 
     private sealed record BalanceRow(
         Guid Id,

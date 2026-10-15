@@ -33,7 +33,7 @@ public sealed class StockAvailability(
         var rows = await dbContext.StockBalances
             .AsNoTracking()
             .Where(b => b.ItemId == itemId && b.Quantity > 0)
-            .Select(b => new Row(b.Id, b.ItemId, b.LotId, b.LocationId, b.LicensePlateId, b.Status, b.Quantity))
+            .Select(b => new Row(b.Id, b.ItemId, b.LotId, b.LocationId, b.LicensePlateId, b.Status, b.Quantity, b.FirstReceivedAt))
             .ToListAsync(cancellationToken);
 
         if (rows.Count == 0)
@@ -98,7 +98,8 @@ public sealed class StockAvailability(
                         r.Quantity,
                         reserved.GetValueOrDefault(r.BalanceId))
                     {
-                        LocationCode = locationsById[r.LocationId].Code
+                        LocationCode = locationsById[r.LocationId].Code,
+                        FirstReceivedAt = r.FirstReceivedAt
                     };
                 })
         ];
@@ -116,7 +117,8 @@ public sealed class StockAvailability(
         Guid LocationId,
         Guid? LicensePlateId,
         InventoryStatus Status,
-        decimal Quantity);
+        decimal Quantity,
+        DateTimeOffset? FirstReceivedAt);
 
     private static StockCondition ToCondition(InventoryStatus status) => status switch
     {

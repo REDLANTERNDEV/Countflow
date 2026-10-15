@@ -51,3 +51,6 @@ export {
   useTheme,
 } from './theme/ThemeProvider.js';
 export type { ResolvedTheme, ThemePreference } from './theme/ThemeProvider.js';
+
+export { InfoHelp } from './components/InfoHelp.js';
+export type { InfoHelpProps } from './components/InfoHelp.js';

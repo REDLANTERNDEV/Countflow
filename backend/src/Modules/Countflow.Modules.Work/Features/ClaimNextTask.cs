@@ -40,6 +40,7 @@ public static class ClaimNextTask
                 WorkDbContext dbContext,
                 WorkTaskDescriber describe,
                 IDecisionTraceReader traces,
+                IBlindBinCounting binCounting,
                 TimeProvider clock,
                 CancellationToken cancellationToken) =>
             {
@@ -60,6 +61,13 @@ public static class ClaimNextTask
                 var task = await dbContext.WorkTasks
                     .AsNoTracking()
                     .SingleAsync(t => t.Id == claimed.Value, cancellationToken);
+
+                if (task.Kind == WorkTaskKind.BinCount)
+                {
+                    var started = await BlindBinCounts.InitializeAsync(task.Id, actor.Value, false, dbContext, binCounting, cancellationToken);
+                    if (started.IsFailure) return Result.Failure(started.Error).ToHttpResult();
+                    task = started.Value;
+                }
 
                 var decision = task.DecisionTraceId is { } traceId
                     ? await traces.FindAsync(traceId, cancellationToken)
@@ -143,6 +151,7 @@ public static class ClaimTask
                 WorkDbContext dbContext,
                 WorkTaskDescriber describe,
                 IDecisionTraceReader traces,
+                IBlindBinCounting binCounting,
                 TimeProvider clock,
                 CancellationToken cancellationToken) =>
             {
@@ -152,28 +161,25 @@ public static class ClaimTask
                     return Result.Failure<WorkTaskDetailResponse>(actor.Error).ToHttpResult();
                 }
 
-                var task = await dbContext.WorkTasks.SingleOrDefaultAsync(t => t.Id == id, cancellationToken);
-                if (task is null)
+                var now = clock.GetUtcNow();
+                var updated = await dbContext.WorkTasks.Where(task => task.Id == id
+                    && (task.Status == WorkTaskStatus.Ready || (task.Status == WorkTaskStatus.Assigned && task.AssignedToUserId == actor.Value.UserId)))
+                    .ExecuteUpdateAsync(update => update.SetProperty(task => task.Status, WorkTaskStatus.Assigned)
+                        .SetProperty(task => task.AssignedToUserId, actor.Value.UserId)
+                        .SetProperty(task => task.AssignedToUserName, actor.Value.UserName)
+                        .SetProperty(task => task.AssignedAt, task => task.AssignedAt ?? now), cancellationToken);
+                var task = await dbContext.WorkTasks.AsNoTracking().SingleOrDefaultAsync(task => task.Id == id, cancellationToken);
+                if (task is null) return Result.Failure<WorkTaskDetailResponse>(WorkErrors.TaskNotFound).ToHttpResult();
+                if (updated == 0)
+                    return Result.Failure<WorkTaskDetailResponse>(task.Status == WorkTaskStatus.Assigned
+                        ? WorkErrors.TaskAlreadyClaimed : WorkErrors.TaskNotOpen).ToHttpResult();
+
+                if (task.Kind == WorkTaskKind.BinCount)
                 {
-                    return Result.Failure<WorkTaskDetailResponse>(WorkErrors.TaskNotFound).ToHttpResult();
+                    var started = await BlindBinCounts.InitializeAsync(task.Id, actor.Value, false, dbContext, binCounting, cancellationToken);
+                    if (started.IsFailure) return Result.Failure(started.Error).ToHttpResult();
+                    task = started.Value;
                 }
-
-                if (task.Status == WorkTaskStatus.Assigned && task.AssignedToUserId != actor.Value.UserId)
-                {
-                    return Result.Failure<WorkTaskDetailResponse>(WorkErrors.TaskAlreadyClaimed).ToHttpResult();
-                }
-
-                if (task.Status is not (WorkTaskStatus.Ready or WorkTaskStatus.Assigned))
-                {
-                    return Result.Failure<WorkTaskDetailResponse>(WorkErrors.TaskNotOpen).ToHttpResult();
-                }
-
-                task.Status = WorkTaskStatus.Assigned;
-                task.AssignedToUserId = actor.Value.UserId;
-                task.AssignedToUserName = actor.Value.UserName;
-                task.AssignedAt ??= clock.GetUtcNow();
-
-                await dbContext.SaveChangesAsync(cancellationToken);
 
                 var decision = task.DecisionTraceId is { } traceId
                     ? await traces.FindAsync(traceId, cancellationToken)
@@ -205,30 +211,36 @@ public static class ReleaseTask
                 Guid id,
                 ClaimsPrincipal user,
                 WorkDbContext dbContext,
+                IBlindBinCounting binCounting,
                 CancellationToken cancellationToken) =>
             {
                 var actor = PostingActor.From(user);
                 if (actor.IsFailure) return actor.ToHttpResult();
 
-                var task = await dbContext.WorkTasks.SingleOrDefaultAsync(t => t.Id == id, cancellationToken);
-                if (task is null) return Result.Failure(WorkErrors.TaskNotFound).ToHttpResult();
+                if (await dbContext.WorkTasks.AsNoTracking().AnyAsync(task => task.Id == id && task.Kind == WorkTaskKind.BinCount, cancellationToken))
+                    return (await BlindBinCounts.ReleaseAsync(id, actor.Value, dbContext, binCounting, cancellationToken)).ToHttpResult();
 
-                if (task.Status != WorkTaskStatus.Assigned)
+                var released = await dbContext.WorkTasks
+                    .Where(t => t.Id == id && t.Status == WorkTaskStatus.Assigned
+                                && t.AssignedToUserId == actor.Value.UserId)
+                    .ExecuteUpdateAsync(update => update
+                        .SetProperty(t => t.Status, WorkTaskStatus.Ready)
+                        .SetProperty(t => t.AssignedToUserId, (Guid?)null)
+                        .SetProperty(t => t.AssignedToUserName, (string?)null)
+                        .SetProperty(t => t.AssignedAt, (DateTimeOffset?)null)
+                        .SetProperty(t => t.BinCountVersion, (long?)null)
+                        .SetProperty(t => t.BinCountClaimId, (Guid?)null)
+                        .SetProperty(t => t.PickTourId, (Guid?)null)
+                        .SetProperty(t => t.TourSequence, (int?)null), cancellationToken);
+                if (released == 0)
                 {
-                    return Result.Failure(WorkErrors.TaskNotOpen).ToHttpResult();
+                    var current = await dbContext.WorkTasks.AsNoTracking()
+                        .SingleOrDefaultAsync(t => t.Id == id, cancellationToken);
+                    var error = current is null ? WorkErrors.TaskNotFound
+                        : current.Status != WorkTaskStatus.Assigned ? WorkErrors.TaskNotOpen
+                        : WorkErrors.TaskNotYours;
+                    return Result.Failure(error).ToHttpResult();
                 }
-
-                if (task.AssignedToUserId != actor.Value.UserId)
-                {
-                    return Result.Failure(WorkErrors.TaskNotYours).ToHttpResult();
-                }
-
-                task.Status = WorkTaskStatus.Ready;
-                task.AssignedToUserId = null;
-                task.AssignedToUserName = null;
-                task.AssignedAt = null;
-
-                await dbContext.SaveChangesAsync(cancellationToken);
 
                 return Result.Success().ToHttpResult();
             })

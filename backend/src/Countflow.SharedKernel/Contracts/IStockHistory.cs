@@ -31,7 +31,10 @@ public sealed record HistoricalHolding(
     StockCondition Condition,
     decimal Quantity,
     long LastMovementSequence,
-    DateTimeOffset LastMovedAt);
+    DateTimeOffset LastMovedAt)
+{
+    public DateTimeOffset? FirstReceivedAt { get; init; }
+}
 
 /// <summary>When a holding was last verified, as of a checkpoint.</summary>
 public sealed record HoldingCountHistory(DateTimeOffset CountedAt, long AtMovementSequence);

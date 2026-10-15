@@ -1,6 +1,6 @@
 import type { components } from '@countflow/api-client';
 import { currentLocale, formatNumber, useTranslation } from '@countflow/i18n';
-import { Badge, Button, Code, Field, Input, Numeric, ScanField, Spinner } from '@countflow/ui';
+import { Badge, Button, Code, Field, InfoHelp, Input, Numeric, ScanField, Spinner } from '@countflow/ui';
 import { useRef, useState } from 'react';
 import { newIdempotencyKey } from '../lib/idempotency.js';
 import { categorise, needsSupervisor } from '../lib/outbox/refusals.js';
@@ -118,6 +118,10 @@ export function ReceiveScreen({ onBack, onOpenTask }: ReceiveScreenProps) {
 
   return (
     <div className="flex flex-col gap-[var(--space-4)]">
+      <div className="flex items-center">
+        <h1 className="m-0 text-[length:var(--text-xl)]">{t('inbound.receive.title')}</h1>
+        <InfoHelp label={t('common.about', { topic: t('inbound.receive.title') })}>{t('inbound.subtitle')}</InfoHelp>
+      </div>
       <ScanField
         label={t('inbound.receive.scanItem')}
         placeholder="SKU-00001"
@@ -157,6 +161,8 @@ export function ReceiveScreen({ onBack, onOpenTask }: ReceiveScreenProps) {
       <Field
         label={`${t('inbound.receive.pallet')} · ${t('inbound.receive.optional')}`}
         htmlFor="receive-sscc"
+        hint={t('inbound.receive.palletHint')}
+        hintMode="instruction"
       >
         <Input
           id="receive-sscc"
@@ -165,9 +171,6 @@ export function ReceiveScreen({ onBack, onOpenTask }: ReceiveScreenProps) {
           onChange={(event) => setSscc(event.target.value)}
         />
       </Field>
-      <p className="m-0 -mt-[var(--space-2)] text-[length:var(--text-xs)] text-[var(--color-text-tertiary)]">
-        {t('inbound.receive.palletHint')}
-      </p>
 
       <Field
         label={`${t('inbound.receive.asnReference')} · ${t('inbound.receive.optional')}`}

@@ -1,5 +1,7 @@
 import { createRootRoute, createRoute, createRouter } from '@tanstack/react-router';
+import { DashboardPage } from './routes/DashboardPage.js';
 import { AccuracyPage } from './routes/AccuracyPage.js';
+import { ReplenishmentPage } from './routes/ReplenishmentPage.js';
 import { CountingPage } from './routes/CountingPage.js';
 import { InboundPage } from './routes/InboundPage.js';
 import { IntegrationsPage } from './routes/IntegrationsPage.js';
@@ -14,6 +16,7 @@ import { ReplayPage } from './routes/ReplayPage.js';
 import { RulesPage } from './routes/RulesPage.js';
 import { ScanPage } from './routes/ScanPage.js';
 import { StockPage } from './routes/StockPage.js';
+import { ZonesPage } from './routes/ZonesPage.js';
 import { WorkPage } from './routes/WorkPage.js';
 import { WarehousesPage } from './pages/WarehousesPage.js';
 
@@ -75,6 +78,8 @@ const countingRoute = createRoute({
   component: CountingPage,
 });
 
+const dashboardRoute = createRoute({ getParentRoute: () => rootRoute, path: '/dashboard', component: DashboardPage });
+
 const accuracyRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/accuracy',
@@ -117,9 +122,14 @@ const scanRoute = createRoute({
   component: ScanPage,
 });
 
+const replenishmentRoute = createRoute({ getParentRoute: () => rootRoute, path: '/replenishment', component: ReplenishmentPage });
+
+const zonesRoute = createRoute({ getParentRoute: () => rootRoute, path: '/zones', component: ZonesPage });
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   locationsRoute,
+  zonesRoute,
   itemsRoute,
   itemDetailRoute,
   stockRoute,
@@ -127,6 +137,8 @@ const routeTree = rootRoute.addChildren([
   inboundRoute,
   outboundRoute,
   countingRoute,
+  replenishmentRoute,
+  dashboardRoute,
   accuracyRoute,
   workRoute,
   rulesRoute,

@@ -1,5 +1,5 @@
-import { currentLocale, formatDate, formatDateTime, useTranslation } from '@countflow/i18n';
-import {
+import { translateCount, currentLocale, formatDate, formatDateTime, useTranslation } from '@countflow/i18n';
+import { InfoHelp,
   Badge,
   Button,
   Code,
@@ -171,11 +171,7 @@ export function OutboundPage() {
 
   return (
     <>
-      <PageHead title={t('outbound.title')} count={total} />
-
-      <p className="mb-[var(--space-4)] max-w-[72ch] text-[length:var(--text-sm)] text-[var(--color-text-secondary)]">
-        {t('outbound.subtitle')}
-      </p>
+      <PageHead help={t('outbound.subtitle')} title={t('outbound.title')} count={total} />
 
       <div className="mb-[var(--space-4)] flex flex-wrap items-center gap-[var(--space-3)]">
         <Select
@@ -210,10 +206,7 @@ export function OutboundPage() {
         <section className="mb-[var(--space-5)]">
           <h3 className="mb-[var(--space-1)] mt-0 text-[length:var(--text-base)]">
             {t('outbound.waves.title')}
-          </h3>
-          <p className="mb-[var(--space-3)] mt-0 max-w-[72ch] text-[length:var(--text-sm)] text-[var(--color-text-secondary)]">
-            {t('outbound.waves.hint')}
-          </p>
+           <InfoHelp label={t('common.about', { topic: t('outbound.waves.title') })}>{t('outbound.waves.hint')}</InfoHelp></h3>
 
           <TableContainer>
             <Table>
@@ -246,7 +239,7 @@ export function OutboundPage() {
                       </Badge>
                     </TD>
                     <TD className="text-[var(--color-text-secondary)]">
-                      {t('outbound.waves.orders', { count: wave.orders.length })}
+                      {translateCount(t, 'outbound.waves.orders', wave.orders.length)}
                     </TD>
                     <TD className="text-[var(--color-text-tertiary)] whitespace-nowrap">
                       {wave.releasedAt ? formatDateTime(wave.releasedAt, locale) : t('common.none')}

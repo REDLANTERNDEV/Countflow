@@ -8,6 +8,14 @@ using Countflow.Modules.MasterData.Domain;
 using Countflow.Modules.MasterData.Persistence;
 using Countflow.Modules.MasterData.Persistence.Seeding;
 using Countflow.SharedKernel.Security;
+using Countflow.SharedKernel.Contracts;
+using Countflow.Modules.Counting.Features.Schedules;
+using Countflow.Modules.Counting.Features.Plans;
+using Countflow.Modules.Counting.Domain;
+using Countflow.Modules.Jobs;
+using Countflow.SharedKernel.Modules;
+using Countflow.Modules.Counting.Persistence;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -81,6 +89,355 @@ public sealed class CountingLoopTests(CountflowApiFixture fixture)
     }
 
     public Task DisposeAsync() => Task.CompletedTask;
+
+    [Fact]
+    public async Task A_scheduled_run_uses_the_existing_policy_and_retries_without_duplicate_tasks()
+    {
+        var sku = await NewItemAsync();
+        await ReceiveAndPutAwayAsync(sku, 25m);
+        await SettleAsync(sku);
+        Guid warehouseId;
+        var runId = Guid.CreateVersion7();
+        var scheduledAt = DateTimeOffset.UtcNow;
+        using (var scope = fixture.Services.CreateScope())
+        {
+            warehouseId = await scope.ServiceProvider.GetRequiredService<MasterDataDbContext>().Warehouses
+                .Where(warehouse => warehouse.Code == _warehouseCode).Select(warehouse => warehouse.Id).SingleAsync();
+            var db = scope.ServiceProvider.GetRequiredService<CountingDbContext>();
+            var schedule = await db.CountSchedules.FindAsync(warehouseId);
+            if (schedule is null) { schedule = new CountSchedule { WarehouseId = warehouseId }; db.CountSchedules.Add(schedule); }
+            schedule.Enabled = true;
+            schedule.MaxTasks = 2;
+            schedule.PendingRunId = runId;
+            schedule.PendingScheduledAt = scheduledAt;
+            schedule.NextRunAt = scheduledAt;
+            await db.SaveChangesAsync();
+        }
+        var run = new BackgroundJobRun($"counting.{warehouseId:N}", runId, scheduledAt);
+        var key = $"schedule:{warehouseId:N}:{runId:N}";
+        List<Guid?>? originalTasks = null;
+        for (var attempt = 0; attempt < 2; attempt++)
+        {
+            using var scope = fixture.Services.CreateScope();
+            await scope.ServiceProvider.GetRequiredService<ScheduledCountPlanning>().ExecuteAsync(run, CancellationToken.None);
+            if (attempt == 0)
+            {
+                var db = scope.ServiceProvider.GetRequiredService<CountingDbContext>();
+                var saved = await db.CountPlans.Include(plan => plan.Lines)
+                    .SingleAsync(plan => plan.IdempotencyKey == key);
+                originalTasks = saved.Lines.OrderBy(line => line.Rank).Select(line => line.WorkTaskId).ToList();
+                // Simulate an enqueue whose acknowledgement was lost before the
+                // task ID was saved on its plan line.
+                saved.Lines.First().WorkTaskId = null;
+                var schedule = await db.CountSchedules.FindAsync(warehouseId);
+                schedule!.PendingRunId = run.Id;
+                schedule.PendingScheduledAt = scheduledAt;
+                await db.SaveChangesAsync();
+            }
+        }
+        using var check = fixture.Services.CreateScope();
+        var plan = await check.ServiceProvider.GetRequiredService<CountingDbContext>().CountPlans
+            .Include(plan => plan.Lines).SingleOrDefaultAsync(plan => plan.IdempotencyKey == key);
+        Assert.NotNull(plan);
+        Assert.Equal(2, plan.RequestedTasks);
+        Assert.Equal("count-scheduler", plan.CreatedByUserName);
+        Assert.NotEqual(Guid.Empty, plan.DecisionTraceId);
+        Assert.Contains(plan.Lines, line => line.WorkTaskId is not null);
+        Assert.Equal(plan.Lines.Count, plan.Lines.Select(line => line.WorkTaskId).Distinct().Count());
+        Assert.Equal(originalTasks, plan.Lines.OrderBy(line => line.Rank).Select(line => line.WorkTaskId).ToList());
+    }
+
+    [Fact]
+    public async Task Simultaneous_manual_and_scheduled_planning_exclude_each_others_open_holdings()
+    {
+        var sku = await NewItemAsync();
+        await ReceiveAndPutAwayAsync(sku, 25m);
+        await SettleAsync(sku);
+        Guid warehouseId;
+        using (var scope = fixture.Services.CreateScope())
+            warehouseId = await scope.ServiceProvider.GetRequiredService<MasterDataDbContext>().Warehouses
+                .Where(warehouse => warehouse.Code == _warehouseCode).Select(warehouse => warehouse.Id).SingleAsync();
+        async Task<Countflow.SharedKernel.Results.Result<Countflow.Modules.Counting.Domain.CountPlan>> Plan(string key)
+        {
+            using var scope = fixture.Services.CreateScope();
+            return await scope.ServiceProvider.GetRequiredService<CountPlanning>().PlanAsync(
+                warehouseId, 20, null, key, new PostingActor(Guid.Empty, "count-scheduler"), CancellationToken.None);
+        }
+        var plans = await Task.WhenAll(Plan(Guid.CreateVersion7().ToString()), Plan(Guid.CreateVersion7().ToString()));
+        Assert.All(plans, plan => Assert.True(plan.IsSuccess));
+        Assert.NotEqual(plans[0].Value.Reference, plans[1].Value.Reference);
+        Assert.Empty(plans[0].Value.Lines.Select(line => line.BalanceId)
+            .Intersect(plans[1].Value.Lines.Select(line => line.BalanceId)));
+    }
+
+    [Fact]
+    public async Task Cancellation_after_lock_loss_prevents_stale_enqueues_from_creating_live_work()
+    {
+        var sku = await NewItemAsync();
+        await ReceiveAndPutAwayAsync(sku, 25m);
+        await SettleAsync(sku);
+        var gate = new EnqueueGate();
+        await using var host = fixture.WithWebHostBuilder(builder => builder.ConfigureServices(services =>
+            services.AddScoped<IWorkQueue>(provider => new BlockingCountQueue(
+                ActivatorUtilities.CreateInstance<Countflow.Modules.Work.Integration.WorkQueue>(provider), gate))));
+        var key = Guid.CreateVersion7().ToString();
+        using var planningScope = host.Services.CreateScope();
+        var master = planningScope.ServiceProvider.GetRequiredService<MasterDataDbContext>();
+        var warehouseId = await master.Warehouses.Where(warehouse => warehouse.Code == _warehouseCode)
+            .Select(warehouse => warehouse.Id).SingleAsync();
+        var planning = planningScope.ServiceProvider.GetRequiredService<CountPlanning>().PlanAsync(
+            warehouseId, 20, null, key, new PostingActor(Guid.Empty, "count-scheduler"), CancellationToken.None);
+        await gate.Started.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        try
+        {
+            Guid planId;
+            using (var scope = fixture.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<CountingDbContext>();
+                planId = await db.CountPlans.Where(plan => plan.IdempotencyKey == key).Select(plan => plan.Id).SingleAsync();
+                await db.Database.ExecuteSqlInterpolatedAsync(
+                    $"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE application_name = {$"countflow.count-planning:{warehouseId:N}"}");
+            }
+            var cancelled = await PostAsync(_supervisor, $"/api/v1/counting/plans/{planId}/cancel", new { });
+            cancelled.EnsureSuccessStatusCode();
+            gate.Resume.TrySetResult();
+            await Assert.ThrowsAsync<DbUpdateConcurrencyException>(() => planning);
+            using var check = fixture.Services.CreateScope();
+            var saved = await check.ServiceProvider.GetRequiredService<CountingDbContext>().CountPlans
+                .Include(plan => plan.Lines).SingleAsync(plan => plan.Id == planId);
+            Assert.Equal(CountPlanStatus.Cancelled, saved.Status);
+            var tasks = await check.ServiceProvider.GetRequiredService<IWorkQueue>()
+                .FindManyAsync(saved.Lines.Select(line => line.WorkTaskId!.Value).ToList(), CancellationToken.None);
+            Assert.NotEmpty(tasks);
+            Assert.All(tasks.Values, task => Assert.Equal(WorkTaskState.Cancelled, task.State));
+        }
+        finally
+        {
+            gate.Resume.TrySetResult();
+            try { await planning; } catch (DbUpdateConcurrencyException) { }
+        }
+    }
+
+    private sealed class EnqueueGate
+    {
+        public int Blocked;
+        public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource Resume { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    }
+
+    private sealed class BlockingCountQueue(IWorkQueue inner, EnqueueGate gate) : IWorkQueue
+    {
+        public async Task<Countflow.SharedKernel.Results.Result<Guid>> EnqueueAsync(WorkTaskRequest request, CancellationToken cancellationToken)
+        {
+            if (request.Kind == WorkTaskKind.CycleCount && Interlocked.CompareExchange(ref gate.Blocked, 1, 0) == 0)
+            {
+                gate.Started.TrySetResult();
+                await gate.Resume.Task.WaitAsync(cancellationToken);
+            }
+            return await inner.EnqueueAsync(request, cancellationToken);
+        }
+        public Task<IReadOnlyDictionary<Guid, WorkTaskSummary>> FindManyAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken)
+            => inner.FindManyAsync(ids, cancellationToken);
+        public Task<Countflow.SharedKernel.Results.Result<int>> CancelAsync(IReadOnlyCollection<Guid> ids, string reason, CancellationToken cancellationToken)
+            => inner.CancelAsync(ids, reason, cancellationToken);
+    }
+
+    [Fact]
+    public async Task A_planner_that_loses_its_lock_before_saving_cannot_duplicate_a_newer_intent()
+    {
+        var sku = await NewItemAsync();
+        await ReceiveAndPutAwayAsync(sku, 25m);
+        await SettleAsync(sku);
+        var gate = new EnqueueGate();
+        await using var host = fixture.WithWebHostBuilder(builder => builder.ConfigureServices(services =>
+            services.AddScoped<ICountPolicy>(provider => new BlockingCountPolicy(
+                provider.GetRequiredService<Countflow.Modules.Rules.CycleCount.CountPolicyAdvisor>(), gate))));
+        using var staleScope = host.Services.CreateScope();
+        var warehouseId = await staleScope.ServiceProvider.GetRequiredService<MasterDataDbContext>().Warehouses
+            .Where(warehouse => warehouse.Code == _warehouseCode).Select(warehouse => warehouse.Id).SingleAsync();
+        var staleKey = Guid.CreateVersion7().ToString();
+        var stale = staleScope.ServiceProvider.GetRequiredService<CountPlanning>().PlanAsync(warehouseId, 20, null,
+            staleKey, new PostingActor(Guid.Empty, "stale-planner"), CancellationToken.None);
+        await gate.Started.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        try
+        {
+            using var winnerScope = fixture.Services.CreateScope();
+            var db = winnerScope.ServiceProvider.GetRequiredService<CountingDbContext>();
+            await db.Database.ExecuteSqlInterpolatedAsync(
+                $"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE application_name = {$"countflow.count-planning:{warehouseId:N}"}");
+            var winner = await winnerScope.ServiceProvider.GetRequiredService<CountPlanning>().PlanAsync(warehouseId, 20,
+                null, Guid.CreateVersion7().ToString(), new PostingActor(Guid.Empty, "winner"), CancellationToken.None);
+            Assert.True(winner.IsSuccess);
+            Assert.NotEmpty(winner.Value.Lines);
+            gate.Resume.TrySetResult();
+            await Assert.ThrowsAsync<DbUpdateConcurrencyException>(() => stale);
+            using var check = fixture.Services.CreateScope();
+            Assert.False(await check.ServiceProvider.GetRequiredService<CountingDbContext>().CountPlans
+                .AnyAsync(plan => plan.IdempotencyKey == staleKey));
+        }
+        finally
+        {
+            gate.Resume.TrySetResult();
+            try { await stale; } catch (DbUpdateConcurrencyException) { }
+        }
+    }
+
+    private sealed class BlockingCountPolicy(ICountPolicy inner, EnqueueGate gate) : ICountPolicy
+    {
+        public async Task<Countflow.SharedKernel.Results.Result<CountPlanAdvice>> AdviseAsync(CountPolicyQuery query, CancellationToken cancellationToken)
+        {
+            var result = await inner.AdviseAsync(query, cancellationToken);
+            if (query.Actor.UserName == "stale-planner")
+            {
+                gate.Started.TrySetResult();
+                await gate.Resume.Task.WaitAsync(cancellationToken);
+            }
+            return result;
+        }
+    }
+
+    [Fact]
+    public async Task A_blocked_warehouse_does_not_delay_another_warehouses_next_schedule()
+    {
+        var sku = await NewItemAsync();
+        await ReceiveAndPutAwayAsync(sku, 25m);
+        await SettleAsync(sku);
+        var gate = new EnqueueGate();
+        var clock = new CountClock();
+        await using var host = fixture.WithWebHostBuilder(builder => builder.ConfigureServices(services =>
+        {
+            services.AddSingleton<TimeProvider>(clock);
+            services.AddScoped<IWorkQueue>(provider => new BlockingCountQueue(
+                ActivatorUtilities.CreateInstance<Countflow.Modules.Work.Integration.WorkQueue>(provider), gate));
+        }));
+        Guid firstWarehouse;
+        var other = new Warehouse { Code = $"SCH-{Guid.CreateVersion7():N}"[..16], Name = "Independent schedule" };
+        using (var scope = host.Services.CreateScope())
+        {
+            var master = scope.ServiceProvider.GetRequiredService<MasterDataDbContext>();
+            master.Warehouses.Add(other);
+            await master.SaveChangesAsync();
+            firstWarehouse = await master.Warehouses.Where(warehouse => warehouse.Code == _warehouseCode)
+                .Select(warehouse => warehouse.Id).SingleAsync();
+            var db = scope.ServiceProvider.GetRequiredService<CountingDbContext>();
+            foreach (var id in new[] { firstWarehouse, other.Id })
+            {
+                var schedule = await db.CountSchedules.FindAsync(id);
+                if (schedule is null) { schedule = new CountSchedule { WarehouseId = id }; db.CountSchedules.Add(schedule); }
+                schedule.Enabled = true;
+                schedule.IntervalMinutes = 1;
+                schedule.NextRunAt = clock.GetUtcNow();
+                schedule.PendingRunId = null;
+                schedule.PendingScheduledAt = null;
+            }
+            await db.SaveChangesAsync();
+        }
+        var services = host.Services;
+        using var worker = new BackgroundJobWorker(services.GetRequiredService<BackgroundJobRunner>(),
+            Array.Empty<BackgroundJobRegistration>(), services.GetRequiredService<IServiceScopeFactory>(),
+            Microsoft.Extensions.Options.Options.Create(new JobRunnerOptions { PollInterval = TimeSpan.FromSeconds(1) }),
+            clock, Microsoft.Extensions.Logging.Abstractions.NullLogger<BackgroundJobWorker>.Instance);
+        async Task<Guid> WaitForPlan(Guid? previous)
+        {
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            while (true)
+            {
+                using var scope = services.CreateScope();
+                var planId = await scope.ServiceProvider.GetRequiredService<CountingDbContext>().CountSchedules
+                    .Where(schedule => schedule.WarehouseId == other.Id).Select(schedule => schedule.LastPlanId)
+                    .SingleAsync(timeout.Token);
+                if (planId is { } id && id != previous) return id;
+                await Task.Delay(50, timeout.Token);
+            }
+        }
+        await worker.StartAsync(CancellationToken.None);
+        try
+        {
+            await gate.Started.Task.WaitAsync(TimeSpan.FromSeconds(10));
+            var firstPlan = await WaitForPlan(null);
+            clock.Advance(TimeSpan.FromMinutes(1));
+            var secondPlan = await WaitForPlan(firstPlan);
+            Assert.NotEqual(firstPlan, secondPlan);
+            Assert.False(gate.Resume.Task.IsCompleted);
+        }
+        finally
+        {
+            using var shutdown = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            await worker.StopAsync(shutdown.Token);
+            using var scope = services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<CountingDbContext>();
+            var schedules = await db.CountSchedules.Where(schedule => schedule.WarehouseId == firstWarehouse || schedule.WarehouseId == other.Id).ToListAsync();
+            foreach (var schedule in schedules) { schedule.Enabled = false; schedule.PendingRunId = null; schedule.PendingScheduledAt = null; }
+            await db.SaveChangesAsync();
+        }
+    }
+
+    private sealed class CountClock : TimeProvider
+    {
+        private DateTimeOffset _now = DateTimeOffset.UtcNow;
+        public override DateTimeOffset GetUtcNow() => _now;
+        public void Advance(TimeSpan amount) => _now += amount;
+    }
+
+    [Theory]
+    [InlineData(0, 1440, "counting.schedule_budget_invalid")]
+    [InlineData(201, 1440, "counting.schedule_budget_invalid")]
+    [InlineData(20, 0, "counting.schedule_interval_invalid")]
+    [InlineData(20, 10081, "counting.schedule_interval_invalid")]
+    public async Task Invalid_schedule_settings_are_refused(int budget, int interval, string code)
+    {
+        var warehouse = (await _supervisor.GetFromJsonAsync<List<CountScheduleResponse>>("/api/v1/counting/schedules"))!.First();
+        var response = await _supervisor.PutAsJsonAsync($"/api/v1/counting/schedules/{warehouse.WarehouseId}",
+            new SaveCountScheduleRequest(true, interval, budget));
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(code, (await response.Content.ReadFromJsonAsync<ScheduleProblem>())!.Code);
+    }
+
+    [Fact]
+    public async Task A_supervisor_can_enable_and_disable_a_schedule_but_an_operator_cannot()
+    {
+        var warehouse = (await _supervisor.GetFromJsonAsync<List<CountScheduleResponse>>("/api/v1/counting/schedules"))!.First();
+        var path = $"/api/v1/counting/schedules/{warehouse.WarehouseId}";
+        var refused = await _operator.PutAsJsonAsync(path, new SaveCountScheduleRequest(true, 60, 3));
+        Assert.Equal(HttpStatusCode.Forbidden, refused.StatusCode);
+        var enabled = await _supervisor.PutAsJsonAsync(path, new SaveCountScheduleRequest(true, 60, 3));
+        enabled.EnsureSuccessStatusCode();
+        var saved = (await enabled.Content.ReadFromJsonAsync<CountScheduleResponse>())!;
+        Assert.True(saved.Enabled);
+        Assert.Equal(60, saved.IntervalMinutes);
+        Assert.Equal(3, saved.MaxTasks);
+        Assert.NotNull(saved.NextRunAt);
+        var disabled = await _supervisor.PutAsJsonAsync(path, new SaveCountScheduleRequest(false, 60, 3));
+        disabled.EnsureSuccessStatusCode();
+        Assert.Null((await disabled.Content.ReadFromJsonAsync<CountScheduleResponse>())!.NextRunAt);
+    }
+
+    [Fact]
+    public async Task A_schedule_for_an_unavailable_warehouse_retains_its_pending_identity()
+    {
+        var warehouseId = Guid.CreateVersion7();
+        var runId = Guid.CreateVersion7();
+        using (var scope = fixture.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<CountingDbContext>();
+            db.CountSchedules.Add(new CountSchedule { WarehouseId = warehouseId, Enabled = true,
+                PendingRunId = runId, PendingScheduledAt = DateTimeOffset.UtcNow });
+            await db.SaveChangesAsync();
+        }
+        using var attempt = fixture.Services.CreateScope();
+        await Assert.ThrowsAsync<InvalidOperationException>(() => attempt.ServiceProvider
+            .GetRequiredService<CountScheduleRunner>().RunAsync(warehouseId, CancellationToken.None));
+        using var check = fixture.Services.CreateScope();
+        var state = await check.ServiceProvider.GetRequiredService<CountingDbContext>().CountSchedules.FindAsync(warehouseId);
+        Assert.Equal(runId, state!.PendingRunId);
+        Assert.Equal("counting.schedule_failed", state.LastErrorCode);
+        state.Enabled = false;
+        state.PendingRunId = null;
+        state.PendingScheduledAt = null;
+        await check.ServiceProvider.GetRequiredService<CountingDbContext>().SaveChangesAsync();
+    }
+
+    private sealed record ScheduleProblem(string Code);
 
     // --------------------------------------------------------------- the loop
 

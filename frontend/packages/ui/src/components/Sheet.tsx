@@ -1,6 +1,6 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
-import type { ReactNode } from 'react';
+import type { ReactNode, RefObject } from 'react';
 import { cn } from '../lib/cn.js';
 
 export interface SheetProps {
@@ -24,6 +24,8 @@ export interface SheetProps {
   side?: 'left' | 'right';
   children: ReactNode;
   className?: string;
+  /** Restore a workflow's scan target instead of the opener when supplied. */
+  returnFocusRef?: RefObject<HTMLElement | null>;
 }
 
 /**
@@ -45,6 +47,7 @@ export function Sheet({
   side = 'left',
   children,
   className,
+  returnFocusRef,
 }: SheetProps) {
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -56,6 +59,9 @@ export function Sheet({
                      data-[state=open]:animate-[sheet-fade_var(--duration-fast)_var(--ease-standard)]"
         />
         <Dialog.Content
+          onCloseAutoFocus={event => {
+            if (returnFocusRef?.current) { event.preventDefault(); returnFocusRef.current.focus(); }
+          }}
           className={cn(
             'fixed inset-y-0 z-50 flex w-[min(82vw,300px)] flex-col',
             'border-[var(--color-border-default)] bg-[var(--color-surface-raised)]',

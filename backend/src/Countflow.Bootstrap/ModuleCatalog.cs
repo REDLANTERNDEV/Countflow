@@ -3,11 +3,14 @@ using Countflow.Modules.Identity;
 using Countflow.Modules.Inbound;
 using Countflow.Modules.Inventory;
 using Countflow.Modules.Labels;
+using Countflow.Modules.Jobs;
+using Countflow.Modules.Replenishment;
 using Countflow.Modules.MasterData;
 using Countflow.Modules.Outbound;
 using Countflow.Modules.Replay;
 using Countflow.Modules.Rules;
 using Countflow.Modules.Work;
+using Countflow.Modules.Webhooks;
 using Countflow.SharedKernel.Modules;
 
 namespace Countflow.Bootstrap;
@@ -52,6 +55,9 @@ public static class ModuleCatalog
         // output is a physical object: it reads items, plates and sites through
         // published contracts and emits ZPL. It publishes nothing, and the
         // transport that sends that ZPL to a printer is deliberately not here.
-        new LabelsModule()
+        new LabelsModule(),
+        new JobsModule(),
+        new ReplenishmentModule(),
+        new WebhooksModule()
     ];
 }

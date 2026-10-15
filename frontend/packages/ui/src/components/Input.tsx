@@ -1,4 +1,5 @@
 import type { ComponentPropsWithRef } from 'react';
+import { InfoHelp } from './InfoHelp.js';
 import { cn } from '../lib/cn.js';
 
 // `ComponentPropsWithRef` rather than `InputHTMLAttributes` so callers can hold a
@@ -50,25 +51,31 @@ export function Field({
   label,
   htmlFor,
   hint,
+  hintMode = 'help',
   error,
   children,
 }: {
   label: string;
   htmlFor?: string;
   hint?: string;
+  hintMode?: 'help' | 'instruction';
   error?: string;
   children: React.ReactNode;
 }) {
   return (
     <div className="flex flex-col gap-[var(--space-2)]">
-      <Label htmlFor={htmlFor}>{label}</Label>
+      <div className="flex items-center gap-[var(--space-1)]">
+        <Label htmlFor={htmlFor}>{label}</Label>
+        {hint && hintMode === 'help' ? <InfoHelp label={label}>{hint}</InfoHelp> : null}
+      </div>
       {children}
+      {hint && hintMode === 'instruction' ? (
+        <p className="m-0 text-[length:var(--text-xs)] text-[var(--color-text-tertiary)]">{hint}</p>
+      ) : null}
       {/* Validation sits next to the control it belongs to, not collected at the
           bottom of the form — proximity is what makes the mapping obvious. */}
       {error ? (
         <p className="text-[length:var(--label-text)] text-[var(--color-danger)]">{error}</p>
-      ) : hint ? (
-        <p className="text-[length:var(--text-xs)] text-[var(--color-text-tertiary)]">{hint}</p>
       ) : null}
     </div>
   );

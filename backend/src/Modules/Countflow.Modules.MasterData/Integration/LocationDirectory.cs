@@ -1,6 +1,7 @@
 using Countflow.Modules.MasterData.Domain;
 using Countflow.Modules.MasterData.Persistence;
 using Countflow.SharedKernel.Contracts;
+using Countflow.SharedKernel.Routing;
 using Microsoft.EntityFrameworkCore;
 
 namespace Countflow.Modules.MasterData.Integration;
@@ -94,6 +95,88 @@ public sealed class LocationDirectory(MasterDataDbContext dbContext) : ILocation
         return [.. rows.Select(ToStorageSnapshot)];
     }
 
+    public async Task<PickRouteMap> FindPickRouteMapAsync(
+        IReadOnlyCollection<Guid> locationIds,
+        CancellationToken cancellationToken)
+    {
+        if (locationIds.Count == 0)
+        {
+            return PickRouteMap.Empty;
+        }
+
+        var distinct = locationIds.Distinct().ToArray();
+
+        var stops = await dbContext.Locations
+            .AsNoTracking()
+            .Where(l => distinct.Contains(l.Id) && !VirtualTypes.Contains(l.Type))
+            .Select(l => new RouteStop(
+                l.Id,
+                l.Code,
+                l.ZoneId,
+                l.Zone == null ? 0 : l.Zone.PickSequence,
+                l.PickSequence,
+                l.Aisle,
+                l.Bay))
+            .ToListAsync(cancellationToken);
+
+        var zoneIds = stops.Where(s => s.ZoneId is not null).Select(s => s.ZoneId!.Value).Distinct().ToArray();
+
+        return await BuildMapAsync(
+            stops.ToDictionary(stop => stop.LocationId),
+            zoneIds,
+            cancellationToken);
+    }
+
+    public async Task<PickRouteMap> FindZonePickRouteMapAsync(
+        IReadOnlyCollection<Guid> zoneIds,
+        CancellationToken cancellationToken) =>
+        zoneIds.Count == 0
+            ? PickRouteMap.Empty
+            : await BuildMapAsync(new Dictionary<Guid, RouteStop>(), [.. zoneIds.Distinct()], cancellationToken);
+
+    /// <summary>
+    /// The zone configuration and the aisle grid behind it.
+    /// <para>
+    /// The grid is read as <b>distinct aisle-and-bay pairs</b> rather than as the
+    /// bins themselves, which is the difference between a couple of hundred rows and
+    /// a couple of thousand on a query that runs every time a picker asks for work.
+    /// Postgres does the DISTINCT; what comes back is the shape of the rack.
+    /// </para>
+    /// </summary>
+    private async Task<PickRouteMap> BuildMapAsync(
+        Dictionary<Guid, RouteStop> stops,
+        Guid[] zoneIds,
+        CancellationToken cancellationToken)
+    {
+        if (zoneIds.Length == 0)
+        {
+            return new PickRouteMap(stops, new Dictionary<Guid, ZoneRouting>(), RouteGeometry.Empty);
+        }
+
+        var zones = await dbContext.Zones
+            .AsNoTracking()
+            .Where(z => zoneIds.Contains(z.Id))
+            .Select(z => new ZoneRouting(
+                z.Id,
+                z.Code,
+                z.PickSequence,
+                z.PickRouteStrategy,
+                z.HasRearCrossAisle))
+            .ToListAsync(cancellationToken);
+
+        var cells = await dbContext.Locations
+            .AsNoTracking()
+            .Where(l => l.ZoneId != null && zoneIds.Contains(l.ZoneId!.Value))
+            .Select(l => new RouteCell(l.ZoneId!.Value, l.Aisle, l.Bay))
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        return new PickRouteMap(
+            stops,
+            zones.ToDictionary(zone => zone.ZoneId),
+            RouteGeometry.Of(cells, zones));
+    }
+
     /// <summary>
     /// The zone is joined rather than looked up per location: its temperature
     /// class is the item's first hard constraint and its pick sequence sorts ahead
@@ -118,7 +201,9 @@ public sealed class LocationDirectory(MasterDataDbContext dbContext) : ILocation
                 l.PickSequence,
                 l.MaxVolumeM3,
                 l.MaxWeightKg,
-                l.MaxDistinctItems));
+                l.MaxDistinctItems,
+                l.Zone == null ? null : l.Zone.Area!.Code,
+                l.Zone == null || (l.Zone.IsActive && l.Zone.Area!.IsActive)));
 
     private static StorageLocationSnapshot ToStorageSnapshot(StorageRow row) =>
         new(
@@ -136,7 +221,9 @@ public sealed class LocationDirectory(MasterDataDbContext dbContext) : ILocation
             row.PickSequence,
             row.MaxVolumeM3,
             row.MaxWeightKg,
-            row.MaxDistinctItems);
+            row.MaxDistinctItems,
+            row.AreaCode,
+            row.IsHierarchyActive);
 
     /// <summary>
     /// Spelled out as data rather than as <c>!l.Type.IsVirtual()</c>, because the
@@ -170,7 +257,9 @@ public sealed class LocationDirectory(MasterDataDbContext dbContext) : ILocation
         int PickSequence,
         decimal? MaxVolumeM3,
         decimal? MaxWeightKg,
-        int? MaxDistinctItems);
+        int? MaxDistinctItems,
+        string? AreaCode,
+        bool IsHierarchyActive);
 
     private static TemperatureBand ToBand(TemperatureClass temperature) => temperature switch
     {

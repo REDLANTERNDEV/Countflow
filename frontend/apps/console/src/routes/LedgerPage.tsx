@@ -1,5 +1,5 @@
-import { currentLocale, formatDateTime, useTranslation } from '@countflow/i18n';
-import {
+import { translateCount, currentLocale, formatDateTime, useTranslation } from '@countflow/i18n';
+import { InfoHelp,
   Badge,
   Button,
   Code,
@@ -103,11 +103,7 @@ export function LedgerPage() {
 
   return (
     <>
-      <PageHead title={t('ledger.title')} count={total} />
-
-      <p className="mb-[var(--space-4)] max-w-[72ch] text-[length:var(--text-sm)] text-[var(--color-text-secondary)]">
-        {t('ledger.intro')}
-      </p>
+      <PageHead help={t('ledger.intro')} title={t('ledger.title')} count={total} />
 
       <div className="mb-[var(--space-4)] flex flex-wrap items-center gap-[var(--space-3)]">
         <Input
@@ -167,12 +163,11 @@ export function LedgerPage() {
                     holdings: reconcile.data.holdingsChecked,
                     movements: reconcile.data.movementsReplayed,
                   })
-                : t('ledger.reconcileDrift', { count: reconcile.data.drift.length })}
+                : translateCount(t, 'ledger.reconcileDrift', reconcile.data.drift.length)}
             </Badge>
+            <InfoHelp label={t('common.help')}>{t('ledger.reconcileNote')}</InfoHelp>
           </div>
-          <p className="m-0 max-w-[72ch] text-[length:var(--text-xs)] text-[var(--color-text-tertiary)]">
-            {t('ledger.reconcileNote')}
-          </p>
+
         </div>
       ) : null}
 

@@ -22,7 +22,7 @@ import { DecisionTrace } from '../components/DecisionTrace.js';
 import { PageHead } from '../components/PageHead.js';
 
 const STATUSES = ['Ready', 'Assigned', 'Completed', 'Cancelled'] as const;
-const KINDS = ['Putaway', 'Replenishment', 'Pick', 'CycleCount'] as const;
+const KINDS = ['Putaway', 'Replenishment', 'Pick', 'CycleCount', 'BinCount'] as const;
 
 type Status = (typeof STATUSES)[number];
 type Kind = (typeof KINDS)[number];
@@ -168,10 +168,10 @@ export function WorkPage() {
                       </div>
                     </TD>
                     <TD>
-                      <Code>{task.sku}</Code>
+                      {task.kind === 'BinCount' ? t('common.none') : <Code>{task.sku}</Code>}
                     </TD>
                     <TD numeric>
-                      <Numeric value={task.quantity} locale={locale} />
+                      {task.kind === 'BinCount' ? '—' : <Numeric value={task.quantity} locale={locale} />}
                     </TD>
                     <TD>{task.sscc ? <Code>{task.sscc}</Code> : t('common.none')}</TD>
                     <TD>

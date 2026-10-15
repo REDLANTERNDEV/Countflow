@@ -1,6 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <ProjectReference Include="../Modules/Countflow.Modules.Jobs/Countflow.Modules.Jobs.csproj" />
+    <ProjectReference Include="../Modules/Countflow.Modules.Replenishment/Countflow.Modules.Replenishment.csproj" />
     <ProjectReference Include="../Countflow.SharedKernel/Countflow.SharedKernel.csproj" />
     <ProjectReference Include="../Modules/Countflow.Modules.Counting/Countflow.Modules.Counting.csproj" />
     <ProjectReference Include="../Modules/Countflow.Modules.Identity/Countflow.Modules.Identity.csproj" />
@@ -12,6 +14,7 @@
     <ProjectReference Include="../Modules/Countflow.Modules.Replay/Countflow.Modules.Replay.csproj" />
     <ProjectReference Include="../Modules/Countflow.Modules.Rules/Countflow.Modules.Rules.csproj" />
     <ProjectReference Include="../Modules/Countflow.Modules.Work/Countflow.Modules.Work.csproj" />
+    <ProjectReference Include="../Modules/Countflow.Modules.Webhooks/Countflow.Modules.Webhooks.csproj" />
   </ItemGroup>
 
 </Project>

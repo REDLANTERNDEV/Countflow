@@ -35,6 +35,9 @@ var builder = WebApplication.CreateBuilder(args);
 builder.AddCountflowLogging();
 builder.AddCountflowTelemetry();
 
+// Exporting a contract must not dispatch warehouse jobs or require a database.
+if (args is ["--export-openapi", _, ..]) builder.Configuration["Jobs:Enabled"] = "false";
+
 builder.Services.AddCountflowModules(builder.Configuration, ModuleCatalog.All);
 builder.Services.AddCountflowAuthentication(builder.Configuration);
 builder.Services.AddCountflowRateLimiting(builder.Configuration);

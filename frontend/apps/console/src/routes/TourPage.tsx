@@ -28,11 +28,7 @@ export function TourPage() {
 
   return (
     <>
-      <PageHead title={t('tour.title')} />
-
-      <p className="mb-[var(--space-6)] max-w-[72ch] text-[length:var(--text-base)] text-[var(--color-text-secondary)]">
-        {t('tour.intro')}
-      </p>
+      <PageHead help={t('tour.intro')} title={t('tour.title')} />
 
       <section className="mb-[var(--space-6)] grid gap-[var(--space-4)] [grid-template-columns:repeat(auto-fill,minmax(320px,1fr))]">
         {stops.map((stop) => (

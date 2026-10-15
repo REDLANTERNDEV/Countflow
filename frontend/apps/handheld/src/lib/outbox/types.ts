@@ -24,9 +24,13 @@ export type CommandKind = 'work.complete' | 'inbound.receipt';
 /** The body of `POST /work/tasks/{id}/complete`, exactly as the endpoint takes it. */
 export interface CompleteCommandRequest {
   taskId: string;
+  pickTourId?: string;
   toLocationCode: string;
   overrideReason?: string;
   countedQuantity?: number;
+  binCountVersion?: number;
+  binCountClaimId?: string;
+  observed?: import('../bin-count.js').ObservedHolding[];
 }
 
 /** The body of `POST /inbound/receipts`, exactly as the endpoint takes it. */
@@ -67,6 +71,7 @@ export interface CommandSummary {
   reference?: string;
   /** What a count reported. */
   countedQuantity?: number;
+  observed?: import('../bin-count.js').ObservedHolding[];
 }
 
 /**

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent, type KeyboardEvent, type RefObject } from 'react';
 import { cn } from '../lib/cn.js';
 import { acceptsTypedInput } from '../lib/focus.js';
 import { Label } from './Input.js';
@@ -13,6 +13,8 @@ export interface ScanFieldProps {
   autoFocus?: boolean;
   /** Clear the field after a scan. Off for fields the operator should be able to review. */
   clearOnScan?: boolean;
+  /** A sibling camera control can return focus to this scan target. */
+  inputRef?: RefObject<HTMLInputElement | null>;
 }
 
 /**
@@ -31,7 +33,8 @@ export interface ScanFieldProps {
 export function ScanField(props: ScanFieldProps) {
   const { label, placeholder, disabled = false, onScan, autoFocus = true, clearOnScan = true } = props;
 
-  const inputRef = useRef<HTMLInputElement>(null);
+  const ownInputRef = useRef<HTMLInputElement>(null);
+  const inputRef = props.inputRef ?? ownInputRef;
   const [value, setValue] = useState('');
   const id = `scan-${label.replace(/\s+/g, '-').toLowerCase()}`;
 
@@ -49,6 +52,8 @@ export function ScanField(props: ScanFieldProps) {
     // landed there and was pulled out again a tick later, which reads as the
     // field simply not accepting taps. See `acceptsTypedInput`.
     const onFocusOut = (event: FocusEvent) => {
+      // Reading help is intentional keyboard navigation, not a lost scan target.
+      if ((event.relatedTarget as HTMLElement | null)?.closest('[data-info-help], [data-scan-control], [role="dialog"]')) return;
       if (acceptsTypedInput(event.relatedTarget as HTMLElement | null)) return;
 
       window.setTimeout(() => {
@@ -58,7 +63,7 @@ export function ScanField(props: ScanFieldProps) {
 
     input?.addEventListener('focusout', onFocusOut);
     return () => input?.removeEventListener('focusout', onFocusOut);
-  }, [autoFocus, disabled]);
+  }, [autoFocus, disabled, inputRef]);
 
   function handleChange(event: ChangeEvent<HTMLInputElement>) {
     setValue(event.target.value);

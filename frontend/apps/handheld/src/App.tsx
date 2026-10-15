@@ -1,4 +1,4 @@
-import { useTranslation } from '@countflow/i18n';
+import { translateCount, useTranslation } from '@countflow/i18n';
 import { Badge, Button, Field, Input, LogoSymbol, PasswordInput, Spinner } from '@countflow/ui';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, tokenStore } from './api.js';
@@ -9,7 +9,9 @@ import { outbox, startOutbox } from './outbox.js';
 import { HomeScreen } from './screens/HomeScreen.js';
 import { QueueScreen } from './screens/QueueScreen.js';
 import { ReceiveScreen } from './screens/ReceiveScreen.js';
+import { PickTourScreen } from './screens/PickTourScreen.js';
 import { TaskScreen } from './screens/TaskScreen.js';
+import { ScanScreen } from './screens/ScanScreen.js';
 import { forgetOperator, recallOperator, rememberOperator, type CurrentUser } from './session.js';
 import { useConnectivity } from './useConnectivity.js';
 import { useOutbox } from './useOutbox.js';
@@ -23,7 +25,7 @@ import { useOutbox } from './useOutbox.js';
  * Phase 5 counting without adding one; Phase 8's queue is the first genuinely
  * new destination since receiving, and it is still not a router.
  */
-type Screen = { name: 'home' } | { name: 'receive' } | { name: 'task'; taskId: string } | { name: 'queue' };
+type Screen = { name: 'home' } | { name: 'receive' } | { name: 'scan' } | { name: 'task'; taskId: string; tourId?: string } | { name: 'pickTour'; tourId: string } | { name: 'queue' };
 
 export function App() {
   const { t } = useTranslation();
@@ -199,9 +201,6 @@ export function App() {
         <h1 className="m-0 mt-[var(--space-2)] text-[length:var(--text-2xl)] tracking-[var(--tracking-display)]">
           {t('auth.title')}
         </h1>
-        <p className="mb-[var(--space-5)] mt-0 text-[var(--color-text-secondary)]">
-          {t('auth.scanBadge')}
-        </p>
 
         {/* Unsent work belonging to whoever was here last. Shown on the sign-in
             screen because that is where the person who can send it will be
@@ -252,7 +251,7 @@ export function App() {
             void signIn(code, password);
           }}
         >
-          <Field label={t('auth.operatorCode')} htmlFor="hh-operator">
+          <Field label={t('auth.operatorCode')} hint={t('auth.scanBadge')} htmlFor="hh-operator">
             <Input
               id="hh-operator"
               ref={operatorRef}
@@ -326,7 +325,7 @@ export function App() {
         <ConnectivityNotice online={connected} />
 
         <h1 className="m-0 mt-[var(--space-3)] text-[length:var(--text-xl)]">
-          {t('queue.signOutBlocked', { count: unsent.length })}
+          {translateCount(t, 'queue.signOutBlocked', unsent.length)}
         </h1>
         <p className="m-0 text-[var(--color-text-secondary)]">{t('queue.signOutBlockedHint')}</p>
 
@@ -368,7 +367,7 @@ export function App() {
 
         {attention.length > 0 ? (
           <Button variant="ghost" size="sm" onClick={() => setScreen({ name: 'queue' })}>
-            <Badge tone="danger">{t('queue.needsYou', { count: attention.length })}</Badge>
+            <Badge tone="danger">{translateCount(t, 'queue.needsYou', attention.length)}</Badge>
           </Button>
         ) : null}
 
@@ -388,7 +387,9 @@ export function App() {
           user={user}
           online={connected}
           onReceive={() => setScreen({ name: 'receive' })}
+          onScan={() => setScreen({ name: 'scan' })}
           onOpenTask={(taskId) => setScreen({ name: 'task', taskId })}
+          onOpenTour={(tourId) => setScreen({ name: 'pickTour', tourId })}
           onOpenQueue={() => setScreen({ name: 'queue' })}
           onSignOut={() => {
             if (unsent.length > 0) {
@@ -401,6 +402,7 @@ export function App() {
         />
       ) : null}
 
+      {screen.name === 'scan' ? <ScanScreen online={connected} onBack={() => setScreen({ name: 'home' })} /> : null}
       {screen.name === 'receive' ? (
         <ReceiveScreen
           onBack={() => setScreen({ name: 'home' })}
@@ -412,10 +414,15 @@ export function App() {
         <TaskScreen
           taskId={screen.taskId}
           ownerUserId={user.id}
-          onDone={() => setScreen({ name: 'home' })}
+          onDone={() => setScreen(screen.tourId ? { name: 'pickTour', tourId: screen.tourId } : { name: 'home' })}
         />
       ) : null}
 
+      {screen.name === 'pickTour' ? (
+        <PickTourScreen tourId={screen.tourId} ownerUserId={user.id} online={connected}
+          onOpenTask={(taskId) => setScreen({ name: 'task', taskId, tourId: screen.tourId })}
+          onBack={() => setScreen({ name: 'home' })} />
+      ) : null}
       {screen.name === 'queue' ? (
         <QueueScreen ownerUserId={user.id} onBack={() => setScreen({ name: 'home' })} />
       ) : null}

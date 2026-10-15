@@ -1,4 +1,4 @@
-import { currentLocale, formatDateTime, formatNumber, useTranslation } from '@countflow/i18n';
+import { translateCount, currentLocale, formatDateTime, formatNumber, useTranslation } from '@countflow/i18n';
 import { Badge, Button, Code, Numeric } from '@countflow/ui';
 import { categorise, needsSupervisor, type RefusalCategory } from '../lib/outbox/refusals.js';
 import type { QueuedCommand } from '../lib/outbox/types.js';
@@ -89,7 +89,7 @@ export function QueueScreen({ ownerUserId, onBack }: QueueScreenProps) {
               ) : null}
               {command.attempts > 0 ? (
                 <p className="m-0 text-[length:var(--text-sm)] text-[var(--color-text-tertiary)]">
-                  {t('queue.attempts', { count: command.attempts })}
+                  {translateCount(t, 'queue.attempts', command.attempts)}
                 </p>
               ) : null}
             </CommandCard>
@@ -179,16 +179,21 @@ function CommandCard({
         </span>
       </div>
 
-      <p className="m-0 flex flex-wrap items-baseline gap-[var(--space-2)] text-[length:var(--text-lg)]">
+      {summary.observed === undefined ? <p className="m-0 flex flex-wrap items-baseline gap-[var(--space-2)] text-[length:var(--text-lg)]">
         <Numeric value={summary.quantity} locale={locale} />
         <span className="text-[var(--color-text-secondary)]">×</span>
         <Code className="text-[length:var(--text-lg)]">{summary.sku}</Code>
-      </p>
-      <p className="m-0 text-[length:var(--text-sm)] text-[var(--color-text-secondary)]">
+      </p> : summary.observed.length ? summary.observed.map((line, index) => <div key={index} className="flex flex-col gap-1">
+        <p className="m-0 flex flex-wrap gap-2"><Code>{line.sku}</Code><Numeric value={line.quantity} locale={locale} maximumFractionDigits={4} />{line.uom ? <span>{line.uom}</span> : null}
+          {line.lotNumber ? <Code>{line.lotNumber}</Code> : null}{line.sscc ? <Code className="break-all">{line.sscc}</Code> : null}<Badge>{t(`stock.status_${line.condition}`)}</Badge></p>
+        {line.description ? <p className="m-0">{line.description}</p> : null}
+        {line.warnings?.map(warning => <p key={warning.code} role="alert" className="m-0 text-[var(--color-warning-text)]">{t(`scan.warning.${warning.code}`, warning.args)}</p>)}
+      </div>) : <p className="m-0">{t('work.bin.empty')}</p>}
+      {summary.observed === undefined ? <p className="m-0 text-[length:var(--text-sm)] text-[var(--color-text-secondary)]">
         {summary.description}
-      </p>
+      </p> : null}
 
-      {summary.fromLocationCode ? (
+      {summary.fromLocationCode && summary.observed === undefined ? (
         <p className="m-0 text-[length:var(--text-sm)] text-[var(--color-text-secondary)]">
           {t('queue.from', { location: summary.fromLocationCode })}
         </p>

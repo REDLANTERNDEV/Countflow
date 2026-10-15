@@ -28,6 +28,7 @@ services:
 
   api:
     environment:
+      Webhooks__EncryptionKey: 5dNFHvNfUkTU0V7nNfjAW5HqekmYnMSg9DaREMpHy8w=
       ASPNETCORE_ENVIRONMENT: Development
       # Vite dev servers run on the host and are cross-origin against the API.
       # In production Caddy serves both from one origin, so CORS is unused there.

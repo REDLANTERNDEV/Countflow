@@ -21,6 +21,7 @@
  * sorts them in.
  */
 export type RefusalCategory =
+  | 'bin_changed'
   /**
    * The stock is not where the command said it was. The operator is standing
    * next to goods the record does not have, or moved goods that were not there
@@ -56,6 +57,9 @@ export type RefusalCategory =
   | 'unknown';
 
 const CATEGORIES: Record<string, RefusalCategory> = {
+  'inventory.bin_changed': 'bin_changed',
+  'inventory.bin_count_invalid': 'not_recognised',
+  'inventory.bin_count_duplicate': 'not_recognised',
   // Work — the job moved on without the operator.
   'work.task_already_completed': 'already_done',
   'work.task_not_open': 'already_done',
@@ -86,6 +90,8 @@ const CATEGORIES: Record<string, RefusalCategory> = {
   'inventory.cannot_count_counterparty': 'not_recognised',
   'work.location_not_found': 'not_recognised',
   'work.count_location_mismatch': 'not_recognised',
+  'work.replenishment_destination_mismatch': 'not_recognised',
+  'inventory.replenishment_locations_invalid': 'not_allowed',
   'work.count_quantity_required': 'not_recognised',
   'inbound.item_not_found': 'not_recognised',
   'inbound.location_not_found': 'not_recognised',

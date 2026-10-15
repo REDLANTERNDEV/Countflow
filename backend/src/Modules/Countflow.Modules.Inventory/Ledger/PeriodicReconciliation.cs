@@ -1,8 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace Countflow.Modules.Inventory.Ledger;
 
@@ -29,78 +25,13 @@ public sealed class ReconciliationOptions
     public TimeSpan InitialDelay { get; set; } = TimeSpan.FromMinutes(5);
 }
 
-/// <summary>
-/// Runs <see cref="LedgerReconciler"/> on a timer and alarms through the log.
-/// <para>
-/// Read-only, which is what makes it safe to run on every API replica: two
-/// replicas both replaying the ledger duplicate work but cannot corrupt anything,
-/// so this needs no leader election. If the pass ever grows expensive enough for
-/// the duplication to matter, that is the point to reach for an advisory lock —
-/// not before.
-/// </para>
-/// </summary>
-public sealed class PeriodicReconciliation(
-    IServiceScopeFactory scopeFactory,
-    IOptions<ReconciliationOptions> options,
-    TimeProvider clock,
-    ILogger<PeriodicReconciliation> logger) : BackgroundService
+/// <summary>The inventory-owned handler registered with the shared job runner.</summary>
+public sealed class PeriodicReconciliation(LedgerReconciler reconciler, ReconciliationJournal journal)
+    : Countflow.SharedKernel.Contracts.IBackgroundJob
 {
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    public async Task ExecuteAsync(Countflow.SharedKernel.Contracts.BackgroundJobRun run, CancellationToken cancellationToken)
     {
-        var settings = options.Value;
-
-        if (!settings.Enabled)
-        {
-            logger.LogInformation("Ledger reconciliation is disabled");
-            return;
-        }
-
-        logger.LogInformation(
-            "Ledger reconciliation starts in {InitialDelay} then every {Interval}",
-            settings.InitialDelay,
-            settings.Interval);
-
-        try
-        {
-            await Task.Delay(settings.InitialDelay, clock, stoppingToken);
-
-            using var timer = new PeriodicTimer(settings.Interval, clock);
-
-            do
-            {
-                await RunOnceAsync(stoppingToken);
-            }
-            while (await timer.WaitForNextTickAsync(stoppingToken));
-        }
-        catch (OperationCanceledException)
-        {
-            // Ordinary shutdown.
-        }
-    }
-
-    private async Task RunOnceAsync(CancellationToken cancellationToken)
-    {
-        try
-        {
-            // Its own scope: a background loop must not hold a request-scoped
-            // DbContext open for the lifetime of the process.
-            await using var scope = scopeFactory.CreateAsyncScope();
-
-            var reconciler = scope.ServiceProvider.GetRequiredService<LedgerReconciler>();
-            var journal = scope.ServiceProvider.GetRequiredService<ReconciliationJournal>();
-
-            var report = await reconciler.RunAsync(cancellationToken);
-
-            // Recorded by the caller rather than by the reconciler, which stays a
-            // pure read of the ledger it is auditing. See ReconciliationJournal.
-            await journal.RecordAsync(report, Domain.ReconciliationTrigger.Periodic, cancellationToken);
-        }
-        catch (Exception exception) when (exception is not OperationCanceledException)
-        {
-            // A failed pass must not take the host down: the reconciler is a
-            // watchdog, and a watchdog that kills the process it watches is worse
-            // than no watchdog.
-            logger.LogError(exception, "Ledger reconciliation pass failed");
-        }
+        var report = await reconciler.RunAsync(cancellationToken);
+        await journal.RecordAsync(report, Domain.ReconciliationTrigger.Periodic, cancellationToken);
     }
 }

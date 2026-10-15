@@ -450,6 +450,111 @@
         }
       }
     },
+    "/api/v1/zones": {
+      "get": {
+        "tags": [
+          "Master data"
+        ],
+        "summary": "Zones, how each is walked, and which other routes it could support.",
+        "operationId": "GetZones",
+        "parameters": [
+          {
+            "name": "warehouse",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ZoneResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/zones/{id}/pick-route": {
+      "put": {
+        "tags": [
+          "Master data"
+        ],
+        "summary": "Choose the routing heuristic a zone\u0027s pick lists are sequenced with.",
+        "operationId": "SetZonePickRoute",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetZonePickRouteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZoneResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/locations": {
       "get": {
         "tags": [
@@ -1643,6 +1748,48 @@
         }
       }
     },
+    "/api/v1/inventory/zone-density": {
+      "get": {
+        "tags": [
+          "Inventory"
+        ],
+        "summary": "Current storage-slot occupancy and fully measured cube utilization by zone.",
+        "operationId": "GetZoneDensity",
+        "parameters": [
+          {
+            "name": "warehouseId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZoneDensityResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/inventory/reservations/stranded": {
       "get": {
         "tags": [
@@ -2281,6 +2428,148 @@
         }
       }
     },
+    "/api/v1/work/bin-counts": {
+      "post": {
+        "tags": [
+          "Work"
+        ],
+        "summary": "Raise a blind count of an entire physical bin.",
+        "operationId": "CreateBinCount",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateBinCountRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkTaskResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/work/tasks/{id}/bin-count/start": {
+      "post": {
+        "tags": [
+          "Work"
+        ],
+        "summary": "Start or restart the assigned blind count after a stock change.",
+        "operationId": "StartBinCount",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartBinCountRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkTaskDetailResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/work/tasks/{id}": {
       "get": {
         "tags": [
@@ -2464,6 +2753,219 @@
         }
       }
     },
+    "/api/v1/work/tours/claim-next": {
+      "post": {
+        "tags": [
+          "Work"
+        ],
+        "summary": "Take the next run of picks, sequenced into a walk.",
+        "operationId": "ClaimNextTour",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ClaimNextTourRequest"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PickTourResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/work/tours": {
+      "get": {
+        "tags": [
+          "Work"
+        ],
+        "summary": "Pick tours, newest first.",
+        "operationId": "GetPickTours",
+        "parameters": [
+          {
+            "name": "mine",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
+            "name": "open",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PickTourPage"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/work/tours/{id}": {
+      "get": {
+        "tags": [
+          "Work"
+        ],
+        "summary": "One tour, its stops in walking order, and what sequenced them.",
+        "operationId": "GetPickTour",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PickTourResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/work/tours/{id}/release": {
+      "post": {
+        "tags": [
+          "Work"
+        ],
+        "summary": "Hand back every stop on a tour that has not been walked.",
+        "operationId": "ReleasePickTour",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/work/tasks/{id}/complete": {
       "post": {
         "tags": [
@@ -2600,6 +3102,66 @@
           },
           "401": {
             "description": "Unauthorized",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/work/throughput": {
+      "get": {
+        "tags": [
+          "Work"
+        ],
+        "summary": "Completed work by UTC completion date and the current backlog.",
+        "operationId": "GetWorkThroughput",
+        "parameters": [
+          {
+            "name": "warehouseId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "days",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkThroughputResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
             "content": {
               "application/problem\u002Bjson": {
                 "schema": {
@@ -3698,6 +4260,102 @@
         }
       }
     },
+    "/api/v1/counting/schedules": {
+      "get": {
+        "tags": [
+          "Counting"
+        ],
+        "summary": "List warehouse cycle-count schedules.",
+        "operationId": "GetCountSchedules",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CountScheduleResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/counting/schedules/{warehouseId}": {
+      "put": {
+        "tags": [
+          "Counting"
+        ],
+        "summary": "Save an opt-in cycle-count schedule.",
+        "operationId": "SaveCountSchedule",
+        "parameters": [
+          {
+            "name": "warehouseId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveCountScheduleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CountScheduleResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/counting/plans": {
       "post": {
         "tags": [
@@ -4702,6 +5360,650 @@
           }
         }
       }
+    },
+    "/api/v1/replenishment/pick-faces": {
+      "get": {
+        "tags": [
+          "Replenishment"
+        ],
+        "summary": "List pick-face min/max policies and incoming stock.",
+        "operationId": "GetPickFacePolicies",
+        "parameters": [
+          {
+            "name": "warehouse",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PickFacePageResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/replenishment/pick-faces/{locationCode}": {
+      "put": {
+        "tags": [
+          "Replenishment"
+        ],
+        "summary": "Save a pick-face min/max policy.",
+        "operationId": "SavePickFacePolicy",
+        "parameters": [
+          {
+            "name": "locationCode",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SavePickFaceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PickFacePolicyResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/replenishment/plans/{id}": {
+      "get": {
+        "tags": [
+          "Replenishment"
+        ],
+        "summary": "Read a replenishment intent and its tasks.",
+        "operationId": "GetReplenishmentPlan",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplenishmentPlanResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/replenishment/plans/{id}/cancel": {
+      "post": {
+        "tags": [
+          "Replenishment"
+        ],
+        "summary": "Withdraw unclaimed replenishment work and release its stock.",
+        "operationId": "CancelReplenishmentPlan",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CancelReplenishmentResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/webhooks/subscriptions": {
+      "get": {
+        "tags": [
+          "Webhooks"
+        ],
+        "operationId": "GetWebhookSubscriptions",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WebhookResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Webhooks"
+        ],
+        "operationId": "RegisterWebhookSubscription",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterWebhook"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssuedWebhook"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/webhooks/subscriptions/{id}/verify": {
+      "post": {
+        "tags": [
+          "Webhooks"
+        ],
+        "operationId": "VerifyWebhookReceiver",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/webhooks/subscriptions/{id}": {
+      "put": {
+        "tags": [
+          "Webhooks"
+        ],
+        "operationId": "SetWebhookEnabled",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetWebhookEnabled"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/webhooks/subscriptions/{id}/deliveries": {
+      "get": {
+        "tags": [
+          "Webhooks"
+        ],
+        "operationId": "GetWebhookDeliveries",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DeliveryResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/webhooks/subscriptions/{id}/retry": {
+      "post": {
+        "tags": [
+          "Webhooks"
+        ],
+        "operationId": "RetryWebhookDelivery",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/webhooks/triggers": {
+      "get": {
+        "tags": [
+          "Webhooks"
+        ],
+        "operationId": "GetWebhookTriggers",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TriggerResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Webhooks"
+        ],
+        "operationId": "RegisterWebhookTrigger",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterTrigger"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IssuedTrigger"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/webhooks/triggers/{id}": {
+      "delete": {
+        "tags": [
+          "Webhooks"
+        ],
+        "operationId": "RevokeWebhookTrigger",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/webhooks/invoke/{id}/{token}": {
+      "post": {
+        "tags": [
+          "Webhooks"
+        ],
+        "operationId": "InvokeWebhookTrigger",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptedTrigger"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -4713,6 +6015,18 @@
           "C"
         ],
         "type": "string"
+      },
+      "AcceptedTrigger": {
+        "required": [
+          "requestId"
+        ],
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
       },
       "AccuracySlice": {
         "required": [
@@ -5133,6 +6447,68 @@
         ],
         "type": "string"
       },
+      "BinCountObservation": {
+        "required": [
+          "sku",
+          "quantity"
+        ],
+        "type": "object",
+        "properties": {
+          "sku": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "lotNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "expiryDate": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date"
+          },
+          "sscc": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "condition": {
+            "$ref": "#/components/schemas/StockCondition"
+          }
+        }
+      },
+      "BinCountOutcome": {
+        "required": [
+          "taskId",
+          "confirmedAt",
+          "counts"
+        ],
+        "type": "object",
+        "properties": {
+          "taskId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "confirmedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "counts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CountOutcome"
+            }
+          }
+        }
+      },
       "BookReturnLineRequest": {
         "required": [
           "sku",
@@ -5306,6 +6682,28 @@
           }
         }
       },
+      "CancelReplenishmentResponse": {
+        "required": [
+          "id",
+          "cancelledTasks",
+          "releasedReservations"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "cancelledTasks": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "releasedReservations": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
       "ChangeStockStatusRequest": {
         "required": [
           "sku",
@@ -5378,6 +6776,23 @@
           }
         }
       },
+      "ClaimNextTourRequest": {
+        "type": "object",
+        "properties": {
+          "warehouseId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "maxStops": {
+            "type": "integer",
+            "format": "int32",
+            "default": 12
+          }
+        }
+      },
       "CompleteWorkTaskRequest": {
         "required": [
           "toLocationCode"
@@ -5399,6 +6814,36 @@
               "number"
             ],
             "format": "double"
+          },
+          "pickTourId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "binCountVersion": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int64"
+          },
+          "binCountClaimId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "observed": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/BinCountObservation"
+            }
           }
         }
       },
@@ -5425,6 +6870,16 @@
               },
               {
                 "$ref": "#/components/schemas/CountOutcome"
+              }
+            ]
+          },
+          "binCount": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/BinCountOutcome"
               }
             ]
           }
@@ -5774,6 +7229,71 @@
           }
         }
       },
+      "CountScheduleResponse": {
+        "required": [
+          "warehouseId",
+          "warehouseCode",
+          "enabled",
+          "intervalMinutes",
+          "maxTasks",
+          "nextRunAt",
+          "lastRunAt",
+          "lastPlanId",
+          "isPending",
+          "lastErrorCode"
+        ],
+        "type": "object",
+        "properties": {
+          "warehouseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "warehouseCode": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "intervalMinutes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "maxTasks": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "nextRunAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "lastRunAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "lastPlanId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "isPending": {
+            "type": "boolean"
+          },
+          "lastErrorCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "CreateApiKeyRequest": {
         "required": [
           "name"
@@ -5865,6 +7385,21 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "CreateBinCountRequest": {
+        "required": [
+          "locationCode",
+          "reason"
+        ],
+        "type": "object",
+        "properties": {
+          "locationCode": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
           }
         }
       },
@@ -6178,6 +7713,23 @@
           }
         }
       },
+      "DailyThroughput": {
+        "required": [
+          "date",
+          "completed"
+        ],
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "completed": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
       "DecisionKind": {
         "enum": [
           "Putaway",
@@ -6250,6 +7802,73 @@
             }
           }
         }
+      },
+      "DeliveryResponse": {
+        "required": [
+          "id",
+          "state",
+          "attempts",
+          "createdAt",
+          "nextAttemptAt",
+          "deliveredAt",
+          "lastStatus",
+          "lastErrorCode",
+          "nextCursor"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "state": {
+            "$ref": "#/components/schemas/DeliveryState"
+          },
+          "attempts": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nextAttemptAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deliveredAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "lastStatus": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "lastErrorCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "nextCursor": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "DeliveryState": {
+        "enum": [
+          "Pending",
+          "Delivered",
+          "DeadLetter"
+        ],
+        "type": "string"
       },
       "DespatchOrderResponse": {
         "required": [
@@ -6716,6 +8335,41 @@
         ],
         "type": "string"
       },
+      "IssuedTrigger": {
+        "required": [
+          "id",
+          "name",
+          "url"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        }
+      },
+      "IssuedWebhook": {
+        "required": [
+          "subscription",
+          "secret"
+        ],
+        "type": "object",
+        "properties": {
+          "subscription": {
+            "$ref": "#/components/schemas/WebhookResponse"
+          },
+          "secret": {
+            "type": "string"
+          }
+        }
+      },
       "ItemResponse": {
         "required": [
           "id",
@@ -6780,6 +8434,22 @@
             "items": {
               "$ref": "#/components/schemas/PackConfigurationResponse"
             }
+          }
+        }
+      },
+      "KindThroughput": {
+        "required": [
+          "kind",
+          "completed"
+        ],
+        "type": "object",
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/WorkTaskKind"
+          },
+          "completed": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },
@@ -7749,6 +9419,328 @@
           }
         }
       },
+      "PickFacePageResponse": {
+        "required": [
+          "items",
+          "total",
+          "page",
+          "pageSize"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PickFacePolicyResponse"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "PickFacePolicyResponse": {
+        "required": [
+          "locationId",
+          "locationCode",
+          "warehouseCode",
+          "sku",
+          "baseUom",
+          "minimum",
+          "maximum",
+          "enabled",
+          "onHandQuantity",
+          "availableQuantity",
+          "incomingQuantity",
+          "lastCheckedAt",
+          "shortfallQuantity",
+          "pendingPlanId",
+          "lastPlanId",
+          "lastDecisionTraceId",
+          "lastErrorCode"
+        ],
+        "type": "object",
+        "properties": {
+          "locationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "locationCode": {
+            "type": "string"
+          },
+          "warehouseCode": {
+            "type": "string"
+          },
+          "sku": {
+            "type": "string"
+          },
+          "baseUom": {
+            "type": "string"
+          },
+          "minimum": {
+            "type": "number",
+            "format": "double"
+          },
+          "maximum": {
+            "type": "number",
+            "format": "double"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "onHandQuantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "availableQuantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "incomingQuantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "lastCheckedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "shortfallQuantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "pendingPlanId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "lastPlanId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "lastDecisionTraceId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "lastErrorCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "PickRouteOptionResponse": {
+        "required": [
+          "code",
+          "isSupported",
+          "unsupportedBecause",
+          "requiresRearCrossAisle",
+          "hasRequiredGeometry"
+        ],
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "isSupported": {
+            "type": "boolean"
+          },
+          "unsupportedBecause": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "requiresRearCrossAisle": {
+            "type": "boolean"
+          },
+          "hasRequiredGeometry": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PickTourPage": {
+        "required": [
+          "items",
+          "total",
+          "page",
+          "pageSize"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PickTourResponse"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "PickTourResponse": {
+        "required": [
+          "id",
+          "warehouseId",
+          "assignedToUserName",
+          "claimedAt",
+          "stopCount",
+          "remaining",
+          "isComplete",
+          "travelSteps",
+          "baselineTravelSteps",
+          "stepsSaved",
+          "aisleChanges",
+          "releasedAt",
+          "releasedStops",
+          "segments",
+          "stops"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "warehouseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assignedToUserName": {
+            "type": "string"
+          },
+          "claimedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "stopCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "remaining": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "isComplete": {
+            "type": "boolean"
+          },
+          "travelSteps": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "baselineTravelSteps": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "stepsSaved": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "aisleChanges": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "releasedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "releasedStops": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "segments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PickTourSegmentResponse"
+            }
+          },
+          "stops": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkTaskResponse"
+            }
+          }
+        }
+      },
+      "PickTourSegmentResponse": {
+        "required": [
+          "zoneCode",
+          "requestedStrategy",
+          "appliedStrategy",
+          "fellBackBecause",
+          "stops"
+        ],
+        "type": "object",
+        "properties": {
+          "zoneCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "requestedStrategy": {
+            "type": "string"
+          },
+          "appliedStrategy": {
+            "type": "string"
+          },
+          "fellBackBecause": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "stops": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
       "PostedMovement": {
         "required": [
           "movementId",
@@ -8472,6 +10464,37 @@
           }
         }
       },
+      "RegisterTrigger": {
+        "required": [
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "RegisterWebhook": {
+        "required": [
+          "name",
+          "url"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "afterSequence": {
+            "type": "integer",
+            "format": "int64",
+            "default": 0
+          }
+        }
+      },
       "ReleaseOrderRequest": {
         "type": "object",
         "properties": {
@@ -8904,6 +10927,123 @@
             }
           }
         }
+      },
+      "ReplenishmentLineResponse": {
+        "required": [
+          "id",
+          "fromLocationCode",
+          "quantity",
+          "reservationId",
+          "workTaskId",
+          "state",
+          "refused",
+          "errorCode"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fromLocationCode": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "reservationId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "workTaskId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "state": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/WorkTaskState"
+              }
+            ]
+          },
+          "refused": {
+            "type": "boolean"
+          },
+          "errorCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "ReplenishmentPlanResponse": {
+        "required": [
+          "id",
+          "reference",
+          "status",
+          "locationCode",
+          "sku",
+          "requestedQuantity",
+          "decisionTraceId",
+          "createdAt",
+          "lines"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ReplenishmentPlanStatus"
+          },
+          "locationCode": {
+            "type": "string"
+          },
+          "sku": {
+            "type": "string"
+          },
+          "requestedQuantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "decisionTraceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReplenishmentLineResponse"
+            }
+          }
+        }
+      },
+      "ReplenishmentPlanStatus": {
+        "enum": [
+          "Open",
+          "Finished",
+          "Cancelled"
+        ],
+        "type": "string"
       },
       "ResolveScanRequest": {
         "required": [
@@ -9584,6 +11724,52 @@
         ],
         "type": "string"
       },
+      "SaveCountScheduleRequest": {
+        "required": [
+          "enabled"
+        ],
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "intervalMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "default": 1440
+          },
+          "maxTasks": {
+            "type": "integer",
+            "format": "int32",
+            "default": 20
+          }
+        }
+      },
+      "SavePickFaceRequest": {
+        "required": [
+          "sku",
+          "minimum",
+          "maximum"
+        ],
+        "type": "object",
+        "properties": {
+          "sku": {
+            "type": "string"
+          },
+          "minimum": {
+            "type": "number",
+            "format": "double"
+          },
+          "maximum": {
+            "type": "number",
+            "format": "double"
+          },
+          "enabled": {
+            "type": "boolean",
+            "default": false
+          }
+        }
+      },
       "ScanElementResponse": {
         "required": [
           "ai",
@@ -9730,7 +11916,8 @@
           "baseUnitQuantity",
           "isLotTracked",
           "isExpiryTracked",
-          "isSerialTracked"
+          "isSerialTracked",
+          "baseUom"
         ],
         "type": "object",
         "properties": {
@@ -9759,6 +11946,9 @@
           },
           "isSerialTracked": {
             "type": "boolean"
+          },
+          "baseUom": {
+            "type": "string"
           }
         }
       },
@@ -9888,6 +12078,41 @@
           "activeKeyCount": {
             "type": "integer",
             "format": "int32"
+          }
+        }
+      },
+      "SetWebhookEnabled": {
+        "required": [
+          "enabled"
+        ],
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "SetZonePickRouteRequest": {
+        "required": [
+          "strategy",
+          "hasRearCrossAisle"
+        ],
+        "type": "object",
+        "properties": {
+          "strategy": {
+            "type": "string"
+          },
+          "hasRearCrossAisle": {
+            "type": "boolean"
+          }
+        }
+      },
+      "StartBinCountRequest": {
+        "type": "object",
+        "properties": {
+          "restart": {
+            "type": "boolean",
+            "default": false
           }
         }
       },
@@ -10334,6 +12559,39 @@
           }
         }
       },
+      "TriggerResponse": {
+        "required": [
+          "id",
+          "name",
+          "enabled",
+          "pendingRequests",
+          "lastFinishedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "pendingRequests": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "lastFinishedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
       "UserInfo": {
         "required": [
           "id",
@@ -10469,6 +12727,57 @@
         ],
         "type": "string"
       },
+      "WebhookResponse": {
+        "required": [
+          "id",
+          "name",
+          "url",
+          "verified",
+          "enabled",
+          "cursor",
+          "pendingDeliveryId"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "verified": {
+            "type": "boolean"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "cursor": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "pendingDeliveryId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "pendingState": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/DeliveryState"
+              }
+            ]
+          }
+        }
+      },
       "WorkKindStatistics": {
         "required": [
           "kind",
@@ -10559,7 +12868,8 @@
           "Replenishment",
           "Pick",
           "CycleCount",
-          "Inspection"
+          "Inspection",
+          "BinCount"
         ],
         "type": "string"
       },
@@ -10616,7 +12926,9 @@
           "completedAtLocationCode",
           "wasOverridden",
           "overrideReason",
-          "countedQuantity"
+          "countedQuantity",
+          "pickTourId",
+          "tourSequence"
         ],
         "type": "object",
         "properties": {
@@ -10729,6 +13041,34 @@
               "number"
             ],
             "format": "double"
+          },
+          "pickTourId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "tourSequence": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "binCountVersion": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int64"
+          },
+          "binCountClaimId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
           }
         }
       },
@@ -10749,6 +13089,202 @@
           "Cancelled"
         ],
         "type": "string"
+      },
+      "WorkThroughputResponse": {
+        "required": [
+          "from",
+          "to",
+          "observedAt",
+          "completed",
+          "ready",
+          "assigned",
+          "days",
+          "byKind"
+        ],
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "observedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completed": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "ready": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "assigned": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "days": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DailyThroughput"
+            }
+          },
+          "byKind": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KindThroughput"
+            }
+          }
+        }
+      },
+      "ZoneDensityResponse": {
+        "required": [
+          "observedAt",
+          "overall",
+          "zones"
+        ],
+        "type": "object",
+        "properties": {
+          "observedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "overall": {
+            "$ref": "#/components/schemas/ZoneDensitySlice"
+          },
+          "zones": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ZoneDensitySlice"
+            }
+          }
+        }
+      },
+      "ZoneDensitySlice": {
+        "required": [
+          "zoneId",
+          "areaCode",
+          "zoneCode",
+          "locations",
+          "occupied",
+          "occupancyRate",
+          "knownCapacityLocations",
+          "cubeUtilization"
+        ],
+        "type": "object",
+        "properties": {
+          "zoneId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "areaCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "zoneCode": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "locations": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "occupied": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "occupancyRate": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "knownCapacityLocations": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "cubeUtilization": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          }
+        }
+      },
+      "ZoneResponse": {
+        "required": [
+          "id",
+          "code",
+          "name",
+          "areaCode",
+          "temperatureClass",
+          "pickSequence",
+          "pickRouteStrategy",
+          "hasRearCrossAisle",
+          "isActive",
+          "aisles",
+          "bays",
+          "routeOptions"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "areaCode": {
+            "type": "string"
+          },
+          "temperatureClass": {
+            "type": "string"
+          },
+          "pickSequence": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pickRouteStrategy": {
+            "type": "string"
+          },
+          "hasRearCrossAisle": {
+            "type": "boolean"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "aisles": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "bays": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "routeOptions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PickRouteOptionResponse"
+            }
+          }
+        }
       }
     },
     "securitySchemes": {
@@ -10813,6 +13349,12 @@
     },
     {
       "name": "Labels"
+    },
+    {
+      "name": "Replenishment"
+    },
+    {
+      "name": "Webhooks"
     }
   ]
 }

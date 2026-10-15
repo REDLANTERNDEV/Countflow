@@ -348,6 +348,9 @@ namespace Countflow.Modules.MasterData.Persistence.Migrations
                         .HasMaxLength(8)
                         .HasColumnType("character varying(8)");
 
+                    b.Property<bool>("HasRearCrossAisle")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
@@ -355,6 +358,13 @@ namespace Countflow.Modules.MasterData.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
+
+                    b.Property<string>("PickRouteStrategy")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasDefaultValue("route.sequence_ordinal");
 
                     b.Property<int>("PickSequence")
                         .HasColumnType("integer");

@@ -1,5 +1,6 @@
 using Countflow.Modules.MasterData.Domain;
 using Countflow.SharedKernel.Modules;
+using Countflow.SharedKernel.Routing;
 using Microsoft.EntityFrameworkCore;
 
 namespace Countflow.Modules.MasterData.Persistence;
@@ -65,6 +66,19 @@ public sealed class MasterDataDbContext(DbContextOptions<MasterDataDbContext> op
             zone.HasKey(z => z.Id);
             zone.Property(z => z.Code).HasMaxLength(8).IsRequired();
             zone.Property(z => z.Name).HasMaxLength(200).IsRequired();
+
+            // Stored as the code rather than as an enum ordinal, for the reason a
+            // rule's code is: the two are read together in support, and an integer in
+            // a column nobody can decode without the build that wrote it is how a
+            // setting stops being auditable.
+            // Defaulted in the database as well as in the entity, so a zone inserted
+            // by an import or by hand cannot arrive holding a code no catalogue knows
+            // — which would be indistinguishable from somebody's typo.
+            zone.Property(z => z.PickRouteStrategy)
+                .HasMaxLength(64)
+                .IsRequired()
+                .HasDefaultValue(PickRouteCatalogue.SequenceOrdinal);
+
             zone.HasIndex(z => new { z.AreaId, z.Code }).IsUnique();
 
             zone.HasOne(z => z.Area)

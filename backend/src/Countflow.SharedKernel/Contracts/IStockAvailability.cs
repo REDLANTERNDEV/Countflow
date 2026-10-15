@@ -57,6 +57,8 @@ public sealed record StockHolding(
     /// (ADR 0002), and a trace showing GUIDs explains nothing.
     /// </summary>
     public string LocationCode { get; init; } = string.Empty;
+    /// <summary>Earliest known receipt age of this holding's current cohort; null means unknown origin.</summary>
+    public DateTimeOffset? FirstReceivedAt { get; init; }
 
     /// <summary>
     /// Location, batch and — when it is not the ordinary case — condition.

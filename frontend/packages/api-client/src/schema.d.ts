@@ -142,6 +142,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/zones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Zones, how each is walked, and which other routes it could support. */
+        get: operations["GetZones"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/zones/{id}/pick-route": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Choose the routing heuristic a zone's pick lists are sequenced with. */
+        put: operations["SetZonePickRoute"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/locations": {
         parameters: {
             query?: never;
@@ -448,6 +482,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/inventory/zone-density": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Current storage-slot occupancy and fully measured cube utilization by zone. */
+        get: operations["GetZoneDensity"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/inventory/reservations/stranded": {
         parameters: {
             query?: never;
@@ -636,6 +687,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/work/bin-counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Raise a blind count of an entire physical bin. */
+        post: operations["CreateBinCount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/work/tasks/{id}/bin-count/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start or restart the assigned blind count after a stock change. */
+        post: operations["StartBinCount"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/work/tasks/{id}": {
         parameters: {
             query?: never;
@@ -704,6 +789,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/work/tours/claim-next": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Take the next run of picks, sequenced into a walk. */
+        post: operations["ClaimNextTour"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/work/tours": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Pick tours, newest first. */
+        get: operations["GetPickTours"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/work/tours/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One tour, its stops in walking order, and what sequenced them. */
+        get: operations["GetPickTour"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/work/tours/{id}/release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Hand back every stop on a tour that has not been walked. */
+        post: operations["ReleasePickTour"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/work/tasks/{id}/complete": {
         parameters: {
             query?: never;
@@ -730,6 +883,23 @@ export interface paths {
         };
         /** Completion and override rates by task kind over a window. */
         get: operations["GetWorkStatistics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/work/throughput": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Completed work by UTC completion date and the current backlog. */
+        get: operations["GetWorkThroughput"];
         put?: never;
         post?: never;
         delete?: never;
@@ -980,6 +1150,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/counting/schedules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List warehouse cycle-count schedules. */
+        get: operations["GetCountSchedules"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/counting/schedules/{warehouseId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Save an opt-in cycle-count schedule. */
+        put: operations["SaveCountSchedule"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/counting/plans": {
         parameters: {
             query?: never;
@@ -1189,12 +1393,212 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/replenishment/pick-faces": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List pick-face min/max policies and incoming stock. */
+        get: operations["GetPickFacePolicies"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/replenishment/pick-faces/{locationCode}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Save a pick-face min/max policy. */
+        put: operations["SavePickFacePolicy"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/replenishment/plans/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read a replenishment intent and its tasks. */
+        get: operations["GetReplenishmentPlan"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/replenishment/plans/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Withdraw unclaimed replenishment work and release its stock. */
+        post: operations["CancelReplenishmentPlan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/webhooks/subscriptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetWebhookSubscriptions"];
+        put?: never;
+        post: operations["RegisterWebhookSubscription"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/webhooks/subscriptions/{id}/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["VerifyWebhookReceiver"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/webhooks/subscriptions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["SetWebhookEnabled"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/webhooks/subscriptions/{id}/deliveries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetWebhookDeliveries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/webhooks/subscriptions/{id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["RetryWebhookDelivery"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/webhooks/triggers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["GetWebhookTriggers"];
+        put?: never;
+        post: operations["RegisterWebhookTrigger"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/webhooks/triggers/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["RevokeWebhookTrigger"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/webhooks/invoke/{id}/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["InvokeWebhookTrigger"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         /** @enum {string} */
         AbcClass: "A" | "B" | "C";
+        AcceptedTrigger: {
+            /** Format: uuid */
+            requestId: string;
+        };
         AccuracySlice: {
             key: string;
             /** Format: int32 */
@@ -1313,6 +1717,23 @@ export interface components {
         };
         /** @enum {string} */
         BarcodeSymbology: "Gs1128" | "Gs1DataMatrix" | "Code128";
+        BinCountObservation: {
+            sku: string;
+            /** Format: double */
+            quantity: number;
+            lotNumber?: null | string;
+            /** Format: date */
+            expiryDate?: null | string;
+            sscc?: null | string;
+            condition?: components["schemas"]["StockCondition"];
+        };
+        BinCountOutcome: {
+            /** Format: uuid */
+            taskId: string;
+            /** Format: date-time */
+            confirmedAt: string;
+            counts: components["schemas"]["CountOutcome"][];
+        };
         BookReturnLineRequest: {
             sku: string;
             /** Format: double */
@@ -1359,6 +1780,14 @@ export interface components {
             /** Format: int32 */
             tasksCancelled: number;
         };
+        CancelReplenishmentResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: int32 */
+            cancelledTasks: number;
+            /** Format: int32 */
+            releasedReservations: number;
+        };
         ChangeStockStatusRequest: {
             sku: string;
             /** Format: double */
@@ -1376,16 +1805,33 @@ export interface components {
             warehouseId?: null | string;
             kind?: null | components["schemas"]["WorkTaskKind"];
         };
+        ClaimNextTourRequest: {
+            /** Format: uuid */
+            warehouseId?: null | string;
+            /**
+             * Format: int32
+             * @default 12
+             */
+            maxStops: number;
+        };
         CompleteWorkTaskRequest: {
             toLocationCode: string;
             overrideReason?: null | string;
             /** Format: double */
             countedQuantity?: null | number;
+            /** Format: uuid */
+            pickTourId?: null | string;
+            /** Format: int64 */
+            binCountVersion?: null | number;
+            /** Format: uuid */
+            binCountClaimId?: null | string;
+            observed?: null | components["schemas"]["BinCountObservation"][];
         };
         CompleteWorkTaskResponse: {
             task: components["schemas"]["WorkTaskResponse"];
             movements: components["schemas"]["PostedMovement"][];
             count?: null | components["schemas"]["CountOutcome"];
+            binCount?: null | components["schemas"]["BinCountOutcome"];
         };
         CountAccuracyResponse: {
             /** Format: date-time */
@@ -1486,6 +1932,24 @@ export interface components {
             createdAt: string;
             createdByUserName: string;
         };
+        CountScheduleResponse: {
+            /** Format: uuid */
+            warehouseId: string;
+            warehouseCode: string;
+            enabled: boolean;
+            /** Format: int32 */
+            intervalMinutes: number;
+            /** Format: int32 */
+            maxTasks: number;
+            /** Format: date-time */
+            nextRunAt: null | string;
+            /** Format: date-time */
+            lastRunAt: null | string;
+            /** Format: uuid */
+            lastPlanId: null | string;
+            isPending: boolean;
+            lastErrorCode: null | string;
+        };
         CreateApiKeyRequest: {
             name: string;
             /** Format: int32 */
@@ -1508,6 +1972,10 @@ export interface components {
             expectedAt?: null | string;
             carrierReference?: null | string;
             notes?: null | string;
+        };
+        CreateBinCountRequest: {
+            locationCode: string;
+            reason: string;
         };
         CreateCountPlanRequest: {
             warehouseCode: string;
@@ -1599,6 +2067,12 @@ export interface components {
             key: components["schemas"]["ApiKeyResponse"];
             secret: string;
         };
+        DailyThroughput: {
+            /** Format: date */
+            date: string;
+            /** Format: int32 */
+            completed: number;
+        };
         /** @enum {string} */
         DecisionKind: "Putaway" | "Allocation" | "Waving" | "TaskAssignment" | "CycleCount" | "Disposition";
         DecisionTraceView: {
@@ -1619,6 +2093,26 @@ export interface components {
             selectedKey: null | string;
             candidates: components["schemas"]["TracedCandidate"][];
         };
+        DeliveryResponse: {
+            /** Format: uuid */
+            id: string;
+            state: components["schemas"]["DeliveryState"];
+            /** Format: int32 */
+            attempts: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            nextAttemptAt: string;
+            /** Format: date-time */
+            deliveredAt: null | string;
+            /** Format: int32 */
+            lastStatus: null | number;
+            lastErrorCode: null | string;
+            /** Format: int64 */
+            nextCursor: number;
+        };
+        /** @enum {string} */
+        DeliveryState: "Pending" | "Delivered" | "DeadLetter";
         DespatchOrderResponse: {
             order: components["schemas"]["SalesOrderResponse"];
             movements: components["schemas"]["PostedMovement"][];
@@ -1742,6 +2236,16 @@ export interface components {
         };
         /** @enum {string} */
         InventoryStatus: "Available" | "Quarantine" | "Damaged" | "OnHold" | "Expired";
+        IssuedTrigger: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            url: string;
+        };
+        IssuedWebhook: {
+            subscription: components["schemas"]["WebhookResponse"];
+            secret: string;
+        };
         ItemResponse: {
             /** Format: uuid */
             id: string;
@@ -1758,6 +2262,11 @@ export interface components {
             isHazardous: boolean;
             isActive: boolean;
             packConfigurations: components["schemas"]["PackConfigurationResponse"][];
+        };
+        KindThroughput: {
+            kind: components["schemas"]["WorkTaskKind"];
+            /** Format: int32 */
+            completed: number;
         };
         LabelElementRequest: {
             type: components["schemas"]["LabelElementType"];
@@ -2011,6 +2520,97 @@ export interface components {
             /** Format: int32 */
             pageSize: number;
         };
+        PickFacePageResponse: {
+            items: components["schemas"]["PickFacePolicyResponse"][];
+            /** Format: int32 */
+            total: number;
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            pageSize: number;
+        };
+        PickFacePolicyResponse: {
+            /** Format: uuid */
+            locationId: string;
+            locationCode: string;
+            warehouseCode: string;
+            sku: string;
+            baseUom: string;
+            /** Format: double */
+            minimum: number;
+            /** Format: double */
+            maximum: number;
+            enabled: boolean;
+            /** Format: double */
+            onHandQuantity: number;
+            /** Format: double */
+            availableQuantity: number;
+            /** Format: double */
+            incomingQuantity: number;
+            /** Format: date-time */
+            lastCheckedAt: null | string;
+            /** Format: double */
+            shortfallQuantity: number;
+            /** Format: uuid */
+            pendingPlanId: null | string;
+            /** Format: uuid */
+            lastPlanId: null | string;
+            /** Format: uuid */
+            lastDecisionTraceId: null | string;
+            lastErrorCode: null | string;
+        };
+        PickRouteOptionResponse: {
+            code: string;
+            isSupported: boolean;
+            unsupportedBecause: null | string;
+            requiresRearCrossAisle: boolean;
+            hasRequiredGeometry: boolean;
+        };
+        PickTourPage: {
+            items: components["schemas"]["PickTourResponse"][];
+            /** Format: int32 */
+            total: number;
+            /** Format: int32 */
+            page: number;
+            /** Format: int32 */
+            pageSize: number;
+        };
+        PickTourResponse: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            warehouseId: string;
+            assignedToUserName: string;
+            /** Format: date-time */
+            claimedAt: string;
+            /** Format: int32 */
+            stopCount: number;
+            /** Format: int32 */
+            remaining: number;
+            isComplete: boolean;
+            /** Format: int32 */
+            travelSteps: null | number;
+            /** Format: int32 */
+            baselineTravelSteps: null | number;
+            /** Format: int32 */
+            stepsSaved: null | number;
+            /** Format: int32 */
+            aisleChanges: null | number;
+            /** Format: date-time */
+            releasedAt: null | string;
+            /** Format: int32 */
+            releasedStops: number;
+            segments: components["schemas"]["PickTourSegmentResponse"][];
+            stops: components["schemas"]["WorkTaskResponse"][];
+        };
+        PickTourSegmentResponse: {
+            zoneCode: null | string;
+            requestedStrategy: string;
+            appliedStrategy: string;
+            fellBackBecause: null | string;
+            /** Format: int32 */
+            stops: number;
+        };
         PostedMovement: {
             /** Format: uuid */
             movementId: string;
@@ -2224,6 +2824,18 @@ export interface components {
         RefreshRequest: {
             refreshToken: string;
         };
+        RegisterTrigger: {
+            name: string;
+        };
+        RegisterWebhook: {
+            name: string;
+            url: string;
+            /**
+             * Format: int64
+             * @default 0
+             */
+            afterSequence: number;
+        };
         ReleaseOrderRequest: {
             stagingLocationCode?: null | string;
         };
@@ -2350,6 +2962,37 @@ export interface components {
             notes: null | string;
             decisions: components["schemas"]["ReplayDecisionResponse"][];
         };
+        ReplenishmentLineResponse: {
+            /** Format: uuid */
+            id: string;
+            fromLocationCode: string;
+            /** Format: double */
+            quantity: number;
+            /** Format: uuid */
+            reservationId: null | string;
+            /** Format: uuid */
+            workTaskId: null | string;
+            state: null | components["schemas"]["WorkTaskState"];
+            refused: boolean;
+            errorCode: null | string;
+        };
+        ReplenishmentPlanResponse: {
+            /** Format: uuid */
+            id: string;
+            reference: string;
+            status: components["schemas"]["ReplenishmentPlanStatus"];
+            locationCode: string;
+            sku: string;
+            /** Format: double */
+            requestedQuantity: number;
+            /** Format: uuid */
+            decisionTraceId: string;
+            /** Format: date-time */
+            createdAt: string;
+            lines: components["schemas"]["ReplenishmentLineResponse"][];
+        };
+        /** @enum {string} */
+        ReplenishmentPlanStatus: "Open" | "Finished" | "Cancelled";
         ResolveScanRequest: {
             barcode: string;
         };
@@ -2535,6 +3178,28 @@ export interface components {
         };
         /** @enum {string} */
         SalesOrderStatus: "New" | "Released" | "Packed" | "Despatched" | "Cancelled";
+        SaveCountScheduleRequest: {
+            enabled: boolean;
+            /**
+             * Format: int32
+             * @default 1440
+             */
+            intervalMinutes: number;
+            /**
+             * Format: int32
+             * @default 20
+             */
+            maxTasks: number;
+        };
+        SavePickFaceRequest: {
+            sku: string;
+            /** Format: double */
+            minimum: number;
+            /** Format: double */
+            maximum: number;
+            /** @default false */
+            enabled: boolean;
+        };
         ScanElementResponse: {
             ai: string;
             title: string;
@@ -2576,6 +3241,7 @@ export interface components {
             isLotTracked: boolean;
             isExpiryTracked: boolean;
             isSerialTracked: boolean;
+            baseUom: string;
         };
         ScoreLine: {
             ruleCode: string;
@@ -2611,6 +3277,17 @@ export interface components {
             createdAt: string;
             /** Format: int32 */
             activeKeyCount: number;
+        };
+        SetWebhookEnabled: {
+            enabled: boolean;
+        };
+        SetZonePickRouteRequest: {
+            strategy: string;
+            hasRearCrossAisle: boolean;
+        };
+        StartBinCountRequest: {
+            /** @default false */
+            restart: boolean;
         };
         StockBalanceResponse: {
             sku: string;
@@ -2723,6 +3400,16 @@ export interface components {
             reason?: null | components["schemas"]["MovementReason"];
             notes?: null | string;
         };
+        TriggerResponse: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            enabled: boolean;
+            /** Format: int32 */
+            pendingRequests: number;
+            /** Format: date-time */
+            lastFinishedAt: null | string;
+        };
         UserInfo: {
             /** Format: uuid */
             id: string;
@@ -2757,6 +3444,19 @@ export interface components {
         };
         /** @enum {string} */
         WaveStatus: "Planned" | "Released" | "Cancelled";
+        WebhookResponse: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            url: string;
+            verified: boolean;
+            enabled: boolean;
+            /** Format: int64 */
+            cursor: number;
+            /** Format: uuid */
+            pendingDeliveryId: null | string;
+            pendingState?: null | components["schemas"]["DeliveryState"];
+        };
         WorkKindStatistics: {
             kind: components["schemas"]["WorkTaskKind"];
             /** Format: int32 */
@@ -2782,7 +3482,7 @@ export interface components {
             decision: null | components["schemas"]["DecisionTraceView"];
         };
         /** @enum {string} */
-        WorkTaskKind: "Putaway" | "Replenishment" | "Pick" | "CycleCount" | "Inspection";
+        WorkTaskKind: "Putaway" | "Replenishment" | "Pick" | "CycleCount" | "Inspection" | "BinCount";
         WorkTaskPage: {
             items: components["schemas"]["WorkTaskResponse"][];
             /** Format: int32 */
@@ -2824,11 +3524,75 @@ export interface components {
             overrideReason: null | string;
             /** Format: double */
             countedQuantity: null | number;
+            /** Format: uuid */
+            pickTourId: null | string;
+            /** Format: int32 */
+            tourSequence: null | number;
+            /** Format: int64 */
+            binCountVersion?: null | number;
+            /** Format: uuid */
+            binCountClaimId?: null | string;
         };
         /** @enum {string} */
         WorkTaskState: "Ready" | "Assigned" | "Completed" | "Cancelled";
         /** @enum {string} */
         WorkTaskStatus: "Ready" | "Assigned" | "Completed" | "Cancelled";
+        WorkThroughputResponse: {
+            /** Format: date-time */
+            from: string;
+            /** Format: date-time */
+            to: string;
+            /** Format: date-time */
+            observedAt: string;
+            /** Format: int32 */
+            completed: number;
+            /** Format: int32 */
+            ready: number;
+            /** Format: int32 */
+            assigned: number;
+            days: components["schemas"]["DailyThroughput"][];
+            byKind: components["schemas"]["KindThroughput"][];
+        };
+        ZoneDensityResponse: {
+            /** Format: date-time */
+            observedAt: string;
+            overall: components["schemas"]["ZoneDensitySlice"];
+            zones: components["schemas"]["ZoneDensitySlice"][];
+        };
+        ZoneDensitySlice: {
+            /** Format: uuid */
+            zoneId: null | string;
+            areaCode: null | string;
+            zoneCode: null | string;
+            /** Format: int32 */
+            locations: number;
+            /** Format: int32 */
+            occupied: number;
+            /** Format: double */
+            occupancyRate: null | number;
+            /** Format: int32 */
+            knownCapacityLocations: number;
+            /** Format: double */
+            cubeUtilization: null | number;
+        };
+        ZoneResponse: {
+            /** Format: uuid */
+            id: string;
+            code: string;
+            name: string;
+            areaCode: string;
+            temperatureClass: string;
+            /** Format: int32 */
+            pickSequence: number;
+            pickRouteStrategy: string;
+            hasRearCrossAisle: boolean;
+            isActive: boolean;
+            /** Format: int32 */
+            aisles: number;
+            /** Format: int32 */
+            bays: number;
+            routeOptions: components["schemas"]["PickRouteOptionResponse"][];
+        };
     };
     responses: never;
     parameters: never;
@@ -3193,6 +3957,81 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WarehouseResponse"][];
+                };
+            };
+        };
+    };
+    GetZones: {
+        parameters: {
+            query?: {
+                warehouse?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ZoneResponse"][];
+                };
+            };
+        };
+    };
+    SetZonePickRoute: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetZonePickRouteRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ZoneResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
         };
@@ -3945,6 +4784,37 @@ export interface operations {
             };
         };
     };
+    GetZoneDensity: {
+        parameters: {
+            query: {
+                warehouseId: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ZoneDensityResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     GetStrandedReservations: {
         parameters: {
             query?: never;
@@ -4432,6 +5302,112 @@ export interface operations {
             };
         };
     };
+    CreateBinCount: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateBinCountRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkTaskResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    StartBinCount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StartBinCountRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkTaskDetailResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     GetWorkTask: {
         parameters: {
             query?: never;
@@ -4567,6 +5543,139 @@ export interface operations {
             };
         };
     };
+    ClaimNextTour: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": null | components["schemas"]["ClaimNextTourRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PickTourResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetPickTours: {
+        parameters: {
+            query?: {
+                mine?: boolean;
+                open?: boolean;
+                page?: number;
+                pageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PickTourPage"];
+                };
+            };
+        };
+    };
+    GetPickTour: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PickTourResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    ReleasePickTour: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     CompleteWorkTask: {
         parameters: {
             query?: never;
@@ -4655,6 +5764,47 @@ export interface operations {
             };
             /** @description Unauthorized */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetWorkThroughput: {
+        parameters: {
+            query: {
+                warehouseId: string;
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkThroughputResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5417,6 +6567,79 @@ export interface operations {
             };
         };
     };
+    GetCountSchedules: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountScheduleResponse"][];
+                };
+            };
+        };
+    };
+    SaveCountSchedule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                warehouseId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveCountScheduleRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountScheduleResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     GetCountPlans: {
         parameters: {
             query?: {
@@ -6136,6 +7359,494 @@ export interface operations {
                 content: {
                     "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
+            };
+        };
+    };
+    GetPickFacePolicies: {
+        parameters: {
+            query?: {
+                warehouse?: string;
+                page?: number;
+                pageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PickFacePageResponse"];
+                };
+            };
+        };
+    };
+    SavePickFacePolicy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                locationCode: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SavePickFaceRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PickFacePolicyResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetReplenishmentPlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReplenishmentPlanResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    CancelReplenishmentPlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CancelReplenishmentResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetWebhookSubscriptions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookResponse"][];
+                };
+            };
+        };
+    };
+    RegisterWebhookSubscription: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterWebhook"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IssuedWebhook"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    VerifyWebhookReceiver: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    SetWebhookEnabled: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetWebhookEnabled"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetWebhookDeliveries: {
+        parameters: {
+            query?: {
+                page?: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeliveryResponse"][];
+                };
+            };
+        };
+    };
+    RetryWebhookDelivery: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    GetWebhookTriggers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TriggerResponse"][];
+                };
+            };
+        };
+    };
+    RegisterWebhookTrigger: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterTrigger"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IssuedTrigger"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    RevokeWebhookTrigger: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    InvokeWebhookTrigger: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcceptedTrigger"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

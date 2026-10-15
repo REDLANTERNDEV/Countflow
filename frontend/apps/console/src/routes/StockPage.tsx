@@ -82,15 +82,7 @@ export function StockPage() {
 
   return (
     <>
-      <PageHead title={t('stock.title')} count={total} />
-
-      <p className="mb-[var(--space-2)] max-w-[72ch] text-[length:var(--text-sm)] text-[var(--color-text-secondary)]">
-        {t('stock.intro')}
-      </p>
-
-      <p className="mb-[var(--space-4)] max-w-[72ch] text-[length:var(--text-sm)] text-[var(--color-text-secondary)]">
-        {t('stock.availableNote')}
-      </p>
+      <PageHead help={`${t('stock.intro')} ${t('stock.availableNote')}`} title={t('stock.title')} count={total} />
 
       <div className="mb-[var(--space-4)] flex flex-wrap items-center gap-[var(--space-3)]">
         <Input

@@ -350,6 +350,21 @@ expensive way.
 
 ### Cycle counting
 
+- **Scheduled counting is opt-in and uses the same policy as manual counting.**
+  A run key identifies one plan across retries, and every line retains its task
+  enqueue key. Partial enqueues keep the run pending. Empty advice still records
+  its decision trace. No scheduler posts a stock adjustment.
+- **Manual planning, scheduled planning, and cancellation serialize per warehouse.**
+  Open-holding exclusion and reference assignment run under the same session
+  lock. Cancellation first resolves missing keyed enqueues, so a stale planner
+  can only rediscover cancelled work after lock loss. Retrying a completed or
+  cancelled plan cannot raise new work. Warehouse schedule runs retain a pending
+  identity across partial failures, and reject stale saves through a revision.
+  Each warehouse is dispatched independently. A persistent warehouse fence
+  rotates with each planning write to reject stale policy results after lock loss.
+  Disabling stops future plans while already pending work finishes.
+
+
 - **A count task is a holding, not a bay.** One bin holding two SKUs is two
   counts, the same way a mixed pallet was three transfers in Phase 2. The price
   is that a count cannot discover an item the system has no record of in that
@@ -534,6 +549,14 @@ expensive way.
 
 ### The design system and localisation
 
+- **Optional explanations are disclosed on demand.** Use the shared circled-i
+  `InfoHelp` beside a heading or label. It opens on hover/focus, pins on click/tap,
+  and dismisses on Escape, outside click, or a second click. Keep operational
+  instructions, validation, task details, and queued/refused status visible.
+  `Field.hintMode="instruction"` keeps instructional hints inline; the default
+  hint mode is optional help. Returning from help must restore scanner focus
+  without stealing focus from another input the operator chose.
+
 - **shadcn is used for Radix behaviour only.** Every visual token is ours; no
   stock shadcn variable survives. Reach for a native element when it genuinely
   does the job (filter selects) rather than a Radix equivalent.
@@ -568,6 +591,12 @@ expensive way.
   `packages/i18n`. Adding a language is a catalogue, not a backend change.
 - **`tr.ts` is typed against `en.ts`**, so a missing key fails the build; the
   parity test additionally catches renamed interpolation placeholders.
+- **Cardinal counts remain numbers.** Grammar-sensitive messages supply `_one`
+  and `_other` forms in both catalogues; `translateCount` accepts known plural
+  families and a finite numeric count. i18next uses the locale's `Intl.PluralRules`.
+  Named server day/hour arguments are converted only for selection, without
+  dropping their interpolation values. Formatting a number never changes its
+  cardinal meaning; neutral totals use a separate display argument.
 - **Tailwind v4 does not cross package boundaries.** The `@source` in
   `packages/ui/src/theme.css` is what makes shared components get styles at all.
 - **`launchSettings.json` cannot contain comments** (unlike `appsettings.json`).
@@ -641,3 +670,151 @@ source and deliberately not in the repository.
 - **Everything converts to base units at the edge.** Nothing downstream of
   `ResolveScan` should reason about packaging levels.
 - Expiry tracking implies lot tracking: an expiry date belongs to a batch.
+
+
+### Pick routing
+
+- **Sequence the claimed membership.** Work locks picks before computing their
+  walk; a tour never combines warehouses or demotes a priority band.
+- **Completed stops cannot be released.** Completion and tour release serialize
+  on task rows; completed tasks retain their physical confirmation.
+- **Geometry belongs to the zone.** Midpoint uses the full rack, not just the
+  stops. Save validates against the routing catalogue; claim records fallbacks.
+- **Travel is a proxy.** Missing geometry means unknown cost; negative savings
+  are preserved. Each tour stamps the requested and applied strategies.
+- **Assigned work is never evicted by a history limit.** Released stops are
+  pruned on authoritative refresh; unresolved confirmations remain protected.
+- **A cached tour completion names its claim.** Completion validates the supplied
+  tour id under the task lock; released or reassigned claims are refused.
+- **Physical confirmations precede hand-back.** The handheld refuses to release
+  a tour while its completions are pending, sending, refused, or stalled.
+
+
+- **A recurring run is persisted before its handler starts.** Retries and restarts
+  reuse its run ID and idempotency key until success is recorded. Each handler
+  gets a fresh scope; write handlers deduplicate through owning-module commands.
+  Session locks exclude healthy replicas, not side effects after a lost lock.
+- **Job scheduling state belongs to Jobs.** A registration supplies code and
+  deployment settings; Jobs never reads another module's business tables.
+  Cancellation preserves unfinished work, failure backs off, and successful
+  cadence resumes from completion without a catch-up burst.
+- **Job timestamps use UTC microseconds before assignment.** Initial and next
+  due times, starts, and finishes use PostgreSQL's precision in memory as well as
+  storage. The pending schedule inherits that normalized due time, so a handler
+  sees the same run record before and after a retry or process restart.
+
+Dispatch tracks each in-flight job independently, so a blocked handler does not
+delay other schedules. Every attempt writes a fresh concurrency token before execution;
+success and failure saves reject stale attempts after lock loss, preserving a
+replacement run’s identity and due time.
+
+### Replenishment
+
+- **Min/max measures on-hand plus incoming.** Outbound reservations alone do not
+  trigger classic min/max. The target never exceeds maximum or known capacity.
+- **Bulk is the source, the configured face is the destination.** Allocation
+  records its mandatory Reserve-role constraint; completion refuses another face
+  even when the handheld is offline.
+- **Reserve before raising work.** A durable intent and per-line keys converge
+  after lost acknowledgements; competing faces cannot promise the same bulk stock.
+- **Cancellation cannot release assigned stock.** Group withdrawal locks all
+  tasks and refuses the whole group if any is assigned. Only withdrawn or terminal
+  work permits release; named claims use atomic state predicates.
+- **A replay consumes the same reservation.** A stock movement's retry key cannot
+  acknowledge another reservation, even when its other posting fields match.
+- **A shortage remains visible.** Partial top-ups keep their shortfall; no-source
+  probes retain the decision trace without creating empty plans. Disabled policies
+  still recover pending intent and preserve existing work.
+
+### Webhooks
+
+- **Persist before sending.** Cursor advance and immutable body are one
+  Webhooks transaction. A pending or dead-lettered batch blocks later batches.
+- **Retry exact bytes and identity.** A receiver must authenticate the raw body
+  and deduplicate delivery IDs; neither a healthy lease nor HTTP 2xx gives an
+  exactly-once guarantee after acknowledgement loss.
+- **Verify before enabling.** Only a signed challenge echoed exactly as plain
+  text activates a receiver. Pausing retains pending work.
+- **A receiver cannot select internal services.** Public-address validation
+  happens on the actual connection, with pinned DNS, no proxy, and no redirects.
+  Internal origins require deployment configuration.
+- **Secrets are never list fields.** Signing secrets are encrypted; inbound URL
+  tokens are hashed. Capability request paths are excluded from logs and traces.
+- **An inbound retry key identifies one request.** Revocation prevents new calls,
+  while queued read-only reconciliation can finish independently.
+
+### Operational dashboard
+
+- **Throughput counts completion time.** A task created last month but completed
+  today belongs to today's throughput; current backlog is not window-filtered.
+- **UTC buckets preserve every day.** Today is partial; a zero completion total
+  is measured, whereas an uncounted accuracy rate remains null.
+- **Density counts storage locations, not mixed units.** Active bulk/pick faces
+  are the denominator; inactive parent areas/zones are excluded. Zone IDs keep
+  identical codes in different areas distinct.
+- **Unknown cube utilization is never zero.** Every relevant capacity and stock
+  volume must be known. Over-capacity measurements remain above 100 percent.
+- **An update error stays visible.** Cached measurements retain their observation
+  stamps; an independently refreshed dashboard is not a transactional snapshot.
+
+### Handheld camera inspection
+
+- **Camera input preserves scanner bytes.** GS1 group separators reach the existing
+  resolver unchanged; a captured value never books stock or completes work.
+- **One frame cannot choose between items.** Multiple distinct results require
+  reframing; repeated detections of the same value count as one result.
+- **The camera has an owner and an end.** There is one detection in flight; all
+  tracks stop on capture, cancellation, backgrounding, failure or unmount. A late
+  permission grant is stopped and cannot call the previous screen.
+- **Unsupported and unanswered are visible.** Compatibility/permission refusals
+  retain manual input. Offline capture and API errors do not invent a resolution.
+
+### FIFO receipt age
+
+- **Receipt age is a projection of physical history.** A receipt starts a cohort;
+  internal moves, putaway, replenishment and status changes carry the source age.
+  Partial draws preserve it; depletion clears it; a refill starts a new cohort.
+- **A mixed holding retains its earliest known age until it empties.** Allocation
+  chooses holdings, not individually identified receipt layers. Unknown-origin
+  stock keeps age unknown, including when it mixes with known stock.
+- **FIFO is an opt-in soft preference.** Known ages normalize oldest-first across
+  the candidate field; unknown ages are neutral and explicitly explained. Hard
+  constraints still exclude stock, and other configured preferences can trade off
+  rotation. Existing active policies are not rewritten.
+- **Replay carries the age at its checkpoint.** Today's balance age cannot replace
+  the cohort that existed when the original decision was made.
+- **The first upgrade is atomic and one-time.** The migrator locks the completion
+  row and balances, streams the existing ledger, and updates only receipt-age
+  fields. It never edits ledger entries or quantities. Drifted quantities receive
+  no claimed age. A failed upgrade leaves its marker incomplete and can be retried.
+
+## Blind bin counts
+
+- **The job names a location, not an expected item.** BinCount tasks have no item,
+  lot or pallet identity and quantity zero. Other task kinds still require an item
+  and positive quantity. No expected contents appear in the blind task response.
+- **A manual audit records its origin.** A supervisor's identity and mandatory
+  reason travel in its source reference. This human-selected bin has no fabricated
+  policy trace; existing rule-driven holding counts retain their trace requirement.
+- **A confirmation covers the whole bin.** Separate item, batch, pallet and
+  condition observations form holding identities. An empty list explicitly means
+  empty; omitted positive book holdings become zero observations. Duplicate keys
+  and invalid metadata refuse the entire batch.
+- **Observation and correction are atomic.** Inventory locks balances, compares
+  the bin's movement sequence, records agreements and posts all count variances
+  through the same ledger transaction. New holding rows cannot slip into the union.
+  Empty-bin audits have an explicit receipt even when there are no holding rows.
+- **Changed stock requires a recount.** The version captured at claim/start must
+  still match. Baseline capture drains in-flight stock writers before reading the
+  version: sequence allocation order does not imply transaction commit order.
+  Restart refreshes that version and the claim ID. Release/reclaim
+  invalidates cached confirmations even when no stock moved.
+- **Only the assigned operator confirms.** Bin confirmations require assignment,
+  correct scanned location, and the current claim ID. Whole-bin observations remain
+  durable in the operator's outbox until acknowledged by the server.
+- **The receipt is immutable.** Same task, key and canonical payload replay the
+  original result after later movements. Different payloads/keys refuse. Inventory
+  commits before Work closes the job; recorded confirmations block release/restart
+  until the saved confirmation finishes recovery.
+- **Discovered quantities have unknown receipt age.** A count does not establish
+  when goods arrived. The shared adjustment-age policy governs those additions.

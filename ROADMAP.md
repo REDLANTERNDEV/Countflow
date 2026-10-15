@@ -63,9 +63,10 @@ a bay we think is empty"; what is missing is a task shape that asks the question
 
 ### 7. Counting has no schedule
 
-A plan is raised by a supervisor pressing a button. A nightly job is a cron entry
-away and was deliberately left out: a counting policy should be watched by a
-person for a week before it runs unattended.
+Cycle counting now supports opt-in per-warehouse schedules through the supervisor
+editor and shared job runner ([operation](docs/api/hosting.md#opt-in-cycle-counting)).
+Automatic counting remains off by default: a supervisor should watch the policy
+for a week before enabling it.
 
 ### 8. A label has no way to reach a printer
 

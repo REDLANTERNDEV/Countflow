@@ -1,6 +1,25 @@
 namespace Countflow.SharedKernel.Contracts;
 
 /// <summary>
+/// Anything that has a place on the picker's route.
+/// <para>
+/// Extracted so that <see cref="RouteScale"/> is reusable rather than merely
+/// referenced. The arithmetic below has been got wrong five times, and every one of
+/// those was somebody re-deriving <c>zone × 1,000,000 + position</c> beside the type
+/// that exists to own it. A caller that has a route position and not a
+/// <see cref="StorageLocationSnapshot"/> now has somewhere to stand.
+/// </para>
+/// </summary>
+public interface IRoutePosition
+{
+    /// <summary>Walking order of the zone. Ranked, never measured — see <see cref="RouteScale"/>.</summary>
+    int ZonePickSequence { get; }
+
+    /// <summary>Walking order within the zone.</summary>
+    int PickSequence { get; }
+}
+
+/// <summary>
 /// Turns a location's place on the picker's route into a number between 0 and 1.
 /// <para>
 /// <b>Why this is a type and not two lines in a context.</b> Every vocabulary has a
@@ -63,7 +82,7 @@ public sealed record RouteScale
     /// choosing.
     /// </para>
     /// </summary>
-    public static RouteScale Of(IEnumerable<StorageLocationSnapshot> locations)
+    public static RouteScale Of(IEnumerable<IRoutePosition> locations)
     {
         var known = locations.ToList();
 
@@ -104,7 +123,7 @@ public sealed record RouteScale
 
         return new RouteScale(zoneRanks, slice, nearest, span);
 
-        long Position(StorageLocationSnapshot location) =>
+        long Position(IRoutePosition location) =>
             (zoneRanks.GetValueOrDefault(location.ZonePickSequence, zoneRanks.Count) * slice)
             + location.PickSequence;
     }
@@ -125,7 +144,7 @@ public sealed record RouteScale
     /// is how people stop believing the numbers, and it is the degenerate case Phase
     /// 4 had to fix in allocation.
     /// </returns>
-    public decimal Normalise(StorageLocationSnapshot location)
+    public decimal Normalise(IRoutePosition location)
     {
         if (_span <= 0L)
         {

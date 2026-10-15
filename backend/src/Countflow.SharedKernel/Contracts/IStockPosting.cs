@@ -474,6 +474,9 @@ public interface IStockPosting
         PickInstruction instruction,
         CancellationToken cancellationToken);
 
+    /// <summary>Moves reserved bulk stock into a pick face and consumes its claim atomically.</summary>
+    Task<Result<PostedMovement>> ReplenishAsync(PickInstruction instruction, CancellationToken cancellationToken);
+
     Task<Result<IReadOnlyList<PostedMovement>>> DespatchAsync(
         DespatchInstruction instruction,
         CancellationToken cancellationToken);

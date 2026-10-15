@@ -1,3 +1,4 @@
+import { evictableTaskIds } from '../cache-policy.js';
 import type { CachedTask, QueuedCommand } from './types.js';
 
 /**
@@ -174,12 +175,13 @@ export function createIndexedDbStore(db: IDBDatabase): OutboxStore {
       const rows = await read<CachedTask[]>(TASKS, (s) => s.getAll() as IDBRequest<CachedTask[]>);
       if (rows.length <= TASKS_KEPT) return;
 
-      const stale = rows
-        .sort((a, b) => b.fetchedAt.localeCompare(a.fetchedAt))
-        .slice(TASKS_KEPT);
+      const commands = await read<QueuedCommand[]>(COMMANDS, (s) => s.getAll() as IDBRequest<QueuedCommand[]>);
+      const protectedIds = commands.filter(command => command.kind === 'work.complete' && command.state !== 'settled')
+        .map(command => (command.request as { taskId: string }).taskId);
+      const stale = evictableTaskIds(rows, protectedIds, TASKS_KEPT);
 
       const tx = db.transaction(TASKS, 'readwrite');
-      for (const row of stale) tx.objectStore(TASKS).delete(row.id);
+      for (const id of stale) tx.objectStore(TASKS).delete(id);
       await commit(tx);
     },
 

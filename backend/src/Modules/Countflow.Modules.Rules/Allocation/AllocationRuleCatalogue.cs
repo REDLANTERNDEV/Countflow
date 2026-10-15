@@ -26,6 +26,17 @@ public sealed record AllocationRuleSet(
 /// </summary>
 public static class AllocationRuleCatalogue
 {
+    public static AllocationRuleSet RequireSourceRole(AllocationRuleSet rules, StorageRole? role) =>
+        role is null ? rules : rules with { Constraints = [.. rules.Constraints, new RequiredSourceRole(role.Value)] };
+
+    private sealed class RequiredSourceRole(StorageRole role) : IConstraintRule<StockHolding, AllocationContext>
+    {
+        public string Code => "allocation.required_source_role";
+        public RuleNote? Exclude(StockHolding candidate, AllocationContext context) =>
+            context.LocationOf(candidate) is { IsActive: true } location && location.Role == role
+                ? null : RuleNote.Of("rules.allocation.source_role_required", ("role", role.ToString()));
+    }
+
     public static readonly IReadOnlyList<string> ConstraintCodes =
     [
         AllocationConstraints.StockAvailable.RuleCode,
@@ -39,6 +50,7 @@ public static class AllocationRuleCatalogue
     public static readonly IReadOnlyList<string> PreferenceCodes =
     [
         AllocationPreferences.FirstExpiredFirstOut.RuleCode,
+        AllocationPreferences.FirstInFirstOut.RuleCode,
         AllocationPreferences.ClearTheHolding.RuleCode,
         AllocationPreferences.PreferPickFace.RuleCode,
         AllocationPreferences.TravelDistance.RuleCode
@@ -87,6 +99,10 @@ public static class AllocationRuleCatalogue
 
                 case AllocationPreferences.FirstExpiredFirstOut.RuleCode:
                     preferences.Add(new AllocationPreferences.FirstExpiredFirstOut(rule.Weight));
+                    break;
+
+                case AllocationPreferences.FirstInFirstOut.RuleCode:
+                    preferences.Add(new AllocationPreferences.FirstInFirstOut(rule.Weight));
                     break;
 
                 case AllocationPreferences.ClearTheHolding.RuleCode:

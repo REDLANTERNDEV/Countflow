@@ -426,12 +426,18 @@ public sealed class IntegrationSurfaceTests(CountflowApiFixture fixture)
     [Fact]
     public async Task An_empty_page_does_not_move_the_cursor()
     {
-        var cursor = await CursorAsync();
+        // A watermark can advance between requests as earlier receipts age
+        // through the safety lag. Start above every committed movement so this
+        // page is actually empty regardless of that clock boundary.
+        using var scope = fixture.Services.CreateScope();
+        var inventory = scope.ServiceProvider.GetRequiredService<Modules.Inventory.Persistence.InventoryDbContext>();
+        var cursor = await inventory.StockMovements.MaxAsync(movement => (long?)movement.Sequence) ?? 0;
 
         var page = await _supervisor.GetFromJsonAsync<ChangePageBody>(
             $"/api/v1/inventory/changes?afterSequence={cursor}&limit=50");
 
         Assert.NotNull(page);
+        Assert.Empty(page.Changes);
         Assert.Equal(cursor, page.NextCursor);
         Assert.False(page.HasMore);
     }
@@ -460,7 +466,9 @@ public sealed class IntegrationSurfaceTests(CountflowApiFixture fixture)
         // negative assertion would be measuring the test host rather than the feed.
         if (stopwatch.Elapsed < TimeSpan.FromSeconds(2))
         {
-            Assert.Empty(immediately!.Changes);
+            // Earlier receipts can cross the lag boundary between requests;
+            // this guard concerns the movement this test just posted.
+            Assert.DoesNotContain(immediately!.Changes, change => change.Sku == sku);
         }
 
         await SettleAsync();
@@ -468,7 +476,7 @@ public sealed class IntegrationSurfaceTests(CountflowApiFixture fixture)
         var afterwards = await _supervisor.GetFromJsonAsync<ChangePageBody>(
             $"/api/v1/inventory/changes?afterSequence={before}&limit=50");
 
-        Assert.NotEmpty(afterwards!.Changes);
+        Assert.Contains(afterwards!.Changes, change => change.Sku == sku);
     }
 
     [Fact]

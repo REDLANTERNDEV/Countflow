@@ -406,7 +406,8 @@ public sealed class ShadowReplay(
                     holding.Quantity,
                     snapshot.ReservedByBalance.GetValueOrDefault(holding.BalanceId))
                 {
-                    LocationCode = storageById.GetValueOrDefault(holding.LocationId)?.Code ?? string.Empty
+                    LocationCode = storageById.GetValueOrDefault(holding.LocationId)?.Code ?? string.Empty,
+                    FirstReceivedAt = holding.FirstReceivedAt
                 };
             })
             .ToList();
@@ -425,6 +426,7 @@ public sealed class ShadowReplay(
         var positions = locationsById.Values
             .Select(location => ((long)location.ZonePickSequence * 1_000_000) + location.PickSequence)
             .ToList();
+        var receipts = candidates.Where(holding => holding.FirstReceivedAt is not null).Select(holding => holding.FirstReceivedAt!.Value).ToList();
 
         var context = new AllocationContext(
             item,
@@ -435,7 +437,11 @@ public sealed class ShadowReplay(
             expiries.Count == 0 ? null : expiries.Min(),
             expiries.Count == 0 ? null : expiries.Max(),
             positions.Count == 0 ? 0L : positions.Min(),
-            positions.Count == 0 ? 0L : positions.Max());
+            positions.Count == 0 ? 0L : positions.Max())
+        {
+            EarliestReceipt = receipts.Count == 0 ? null : receipts.Min(),
+            LatestReceipt = receipts.Count == 0 ? null : receipts.Max()
+        };
 
         var baseline = AllocationRuleCatalogue.Build(baselineSet);
         if (baseline.IsFailure) return Result.Failure<Comparison>(baseline.Error);
@@ -445,9 +451,9 @@ public sealed class ShadowReplay(
 
         return new Comparison(
             Run(DecisionKind.Allocation, baseline.Value.Stamp, candidates, context,
-                baseline.Value.Constraints, baseline.Value.Preferences),
+                AllocationRuleCatalogue.RequireSourceRole(baseline.Value, inputs.RequiredSourceRole).Constraints, baseline.Value.Preferences),
             Run(DecisionKind.Allocation, candidate.Value.Stamp, candidates, context,
-                candidate.Value.Constraints, candidate.Value.Preferences),
+                AllocationRuleCatalogue.RequireSourceRole(candidate.Value, inputs.RequiredSourceRole).Constraints, candidate.Value.Preferences),
             null);
     }
 

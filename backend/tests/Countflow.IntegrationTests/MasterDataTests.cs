@@ -183,6 +183,10 @@ public sealed class MasterDataTests(CountflowApiFixture fixture)
         Assert.NotNull(scan);
         Assert.True(scan.ItemRecognised);
         Assert.Equal("Case", scan.Item!.PackagingLevel);
+        using var scope = fixture.Services.CreateScope();
+        var expectedUom = await scope.ServiceProvider.GetRequiredService<MasterDataDbContext>().Items
+            .Where(item => item.Sku == scan.Item.Sku).Select(item => item.BaseUom).SingleAsync();
+        Assert.Equal(expectedUom, scan.Item.BaseUom);
         Assert.Equal("LOT-4711", scan.LotNumber);
         Assert.Equal(new DateOnly(2027, 1, 15), scan.ExpiryDate);
 
@@ -315,7 +319,7 @@ public sealed class MasterDataTests(CountflowApiFixture fixture)
 
     private sealed record ScanWarningBody(string Code, Dictionary<string, string> Args);
 
-    private sealed record ScanItemBody(string Sku, string PackagingLevel, int BaseUnitQuantity);
+    private sealed record ScanItemBody(string Sku, string PackagingLevel, int BaseUnitQuantity, string? BaseUom);
 
     private sealed record ImportBody(bool Committed, int RowsRead, List<IssueBody> Issues);
 

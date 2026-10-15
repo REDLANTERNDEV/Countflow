@@ -58,6 +58,13 @@ public sealed class CountPlanning(
         PostingActor actor,
         CancellationToken cancellationToken)
     {
+        await using var lease = await CountPlanningLock.AcquireAsync(dbContext, warehouseId, cancellationToken);
+        return await PlanCoreAsync(warehouseId, maxTasks, notes, idempotencyKey, actor, cancellationToken);
+    }
+
+    internal async Task<Result<CountPlan>> PlanCoreAsync(Guid warehouseId, int maxTasks, string? notes,
+        string? idempotencyKey, PostingActor actor, CancellationToken cancellationToken)
+    {
         if (string.IsNullOrWhiteSpace(idempotencyKey))
         {
             return Result.Failure<CountPlan>(CountingErrors.IdempotencyKeyRequired);
@@ -81,7 +88,9 @@ public sealed class CountPlanning(
         var existing = await FindByKeyAsync(idempotencyKey, cancellationToken);
         if (existing is not null)
         {
-            return await RaiseOutstandingAsync(existing, cancellationToken);
+            return existing.Status == CountPlanStatus.Open
+                ? await RaiseOutstandingAsync(existing, cancellationToken)
+                : existing;
         }
 
         var scheduled = await OpenScheduledBalancesAsync(warehouseId, cancellationToken);
@@ -176,7 +185,7 @@ public sealed class CountPlanning(
     /// pass re-enqueues under the same key, gets the same task back, and records it.
     /// </para>
     /// </summary>
-    private async Task<Result<CountPlan>> RaiseOutstandingAsync(
+    internal async Task<Result<CountPlan>> RaiseOutstandingAsync(
         CountPlan plan,
         CancellationToken cancellationToken)
     {
@@ -291,12 +300,8 @@ public sealed class CountPlanning(
     /// <summary>
     /// The next plan number in the warehouse's own book for the year.
     /// <para>
-    /// Counted rather than held in a sequence, and racy on purpose: two supervisors
-    /// planning in the same second collide on the unique index, and the loser
-    /// converges on the winner's plan through the duplicate-key path above. A
-    /// database sequence would avoid the collision and would also leave gaps
-    /// whenever a plan failed to save, which is worse — a reference people quote
-    /// out loud should not skip.
+    /// Counted while holding the warehouse planning lock. Scheduled and manual
+    /// requests serialize their exclusion, reference allocation, and enqueues.
     /// </para>
     /// </summary>
     private async Task<string> NextReferenceAsync(Guid warehouseId, CancellationToken cancellationToken)

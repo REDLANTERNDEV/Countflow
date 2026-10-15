@@ -256,31 +256,34 @@ public sealed class StockCounting(
     /// with the book never reaches the ledger, and a bay recorded as verified for
     /// an item that does not exist is worse than a rejected scan.
     /// </summary>
-    private async Task<Result<LocationSnapshot>> ValidateAsync(
-        CountInstruction instruction,
+    private Task<Result<LocationSnapshot>> ValidateAsync(CountInstruction instruction, CancellationToken cancellationToken) =>
+        ValidateHoldingAsync(instruction.ItemId, instruction.LotId, instruction.LocationId, cancellationToken);
+
+    internal async Task<Result<LocationSnapshot>> ValidateHoldingAsync(
+        Guid itemId, Guid? lotId, Guid locationId,
         CancellationToken cancellationToken)
     {
-        var item = await items.FindAsync(instruction.ItemId, cancellationToken);
+        var item = await items.FindAsync(itemId, cancellationToken);
         if (item is null) return Result.Failure<LocationSnapshot>(InventoryErrors.ItemNotFound);
 
-        if (item.IsLotTracked && instruction.LotId is null)
+        if (item.IsLotTracked && lotId is null)
         {
             return Result.Failure<LocationSnapshot>(InventoryErrors.LotRequired);
         }
 
-        if (!item.IsLotTracked && instruction.LotId is not null)
+        if (!item.IsLotTracked && lotId is not null)
         {
             return Result.Failure<LocationSnapshot>(InventoryErrors.LotNotPermitted);
         }
 
-        if (instruction.LotId is { } lotId
+        if (lotId is { } knownLotId
             && !await dbContext.Lots.AnyAsync(
-                l => l.Id == lotId && l.ItemId == instruction.ItemId, cancellationToken))
+                l => l.Id == knownLotId && l.ItemId == itemId, cancellationToken))
         {
             return Result.Failure<LocationSnapshot>(InventoryErrors.LotNotFound);
         }
 
-        var location = await locations.FindAsync(instruction.LocationId, cancellationToken);
+        var location = await locations.FindAsync(locationId, cancellationToken);
         if (location is null) return Result.Failure<LocationSnapshot>(InventoryErrors.LocationNotFound);
 
         // A counterparty is an account, not a shelf. Nobody can stand in front of

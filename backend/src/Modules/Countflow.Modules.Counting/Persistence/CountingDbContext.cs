@@ -9,15 +9,47 @@ public sealed class CountingDbContext(DbContextOptions<CountingDbContext> option
 {
     public const string SchemaName = "counting";
 
+    public DbSet<CountPlanningFence> CountPlanningFences => Set<CountPlanningFence>();
+
+    public DbSet<CountSchedule> CountSchedules => Set<CountSchedule>();
+
     public DbSet<CountPlan> CountPlans => Set<CountPlan>();
 
     public DbSet<CountPlanLine> CountPlanLines => Set<CountPlanLine>();
+
+    public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        // The lease attaches one fence. Rotate it in the same EF transaction as
+        // every plan/line/schedule write; a rival lease makes stale saves fail.
+        foreach (var entry in ChangeTracker.Entries<CountPlanningFence>())
+            entry.Entity.Revision = Guid.CreateVersion7();
+        return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
 
         builder.HasDefaultSchema(SchemaName);
+
+        builder.Entity<CountPlanningFence>(fence =>
+        {
+            fence.HasKey(row => row.WarehouseId);
+            fence.Property(row => row.Revision).IsConcurrencyToken();
+        });
+
+        builder.Entity<CountSchedule>(schedule =>
+        {
+            schedule.HasKey(row => row.WarehouseId);
+            schedule.Property(row => row.Revision).IsConcurrencyToken();
+            schedule.Property(row => row.LastErrorCode).HasMaxLength(64);
+            schedule.ToTable(table =>
+            {
+                table.HasCheckConstraint("CK_CountSchedules_Budget", "\"MaxTasks\" BETWEEN 1 AND 200");
+                table.HasCheckConstraint("CK_CountSchedules_Interval", "\"IntervalMinutes\" BETWEEN 1 AND 10080");
+                table.HasCheckConstraint("CK_CountSchedules_Pending", "(\"PendingRunId\" IS NULL) = (\"PendingScheduledAt\" IS NULL)");
+            });
+        });
 
         builder.Entity<CountPlan>(plan =>
         {

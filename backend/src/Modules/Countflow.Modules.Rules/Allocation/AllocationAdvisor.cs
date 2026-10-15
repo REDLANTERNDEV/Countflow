@@ -87,7 +87,7 @@ public sealed class AllocationAdvisor(
             built.Value.Stamp,
             candidates,
             context,
-            built.Value.Constraints,
+            AllocationRuleCatalogue.RequireSourceRole(built.Value, query.RequiredSourceRole).Constraints,
             built.Value.Preferences);
 
         var lines = Fill(decision, query.Quantity, context);
@@ -100,7 +100,7 @@ public sealed class AllocationAdvisor(
                 item.Sku,
                 query.RequiredLotId,
                 query.Quantity,
-                context.ShipOn),
+                context.ShipOn, query.RequiredSourceRole),
             query.Actor,
             isPreview,
             cancellationToken);
@@ -202,6 +202,7 @@ public sealed class AllocationAdvisor(
             .Where(c => c.ExpiryDate is not null)
             .Select(c => c.ExpiryDate!.Value)
             .ToList();
+        var receipts = candidates.Where(candidate => candidate.FirstReceivedAt is not null).Select(candidate => candidate.FirstReceivedAt!.Value).ToList();
 
         // The route window across the candidates, not across the warehouse. See
         // AllocationContext.NormalisedDistance: a line satisfiable from four bins
@@ -220,7 +221,11 @@ public sealed class AllocationAdvisor(
             expiries.Count == 0 ? null : expiries.Min(),
             expiries.Count == 0 ? null : expiries.Max(),
             positions.Count == 0 ? 0L : positions.Min(),
-            positions.Count == 0 ? 0L : positions.Max());
+            positions.Count == 0 ? 0L : positions.Max())
+        {
+            EarliestReceipt = receipts.Count == 0 ? null : receipts.Min(),
+            LatestReceipt = receipts.Count == 0 ? null : receipts.Max()
+        };
     }
 
     /// <summary>

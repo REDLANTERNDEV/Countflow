@@ -50,15 +50,26 @@ public sealed class WorkModule : ICountflowModule
     public void MapEndpoints(IEndpointRouteBuilder endpoints)
     {
         GetWorkTasks.Map(endpoints);
+        BlindBinCounts.Map(endpoints);
         GetWorkTask.Map(endpoints);
         ClaimNextTask.Map(endpoints);
         ClaimTask.Map(endpoints);
         ReleaseTask.Map(endpoints);
+
+        // Picks claimed as a run rather than one at a time, sequenced into a walk.
+        // A separate verb from claim-next rather than a mode of it: the answer is a
+        // different shape, and a scanner asking for one job should never be handed
+        // twelve because somebody changed a default. See ClaimNextTour.
+        ClaimNextTour.Map(endpoints);
+        GetPickTours.Map(endpoints);
+        GetPickTour.Map(endpoints);
+        ReleasePickTour.Map(endpoints);
         CompleteWorkTask.Map(endpoints);
 
         // Work's slice of the accuracy screen. Override rates are this module's own
         // fact and nobody else can compute them, which is why the dashboard is
         // three fetches rather than one endpoint reaching across three schemas.
         GetWorkStatistics.Map(endpoints);
+        GetWorkThroughput.Map(endpoints);
     }
 }

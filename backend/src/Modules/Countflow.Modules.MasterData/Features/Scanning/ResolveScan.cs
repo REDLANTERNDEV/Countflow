@@ -20,7 +20,8 @@ public sealed record ScannedItemResponse(
     int BaseUnitQuantity,
     bool IsLotTracked,
     bool IsExpiryTracked,
-    bool IsSerialTracked);
+    bool IsSerialTracked,
+    string BaseUom);
 
 /// <summary>
 /// A scan warning as a code plus its arguments, never as prose.
@@ -119,7 +120,8 @@ public static class ResolveScan
                             pack.BaseUnitQuantity,
                             matched.IsLotTracked,
                             matched.IsExpiryTracked,
-                            matched.IsSerialTracked);
+                            matched.IsSerialTracked,
+                            matched.BaseUom);
 
                         // Everything reaching the ledger is in base units, so the
                         // conversion happens here, once, at the edge.

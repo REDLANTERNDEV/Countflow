@@ -31,7 +31,9 @@ public sealed class WorkQueue(
             return Result.Failure<Guid>(WorkErrors.IdempotencyKeyRequired);
         }
 
-        if (request.Quantity <= 0m)
+        if (request.Kind == WorkTaskKind.BinCount
+            ? request.ItemId is not null || request.Quantity != 0m || request.LotId is not null || request.LicensePlateId is not null
+            : request.ItemId is null || request.Quantity <= 0m)
         {
             return Result.Failure<Guid>(WorkErrors.QuantityNotPositive);
         }
@@ -207,44 +209,27 @@ public sealed class WorkQueue(
                 row.CountedQuantity));
     }
 
-    /// <summary>
-    /// Withdraws work nobody has started.
-    /// <para>
-    /// Filtered to <see cref="WorkTaskStatus.Ready"/> in the predicate rather than
-    /// checked and then updated, so a task somebody claims in the same instant is
-    /// simply not among the rows that change. The count going back tells the
-    /// caller how much of its work it failed to withdraw, which is what a
-    /// cancelled order needs to know before it lets the stock go — releasing a
-    /// reservation an operator is at that moment walking towards would send them
-    /// to pick against a claim that no longer exists.
-    /// </para>
-    /// </summary>
-    public async Task<Result<int>> CancelAsync(
-        IReadOnlyCollection<Guid> taskIds,
-        string reason,
-        CancellationToken cancellationToken)
+    /// <summary>Atomically withdraws ready tasks, refusing the whole set if any is assigned.</summary>
+    public async Task<Result<int>> CancelAsync(IReadOnlyCollection<Guid> taskIds, string reason, CancellationToken cancellationToken)
     {
-        if (taskIds.Count == 0)
+        if (taskIds.Count == 0) return 0;
+        var ids = taskIds.Distinct().Order().ToArray();
+        return await dbContext.Database.CreateExecutionStrategy().ExecuteAsync(async token =>
         {
-            return 0;
-        }
-
-        var ids = taskIds.Distinct().ToArray();
-
-        var cancelled = await dbContext.WorkTasks
-            .Where(t => ids.Contains(t.Id) && t.Status == WorkTaskStatus.Ready)
-            .ExecuteUpdateAsync(
-                update => update
-                    .SetProperty(t => t.Status, WorkTaskStatus.Cancelled)
-                    .SetProperty(t => t.CancelledReason, reason),
-                cancellationToken);
-
-        if (cancelled > 0)
-        {
-            logger.LogInformation("Cancelled {Count} queued tasks: {Reason}", cancelled, reason);
-        }
-
-        return cancelled;
+            dbContext.ChangeTracker.Clear();
+            await using var transaction = await dbContext.Database.BeginTransactionAsync(token);
+            var tasks = await dbContext.WorkTasks.FromSqlInterpolated(
+                $"SELECT * FROM work.\"WorkTasks\" WHERE \"Id\" = ANY({ids}) ORDER BY \"Id\" FOR UPDATE")
+                .ToListAsync(token);
+            if (tasks.Any(task => task.Status == WorkTaskStatus.Assigned))
+                return Result.Failure<int>(WorkErrors.TaskAlreadyClaimed);
+            var ready = tasks.Where(task => task.Status == WorkTaskStatus.Ready).ToList();
+            foreach (var task in ready) { task.Status = WorkTaskStatus.Cancelled; task.CancelledReason = reason; }
+            await dbContext.SaveChangesAsync(token);
+            await transaction.CommitAsync(token);
+            logger.LogInformation("Cancelled {Count} queued tasks: {Reason}", ready.Count, reason);
+            return Result.Success(ready.Count);
+        }, cancellationToken);
     }
 
     private sealed record Row(

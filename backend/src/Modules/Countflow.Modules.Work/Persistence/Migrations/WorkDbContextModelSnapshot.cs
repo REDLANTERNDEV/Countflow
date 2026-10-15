@@ -23,6 +23,103 @@ namespace Countflow.Modules.Work.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Countflow.Modules.Work.Domain.PickTour", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int?>("AisleChanges")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("AssignedToUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AssignedToUserName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<int?>("BaselineTravelSteps")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ClaimIdempotencyKey")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<DateTimeOffset>("ClaimedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ReleaseIdempotencyKey")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<DateTimeOffset?>("ReleasedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("ReleasedStops")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("StopCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("TravelSteps")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("WarehouseId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AssignedToUserId", "ClaimIdempotencyKey")
+                        .IsUnique()
+                        .HasFilter("\"ClaimIdempotencyKey\" IS NOT NULL");
+
+                    b.HasIndex("AssignedToUserId", "ClaimedAt");
+
+                    b.ToTable("PickTours", "work", t =>
+                        {
+                            t.HasCheckConstraint("CK_PickTours_PositiveStops", "\"StopCount\" > 0");
+                        });
+                });
+
+            modelBuilder.Entity("Countflow.Modules.Work.Domain.PickTourSegment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AppliedStrategy")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("FellBackBecause")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid>("PickTourId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("RequestedStrategy")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int>("Stops")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ZoneCode")
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PickTourId");
+
+                    b.ToTable("PickTourSegments", "work");
+                });
+
             modelBuilder.Entity("Countflow.Modules.Work.Domain.WorkTask", b =>
                 {
                     b.Property<Guid>("Id")
@@ -38,6 +135,12 @@ namespace Countflow.Modules.Work.Persistence.Migrations
                     b.Property<string>("AssignedToUserName")
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
+
+                    b.Property<Guid?>("BinCountClaimId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long?>("BinCountVersion")
+                        .HasColumnType("bigint");
 
                     b.Property<string>("CancelledReason")
                         .HasMaxLength(500)
@@ -76,7 +179,7 @@ namespace Countflow.Modules.Work.Persistence.Migrations
                     b.Property<Guid>("FromLocationId")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("ItemId")
+                    b.Property<Guid?>("ItemId")
                         .HasColumnType("uuid");
 
                     b.Property<int>("Kind")
@@ -92,6 +195,9 @@ namespace Countflow.Modules.Work.Persistence.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
+                    b.Property<Guid?>("PickTourId")
+                        .HasColumnType("uuid");
+
                     b.Property<int>("Priority")
                         .HasColumnType("integer");
 
@@ -100,8 +206,8 @@ namespace Countflow.Modules.Work.Persistence.Migrations
                         .HasColumnType("numeric(18,4)");
 
                     b.Property<string>("SourceReference")
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer");
@@ -111,6 +217,9 @@ namespace Countflow.Modules.Work.Persistence.Migrations
 
                     b.Property<Guid?>("SuggestedLocationId")
                         .HasColumnType("uuid");
+
+                    b.Property<int?>("TourSequence")
+                        .HasColumnType("integer");
 
                     b.Property<Guid>("WarehouseId")
                         .HasColumnType("uuid");
@@ -130,6 +239,13 @@ namespace Countflow.Modules.Work.Persistence.Migrations
 
                     b.HasIndex("AssignedToUserId", "Status");
 
+                    b.HasIndex("PickTourId", "TourSequence");
+
+                    b.HasIndex("WarehouseId", "CompletedAt")
+                        .HasFilter("\"Status\" = 3");
+
+                    NpgsqlIndexBuilderExtensions.IncludeProperties(b.HasIndex("WarehouseId", "CompletedAt"), new[] { "Kind" });
+
                     b.HasIndex("LicensePlateId", "FromLocationId", "Kind")
                         .IsUnique()
                         .HasFilter("\"LicensePlateId\" IS NOT NULL AND \"Kind\" = 1 AND \"Status\" IN (1, 2)");
@@ -138,11 +254,15 @@ namespace Countflow.Modules.Work.Persistence.Migrations
 
                     b.ToTable("WorkTasks", "work", t =>
                         {
+                            t.HasCheckConstraint("CK_WorkTasks_BinCountClaim", "(\"BinCountVersion\" IS NULL) = (\"BinCountClaimId\" IS NULL)");
+
                             t.HasCheckConstraint("CK_WorkTasks_CompletedHasLocation", "\"Status\" <> 3\nOR (\"CompletedAtLocationId\" IS NOT NULL AND \"CompletedAt\" IS NOT NULL)");
 
                             t.HasCheckConstraint("CK_WorkTasks_CountedQuantityBelongsToCounts", "(\"Kind\" = 4\n OR \"CountedQuantity\" IS NULL)\nAND (\"Kind\" <> 4\n     OR \"Status\" <> 3\n     OR \"CountedQuantity\" IS NOT NULL)");
 
-                            t.HasCheckConstraint("CK_WorkTasks_PositiveQuantity", "\"Quantity\" > 0");
+                            t.HasCheckConstraint("CK_WorkTasks_PositiveQuantity", "\"Kind\" = 6 AND \"Quantity\" = 0 AND \"ItemId\" IS NULL AND \"LotId\" IS NULL AND \"LicensePlateId\" IS NULL OR \"Kind\" <> 6 AND \"Quantity\" > 0 AND \"ItemId\" IS NOT NULL");
+
+                            t.HasCheckConstraint("CK_WorkTasks_TourSequenceBelongsToTour", "(\"PickTourId\" IS NULL) = (\"TourSequence\" IS NULL)");
                         });
                 });
 
@@ -177,6 +297,27 @@ namespace Countflow.Modules.Work.Persistence.Migrations
                     b.ToTable("WorkTaskSources", "work");
                 });
 
+            modelBuilder.Entity("Countflow.Modules.Work.Domain.PickTourSegment", b =>
+                {
+                    b.HasOne("Countflow.Modules.Work.Domain.PickTour", "Tour")
+                        .WithMany("Segments")
+                        .HasForeignKey("PickTourId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Tour");
+                });
+
+            modelBuilder.Entity("Countflow.Modules.Work.Domain.WorkTask", b =>
+                {
+                    b.HasOne("Countflow.Modules.Work.Domain.PickTour", "Tour")
+                        .WithMany("Tasks")
+                        .HasForeignKey("PickTourId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Tour");
+                });
+
             modelBuilder.Entity("Countflow.Modules.Work.Domain.WorkTaskSource", b =>
                 {
                     b.HasOne("Countflow.Modules.Work.Domain.WorkTask", "Task")
@@ -186,6 +327,13 @@ namespace Countflow.Modules.Work.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("Task");
+                });
+
+            modelBuilder.Entity("Countflow.Modules.Work.Domain.PickTour", b =>
+                {
+                    b.Navigation("Segments");
+
+                    b.Navigation("Tasks");
                 });
 
             modelBuilder.Entity("Countflow.Modules.Work.Domain.WorkTask", b =>

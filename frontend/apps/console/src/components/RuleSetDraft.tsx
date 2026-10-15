@@ -1,5 +1,5 @@
 import { translateRuleName, useTranslation } from '@countflow/i18n';
-import { Badge, Button, Code, Input, Select } from '@countflow/ui';
+import { InfoHelp,  Badge, Button, Code, Input, Select } from '@countflow/ui';
 import { useState } from 'react';
 import { api } from '../api.js';
 import type { components } from '@countflow/api-client';
@@ -199,9 +199,7 @@ export function RuleSetDraft({
 
       {editing ? (
         <div className="flex flex-col gap-[var(--space-2)]">
-          <p className="m-0 max-w-[72ch] text-[length:var(--text-sm)] text-[var(--color-text-secondary)]">
-            {t('rules.draft.hint')}
-          </p>
+          <InfoHelp label={t('common.help')}>{t('rules.draft.hint')}</InfoHelp>
 
           {rules
             .slice()
