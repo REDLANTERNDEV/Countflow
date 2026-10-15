@@ -37,6 +37,17 @@ public sealed record AllocationContext(
     long NearestPickSequence,
     long FurthestPickSequence)
 {
+    public DateTimeOffset? EarliestReceipt { get; init; }
+    public DateTimeOffset? LatestReceipt { get; init; }
+
+    /// <summary>Known holding ages normalized across the field, like allocation's route window.</summary>
+    public decimal ReceiptRotationScore(StockHolding holding)
+    {
+        if (holding.FirstReceivedAt is not { } received || EarliestReceipt is not { } first || LatestReceipt is not { } last) return 0.5m;
+        var span = (last - first).Ticks;
+        return span <= 0 ? 1m : Math.Clamp(1m - (decimal)(received - first).Ticks / span, 0m, 1m);
+    }
+
     /// <summary>Where a holding is standing, or null when the location is not a storable place.</summary>
     public StorageLocationSnapshot? LocationOf(StockHolding holding) =>
         Locations.GetValueOrDefault(holding.LocationId);

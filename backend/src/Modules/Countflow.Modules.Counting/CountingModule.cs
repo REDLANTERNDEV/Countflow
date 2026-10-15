@@ -1,4 +1,6 @@
 using Countflow.Modules.Counting.Features.Plans;
+using Countflow.Modules.Counting.Features.Schedules;
+using Countflow.SharedKernel.Contracts;
 using Countflow.Modules.Counting.Persistence;
 using Countflow.SharedKernel.Modules;
 using Microsoft.AspNetCore.Routing;
@@ -47,6 +49,9 @@ public sealed class CountingModule : ICountflowModule
         services.AddScoped<CountPlanDescriber>();
 
         services.TryAddSingleton(TimeProvider.System);
+        services.AddScoped<CountScheduleRunner>();
+        services.AddScoped<ScheduledCountPlanning>();
+        services.AddScoped<IBackgroundJobCatalog, CountScheduleCatalog>();
 
         // No seeder. Counts are raised by policy against a warehouse that has stock
         // in it, and a seeded plan would be a set of jobs pointing at holdings the
@@ -55,6 +60,7 @@ public sealed class CountingModule : ICountflowModule
 
     public void MapEndpoints(IEndpointRouteBuilder endpoints)
     {
+        CountScheduleEndpoints.Map(endpoints);
         CreateCountPlan.Map(endpoints);
         GetCountPlans.Map(endpoints);
         GetCountPlan.Map(endpoints);

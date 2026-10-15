@@ -4,6 +4,13 @@ namespace Countflow.Modules.Counting;
 
 public static class CountingErrors
 {
+    public static readonly Error ScheduleBudgetInvalid =
+        Error.Validation("counting.schedule_budget_invalid", "A schedule requires 1–200 tasks.");
+    public static readonly Error ScheduleIntervalInvalid =
+        Error.Validation("counting.schedule_interval_invalid", "A schedule interval requires 1–10080 minutes.");
+    public static readonly Error PlanIncomplete =
+        Error.Conflict("counting.plan_incomplete", "Some count tasks could not be resolved; retry cancellation.");
+
     public static readonly Error PlanNotFound =
         Error.NotFound("counting.plan_not_found", "No count plan with that identifier.");
 

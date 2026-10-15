@@ -27,7 +27,7 @@ public sealed class WorkTaskDescriber(
         }
 
         var itemsById = await items.FindManyAsync(
-            [.. tasks.Select(t => t.ItemId).Distinct()], cancellationToken);
+            [.. tasks.Where(t => t.ItemId is not null).Select(t => t.ItemId!.Value).Distinct()], cancellationToken);
 
         var locationIds = tasks
             .SelectMany(t => new[] { (Guid?)t.FromLocationId, t.SuggestedLocationId, t.CompletedAtLocationId })
@@ -50,7 +50,7 @@ public sealed class WorkTaskDescriber(
         [
             .. tasks.Select(task =>
             {
-                var item = itemsById.GetValueOrDefault(task.ItemId);
+                var item = task.ItemId is { } itemId ? itemsById.GetValueOrDefault(itemId) : null;
                 var lot = task.LotId is { } lotId ? lotsById.GetValueOrDefault(lotId) : null;
 
                 return new WorkTaskResponse(
@@ -76,7 +76,11 @@ public sealed class WorkTaskDescriber(
                     Code(locationsById, task.CompletedAtLocationId),
                     task.WasOverridden,
                     task.OverrideReason,
-                    task.CountedQuantity);
+                    task.CountedQuantity,
+                    task.PickTourId,
+                    task.TourSequence,
+                    task.BinCountVersion,
+                    task.BinCountClaimId);
             })
         ];
     }

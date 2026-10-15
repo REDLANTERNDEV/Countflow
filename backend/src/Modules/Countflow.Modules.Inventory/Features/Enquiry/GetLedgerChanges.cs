@@ -99,46 +99,7 @@ public static class GetLedgerChanges
                 long afterSequence = 0,
                 int limit = DefaultLimit) =>
             {
-                limit = Math.Clamp(limit, 1, MaxLimit);
-                afterSequence = Math.Max(afterSequence, 0);
-
-                var settled = clock.GetUtcNow() - StabilityLag;
-
-                var watermark = await dbContext.StockMovements
-                    .AsNoTracking()
-                    .Where(movement => movement.OccurredAt <= settled)
-                    .MaxAsync(movement => (long?)movement.Sequence, cancellationToken) ?? 0;
-
-                if (watermark <= afterSequence)
-                {
-                    return Results.Ok(new LedgerChangePage([], afterSequence, HasMore: false, watermark));
-                }
-
-                var query = dbContext.StockMovements
-                    .AsNoTracking()
-                    .Where(movement => movement.Sequence > afterSequence && movement.Sequence <= watermark);
-
-                // One extra row rather than a COUNT. The consumer only needs to know
-                // whether to come straight back, and counting the whole tail of a
-                // ledger to answer a yes/no question gets slower every day the
-                // warehouse runs.
-                var movements = await query
-                    .OrderBy(movement => movement.Sequence)
-                    .Take(limit + 1)
-                    .ToListAsync(cancellationToken);
-
-                var hasMore = movements.Count > limit;
-                if (hasMore)
-                {
-                    movements.RemoveAt(movements.Count - 1);
-                }
-
-                var rows = await GetStockMovements.DescribeAsync(
-                    dbContext, items, locations, movements, cancellationToken);
-
-                var cursor = movements.Count == 0 ? afterSequence : movements[^1].Sequence;
-
-                return Results.Ok(new LedgerChangePage(rows, cursor, hasMore, watermark));
+                return Results.Ok(await ReadAsync(dbContext, items, locations, clock, afterSequence, limit, cancellationToken));
             })
             .RequireAuthorization()
             .WithTags("Inventory")
@@ -146,4 +107,49 @@ public static class GetLedgerChanges
             .WithSummary("Read the stock ledger forwards from a cursor — every change, in order, exactly once.")
             .Produces<LedgerChangePage>();
     }
+    internal static async Task<LedgerChangePage> ReadAsync(InventoryDbContext dbContext, IItemDirectory items,
+        ILocationDirectory locations, TimeProvider clock, long afterSequence, int limit, CancellationToken cancellationToken)
+    {
+        limit = Math.Clamp(limit, 1, MaxLimit);
+        afterSequence = Math.Max(afterSequence, 0);
+
+        var settled = clock.GetUtcNow() - StabilityLag;
+
+        var watermark = await dbContext.StockMovements
+            .AsNoTracking()
+            .Where(movement => movement.OccurredAt <= settled)
+            .MaxAsync(movement => (long?)movement.Sequence, cancellationToken) ?? 0;
+
+        if (watermark <= afterSequence)
+        {
+            return new LedgerChangePage([], afterSequence, HasMore: false, watermark);
+        }
+
+        var query = dbContext.StockMovements
+            .AsNoTracking()
+            .Where(movement => movement.Sequence > afterSequence && movement.Sequence <= watermark);
+
+        // One extra row rather than a COUNT. The consumer only needs to know
+        // whether to come straight back, and counting the whole tail of a
+        // ledger to answer a yes/no question gets slower every day the
+        // warehouse runs.
+        var movements = await query
+            .OrderBy(movement => movement.Sequence)
+            .Take(limit + 1)
+            .ToListAsync(cancellationToken);
+
+        var hasMore = movements.Count > limit;
+        if (hasMore)
+        {
+            movements.RemoveAt(movements.Count - 1);
+        }
+
+        var rows = await GetStockMovements.DescribeAsync(
+            dbContext, items, locations, movements, cancellationToken);
+
+        var cursor = movements.Count == 0 ? afterSequence : movements[^1].Sequence;
+
+        return new LedgerChangePage(rows, cursor, hasMore, watermark);
+    }
+
 }

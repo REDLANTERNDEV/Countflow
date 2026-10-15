@@ -205,3 +205,38 @@ GET /inventory/movements?sku=SKU-10001
 
 Four entries, both sides named on each, two of them able to say what directed them
 and why, and nothing created or destroyed anywhere along the way.
+
+
+## Pick tours
+
+`POST /work/tours/claim-next` claims ready picks and returns their walking order.
+Send `Idempotency-Key` (at most 128 characters); reuse it after a lost response.
+The optional body accepts `warehouseId` and `maxStops` (default 12, clamped to
+1–50). The server seeds from the most urgent oldest pick and takes nearby work
+in the same warehouse and priority band. An empty or contested queue returns
+`work.no_work_available` (404). Reusing an operator's key returns that tour's
+current state, even after its work has progressed.
+
+`GET /work/tours?mine=true&open=true&page=1&pageSize=20` lists tours;
+`GET /work/tours/{id}` returns one. Responses include ordered `stops`, original
+`stopCount`, current `remaining`, `releasedStops`, zone strategy segments, and
+travel estimates. Estimates are proxy steps; null means unmeasurable, and
+`stepsSaved` can be negative. Costs cover travel between the first and last
+stops, following the applied strategy; approach and final exit are excluded.
+Fallback/support reasons are stable `route.*` codes for client localization.
+Tasks also expose `pickTourId` and `tourSequence`.
+
+Complete each stop through the existing `POST /work/tasks/{id}/complete`,
+including its `pickTourId` in the body. A completion from a released or
+reassigned tour is refused, so cached work cannot outlive its claim.
+`POST /work/tours/{id}/release`, with its own retry key, returns unfinished stops
+of the caller's tour to the queue. Completed stops stay on the tour. Retrying
+that release key succeeds; a fresh release with nothing left returns 409.
+
+`GET /zones?warehouse=WH1` lists zone routing and geometry support.
+Supervisors/admins use `PUT /zones/{id}/pick-route` with
+`{ "strategy": "route.s_shape", "hasRearCrossAisle": true }` to update both
+settings together. Available codes are `route.sequence_ordinal`, `route.s_shape`,
+`route.return`, and `route.midpoint`. S-Shape/Midpoint require a rear cross-aisle;
+all geometric strategies require aisle and bay data. Existing zones default to
+sequence order with no assumed cross-aisle.

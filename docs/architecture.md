@@ -57,25 +57,34 @@ docs/                        this documentation and the API reference
   lots, licence plates, replay, the drift reconciler and — beside the ledger
   rather than inside it — **stock reservations** and **stock counts**. Publishes
   `IStockPosting`, `IStockQuery`, `IStockAvailability`, `IStockReservations`,
-  `IStockCounts` and `IStockHistory`, which folds the ledger forward
+  `IStockCounts`, `IStockChangeFeed`, and `IStockHistory`, which folds the ledger forward
   to hand out the warehouse as it stood at any past instant.
 - `Modules/Rules` — the versioned rule sets, the putaway, allocation **and
   cycle-count** vocabularies and the persisted decision traces. Publishes
   `IPutawayAdvisor`, `IAllocationAdvisor`, `ICountPolicy`,
   `IDecisionTraceReader` and `IShadowReplay`. The rule-set **editor**
   lives here too: drafts, clone-from-active, and promotion.
-- `Modules/Work` — the task queue an operator's handheld reads from, and the
+- `Modules/Work` — pick tours and the task queue an operator's handheld reads from, and the
   confirmation that turns a job into a ledger entry. Putaways and picks are the
   same kind of thing to it. Publishes `IWorkQueue`.
 - `Modules/Inbound` — advice notes and the dock receipt. Publishes nothing: its
   output is stock and work, and both are already somebody else's surface.
 - `Modules/Outbound` — sales orders, waves, and the release that commits stock
   and raises the picks. Publishes nothing, for the same reason.
-- `Modules/Counting` — count plans, and the record of which holdings are already
+- `Modules/Counting` — count plans, opt-in warehouse schedules, and the record of which holdings are already
   on somebody's list. Publishes nothing: its output is work and, through that
   work, counts, and both are already somebody else's surface.
 - `Modules/Replay` — replay runs and what each comparison found. Publishes
   nothing: its output is an argument, and arguments are read by people.
+- `Modules/Webhooks` — encrypted receiver subscriptions, immutable signed ledger
+  batches, and hashed reconciliation capability URLs. Publishes no stock writes;
+  consumes the Inventory feed contract and the registered scoped job handler.
+- `Modules/Replenishment` — fixed pick-face min/max policies and durable bulk-to-face
+  plans. Uses Inventory reservations, Rules allocation traces, and ordinary Work
+  tasks through published contracts; per-face handlers are discovered by Jobs.
+- `Modules/Jobs` — durable recurring schedules and unfinished run identities.
+  Modules register scoped handlers through `IBackgroundJob`; Jobs owns no
+  warehouse business data.
 - `Modules/Labels` — label templates, the ZPL renderer and the record of what was
   printed. Publishes nothing yet: it is a reader of four other modules and its
   output is a piece of paper. The seam where data stops and code starts is
@@ -103,7 +112,8 @@ docs/                        this documentation and the API reference
   and `src/screens/QueueScreen.tsx` is the reconciliation screen for what the
   warehouse refused while the device was away.
 - `packages/ui` — tokens, theme provider, Radix-based primitives, `ScanField`.
-- `packages/i18n` — en/tr catalogues, formatting helpers.
+- `packages/i18n` — en/tr catalogues, formatting helpers, typed cardinal translation
+  through i18next's locale rules, and numeric-string selection for coded rule notes.
 - `packages/api-client` — **generated** from OpenAPI. Never hand-edit.
 
 **Endpoints — 58 paths, all under `/api/v1`.** Auth

@@ -3,6 +3,7 @@ import {
   ClipboardCheck,
   Compass,
   History,
+  Gauge,
   ListChecks,
   MapPin,
   Package,
@@ -56,6 +57,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { path: '/', labelKey: 'warehouses', icon: Warehouse, exact: true },
       { path: '/locations', labelKey: 'locations', icon: MapPin },
+      { path: '/zones', labelKey: 'zones', icon: MapPin },
       { path: '/items', labelKey: 'items', icon: Package },
     ],
   },
@@ -64,6 +66,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { path: '/inbound', labelKey: 'inbound', icon: Truck },
       { path: '/outbound', labelKey: 'outbound', icon: Send },
+      { path: '/replenishment', labelKey: 'replenishment', icon: Boxes },
       { path: '/counting', labelKey: 'counting', icon: ClipboardCheck },
       { path: '/work', labelKey: 'work', icon: ListChecks },
     ],
@@ -71,6 +74,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     labelKey: 'insight',
     items: [
+      { path: '/dashboard', labelKey: 'dashboard', icon: Gauge },
       { path: '/stock', labelKey: 'stock', icon: Boxes },
       { path: '/ledger', labelKey: 'ledger', icon: ScrollText },
       { path: '/accuracy', labelKey: 'accuracy', icon: Target },

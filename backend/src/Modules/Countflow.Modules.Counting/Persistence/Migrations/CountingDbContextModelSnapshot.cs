@@ -154,6 +154,71 @@ namespace Countflow.Modules.Counting.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Countflow.Modules.Counting.Domain.CountPlanningFence", b =>
+                {
+                    b.Property<Guid>("WarehouseId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid");
+
+                    b.HasKey("WarehouseId");
+
+                    b.ToTable("CountPlanningFences", "counting");
+                });
+
+            modelBuilder.Entity("Countflow.Modules.Counting.Domain.CountSchedule", b =>
+                {
+                    b.Property<Guid>("WarehouseId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("IntervalMinutes")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("LastErrorCode")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid?>("LastPlanId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("LastRunAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("MaxTasks")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("NextRunAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("PendingRunId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("PendingScheduledAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid");
+
+                    b.HasKey("WarehouseId");
+
+                    b.ToTable("CountSchedules", "counting", t =>
+                        {
+                            t.HasCheckConstraint("CK_CountSchedules_Budget", "\"MaxTasks\" BETWEEN 1 AND 200");
+
+                            t.HasCheckConstraint("CK_CountSchedules_Interval", "\"IntervalMinutes\" BETWEEN 1 AND 10080");
+
+                            t.HasCheckConstraint("CK_CountSchedules_Pending", "(\"PendingRunId\" IS NULL) = (\"PendingScheduledAt\" IS NULL)");
+                        });
+                });
+
             modelBuilder.Entity("Countflow.Modules.Counting.Domain.CountPlanLine", b =>
                 {
                     b.HasOne("Countflow.Modules.Counting.Domain.CountPlan", "Plan")

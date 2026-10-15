@@ -19,7 +19,7 @@ import { api } from '../api.js';
 import { PageHead } from '../components/PageHead.js';
 
 /** ASCII 29 — what a scanner actually transmits for FNC1. */
-const GS = '';
+const GS = '\u001d';
 
 export function ScanPage() {
   const { t } = useTranslation();
@@ -66,11 +66,7 @@ export function ScanPage() {
 
   return (
     <>
-      <PageHead title={t('scan.title')} />
-
-      <p className="mb-[var(--space-5)] max-w-[78ch] text-[var(--color-text-secondary)]">
-        {t('scan.intro')}
-      </p>
+      <PageHead help={t('scan.intro')} title={t('scan.title')} />
 
       <div className="mb-[var(--space-4)] flex gap-[var(--space-3)]">
         <Input

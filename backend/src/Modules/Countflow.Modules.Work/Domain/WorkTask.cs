@@ -63,7 +63,9 @@ public sealed class WorkTask
     /// <summary>Lower runs first.</summary>
     public int Priority { get; set; } = 50;
 
-    public required Guid ItemId { get; init; }
+    public required Guid? ItemId { get; init; }
+    public long? BinCountVersion { get; set; }
+    public Guid? BinCountClaimId { get; set; }
 
     public Guid? LotId { get; init; }
 
@@ -125,6 +127,35 @@ public sealed class WorkTask
     public string? AssignedToUserName { get; set; }
 
     public DateTimeOffset? AssignedAt { get; set; }
+
+    /// <summary>
+    /// The walk this job was claimed as part of, if it was claimed as part of one.
+    /// <para>
+    /// Null on everything claimed one at a time, which is every kind but a pick and
+    /// any pick taken through <c>claim-next</c> rather than through a tour. Cleared
+    /// when the job is handed back, so a task never belongs to a walk somebody is no
+    /// longer on — and a tour therefore ends up holding exactly the stops that were
+    /// actually worked from it.
+    /// </para>
+    /// </summary>
+    public Guid? PickTourId { get; set; }
+
+    /// <summary>
+    /// Where this stop comes in the walk, from one. Advisory and not enforced: a
+    /// blocked aisle is real, and a system that refused an out-of-order confirmation
+    /// is one operators learn to route around.
+    /// <para>
+    /// What it buys instead is a measurement. Confirmations arrive with their own
+    /// timestamps, so how far an operator's actual order drifted from the suggested
+    /// one is the same suggested-versus-actual comparison that
+    /// <see cref="SuggestedLocationId"/> and <see cref="CompletedAtLocationId"/>
+    /// already make for a destination — and it is the number that tells a supervisor
+    /// the strategy is wrong for that zone.
+    /// </para>
+    /// </summary>
+    public int? TourSequence { get; set; }
+
+    public PickTour? Tour { get; init; }
 
     // ---- Completion ----
 

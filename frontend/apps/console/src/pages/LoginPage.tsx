@@ -1,5 +1,5 @@
 import { useTranslation } from '@countflow/i18n';
-import { Badge, Button, Field, Input, LogoSymbol, PasswordInput } from '@countflow/ui';
+import { InfoHelp,  Badge, Button, Field, Input, LogoSymbol, PasswordInput } from '@countflow/ui';
 import { useState, type FormEvent } from 'react';
 import { useAuth } from '../auth.js';
 import { LanguageSwitcher } from '../components/LanguageSwitcher.js';
@@ -88,9 +88,6 @@ export function LoginPage() {
         <h1 className="m-0 text-[length:var(--text-2xl)] tracking-[var(--tracking-display)]">
           {t('auth.title')}
         </h1>
-        <p className="mb-[var(--space-6)] mt-[var(--space-1)] text-[var(--color-text-tertiary)]">
-          {t('auth.subtitle')}
-        </p>
 
         <div className="flex flex-col gap-[var(--space-4)]">
           <Field label={t('auth.identifier')} htmlFor="identifier">
@@ -167,9 +164,7 @@ export function LoginPage() {
           <h2 className="m-0 text-[length:var(--text-xl)] tracking-[var(--tracking-display)]">
             {t('demo.headline')}
           </h2>
-          <p className="mb-[var(--space-4)] mt-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--color-text-secondary)]">
-            {t('demo.blurb')}
-          </p>
+          <InfoHelp label={t('common.about', { topic: t('demo.headline') })}>{t('demo.blurb')} {t('demo.tourHint')}</InfoHelp>
 
           <ul className="m-0 flex list-none flex-col gap-[var(--space-3)] p-0">
             {(['ledger', 'rules', 'replay'] as const).map((pillar) => (
@@ -177,16 +172,11 @@ export function LoginPage() {
                 <span className="text-[length:var(--text-sm)] font-semibold">
                   {t(`tour.stops.${pillar}.title`)}
                 </span>
-                <span className="text-[length:var(--text-sm)] text-[var(--color-text-secondary)]">
-                  {t(`tour.stops.${pillar}.body`)}
-                </span>
+                <InfoHelp label={t(`tour.stops.${pillar}.title`)}>{t(`tour.stops.${pillar}.body`)}</InfoHelp>
               </li>
             ))}
           </ul>
 
-          <p className="mb-0 mt-[var(--space-4)] text-[length:var(--text-xs)] text-[var(--color-text-tertiary)]">
-            {t('demo.tourHint')}
-          </p>
         </aside>
       ) : null}
       </div>

@@ -14,6 +14,8 @@ public sealed class InventoryDbContext(DbContextOptions<InventoryDbContext> opti
 
     /// <summary>The projection of the ledger. Rebuildable, never authoritative.</summary>
     public DbSet<StockBalance> StockBalances => Set<StockBalance>();
+    public DbSet<ReceiptAgeProjectionState> ReceiptAgeProjectionStates => Set<ReceiptAgeProjectionState>();
+    public DbSet<BinCountRecord> BinCounts => Set<BinCountRecord>();
 
     /// <summary>
     /// Claims against the projection. Not part of the ledger and not derived from
@@ -88,6 +90,25 @@ public sealed class InventoryDbContext(DbContextOptions<InventoryDbContext> opti
         base.OnModelCreating(builder);
 
         builder.HasDefaultSchema(SchemaName);
+        builder.Entity<BinCountRecord>(count =>
+        {
+            count.HasKey(c => c.TaskId);
+            count.Property(c => c.IdempotencyKey).HasMaxLength(128);
+            count.HasIndex(c => c.IdempotencyKey).IsUnique();
+            count.Property(c => c.Fingerprint).HasMaxLength(64);
+            count.Property(c => c.Outcome).HasColumnType("jsonb");
+            count.Property(c => c.ConfirmedByUserName).HasMaxLength(256);
+            count.Property(c => c.Reason).HasMaxLength(1000);
+            count.HasIndex(c => new { c.LocationId, c.ConfirmedAt });
+        });
+
+        builder.Entity<ReceiptAgeProjectionState>(state =>
+        {
+            state.ToTable("ReceiptAgeProjectionState");
+            state.HasKey(value => value.Id);
+            state.Property(value => value.Id).ValueGeneratedNever();
+            state.HasData(new ReceiptAgeProjectionState { Id = 1 });
+        });
 
         builder.Entity<StockMovement>(movement =>
         {

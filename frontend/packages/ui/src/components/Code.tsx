@@ -34,12 +34,14 @@ export function Code({ className, ...props }: HTMLAttributes<HTMLSpanElement>) {
 export function Numeric({
   value,
   fractionDigits,
+  maximumFractionDigits,
   locale,
   className,
   ...props
 }: HTMLAttributes<HTMLSpanElement> & {
   value: number | null | undefined;
   fractionDigits?: number;
+  maximumFractionDigits?: number;
   locale?: string;
 }) {
   const formatted =
@@ -47,7 +49,7 @@ export function Numeric({
       ? '—'
       : new Intl.NumberFormat(locale, {
           minimumFractionDigits: fractionDigits ?? 0,
-          maximumFractionDigits: fractionDigits ?? 3,
+          maximumFractionDigits: maximumFractionDigits ?? fractionDigits ?? 3,
         }).format(value);
 
   return (

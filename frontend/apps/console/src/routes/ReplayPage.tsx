@@ -1,5 +1,5 @@
 import { currentLocale, formatDateTime, useTranslation } from '@countflow/i18n';
-import {
+import { InfoHelp,
   Badge,
   Button,
   Code,
@@ -143,9 +143,7 @@ export function ReplayPage() {
 
   return (
     <>
-      <PageHead title={t('replay.title')}>
-        <p className="cf-muted">{t('replay.subtitle')}</p>
-      </PageHead>
+      <PageHead help={t('replay.subtitle')} title={t('replay.title')} />
 
       <section className="cf-panel">
         <div className="cf-filters">
@@ -257,7 +255,7 @@ export function ReplayPage() {
                 {item.approximateCount > 0 ? (
                   <span className="cf-muted">
                     {' '}
-                    {t('replay.approximate', { count: String(item.approximateCount) })}
+                    {t('replay.approximate', { count: item.approximateCount })}
                   </span>
                 ) : null}
               </dd>
@@ -294,8 +292,7 @@ export function ReplayPage() {
 
           {openRun === item.id ? (
             <>
-              <h3 className="cf-subhead">{t('replay.influence')}</h3>
-              <p className="cf-muted">{t('replay.influenceHint')}</p>
+              <h3 className="cf-subhead">{t('replay.influence')} <InfoHelp label={t('common.about', { topic: t('replay.influence') })}>{t('replay.influenceHint')}</InfoHelp></h3>
 
               <TableContainer>
                 <Table>

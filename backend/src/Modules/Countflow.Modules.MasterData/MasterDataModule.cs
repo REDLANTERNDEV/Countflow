@@ -4,6 +4,7 @@ using Countflow.Modules.MasterData.Features.Items;
 using Countflow.Modules.MasterData.Features.Locations;
 using Countflow.Modules.MasterData.Features.Scanning;
 using Countflow.Modules.MasterData.Features.Warehouses;
+using Countflow.Modules.MasterData.Features.Zones;
 using Countflow.Modules.MasterData.Persistence;
 using Countflow.SharedKernel.Contracts;
 using Countflow.SharedKernel.Modules;
@@ -44,6 +45,8 @@ public sealed class MasterDataModule : ICountflowModule
     public void MapEndpoints(IEndpointRouteBuilder endpoints)
     {
         GetWarehouses.Map(endpoints);
+        GetZones.Map(endpoints);
+        SetZonePickRoute.Map(endpoints);
         GetLocations.Map(endpoints);
         GetItems.Map(endpoints);
         ResolveScan.Map(endpoints);

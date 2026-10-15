@@ -17,6 +17,31 @@ public static class MasterDataErrors
     public static readonly Error WarehouseNotFound =
         Error.NotFound("masterdata.warehouse_not_found", "No warehouse with that identifier.");
 
+    public static readonly Error ZoneNotFound =
+        Error.NotFound("masterdata.zone_not_found", "No zone with that identifier.");
+
+    /// <summary>
+    /// A routing strategy this build does not have. Refused rather than defaulted,
+    /// for the reason an unrecognised rule code is fatal rather than skipped: a zone
+    /// silently walked some other way than the one on its record is a setting nobody
+    /// can trust, and the typo survives forever because nothing ever complains.
+    /// </summary>
+    public static Error UnknownRouteStrategy(string code) =>
+        Error.Validation(
+            "masterdata.unknown_route_strategy",
+            $"'{code}' is not a routing strategy this build knows about.");
+
+    /// <summary>
+    /// The strategy exists; the zone cannot support it. Carries the missing fact
+    /// rather than a bare refusal, because the remedy is master data somebody has to
+    /// go and enter, and "not supported" does not say which of three things is
+    /// absent.
+    /// </summary>
+    public static Error RouteStrategyUnsupported(string zoneCode, string code, string because) =>
+        Error.Conflict(
+            "masterdata.route_strategy_unsupported",
+            $"Zone {zoneCode} cannot be walked with '{code}': {because}.");
+
     /// <summary>
     /// A site asked to mint a licence plate with no GS1 prefix on file. A
     /// configuration failure rather than a request failure, and it is stated as one

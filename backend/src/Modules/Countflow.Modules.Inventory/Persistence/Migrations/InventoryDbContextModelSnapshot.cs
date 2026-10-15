@@ -23,6 +23,55 @@ namespace Countflow.Modules.Inventory.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Countflow.Modules.Inventory.Domain.BinCountRecord", b =>
+                {
+                    b.Property<Guid>("TaskId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("ConfirmedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ConfirmedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ConfirmedByUserName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("Fingerprint")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("IdempotencyKey")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<Guid>("LocationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Outcome")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.HasKey("TaskId");
+
+                    b.HasIndex("IdempotencyKey")
+                        .IsUnique();
+
+                    b.HasIndex("LocationId", "ConfirmedAt");
+
+                    b.ToTable("BinCounts", "inventory");
+                });
+
             modelBuilder.Entity("Countflow.Modules.Inventory.Domain.LicensePlate", b =>
                 {
                     b.Property<Guid>("Id")
@@ -91,6 +140,29 @@ namespace Countflow.Modules.Inventory.Persistence.Migrations
                     b.ToTable("Lots", "inventory");
                 });
 
+            modelBuilder.Entity("Countflow.Modules.Inventory.Domain.ReceiptAgeProjectionState", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("Completed")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ReceiptAgeProjectionState", "inventory");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Completed = false
+                        });
+                });
+
             modelBuilder.Entity("Countflow.Modules.Inventory.Domain.ReconciliationRun", b =>
                 {
                     b.Property<Guid>("Id")
@@ -138,6 +210,9 @@ namespace Countflow.Modules.Inventory.Persistence.Migrations
 
                     b.Property<bool>("AllowsNegative")
                         .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset?>("FirstReceivedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid>("ItemId")
                         .HasColumnType("uuid");

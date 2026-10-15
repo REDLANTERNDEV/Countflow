@@ -15,6 +15,11 @@ public sealed class WorkDbContext(DbContextOptions<WorkDbContext> options)
     /// <summary>What asked for each task. <see cref="WorkTask.Quantity"/> is derived from these.</summary>
     public DbSet<WorkTaskSource> WorkTaskSources => Set<WorkTaskSource>();
 
+    /// <summary>Picks claimed together and walked in an order. See <see cref="PickTour"/>.</summary>
+    public DbSet<PickTour> PickTours => Set<PickTour>();
+
+    public DbSet<PickTourSegment> PickTourSegments => Set<PickTourSegment>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -25,10 +30,11 @@ public sealed class WorkDbContext(DbContextOptions<WorkDbContext> options)
         {
             task.HasKey(t => t.Id);
 
+            task.HasIndex(t => new { t.WarehouseId, t.CompletedAt }).HasFilter($"\"Status\" = {(int)WorkTaskStatus.Completed}").IncludeProperties(t => t.Kind);
             task.Property(t => t.Quantity).HasPrecision(18, 4);
             task.Property(t => t.CountedQuantity).HasPrecision(18, 4);
             task.Property(t => t.CompletionIdempotencyKey).HasMaxLength(128);
-            task.Property(t => t.SourceReference).HasMaxLength(128);
+            task.Property(t => t.SourceReference).HasMaxLength(256);
             task.Property(t => t.AssignedToUserName).HasMaxLength(256);
             task.Property(t => t.CompletedByUserName).HasMaxLength(256);
             task.Property(t => t.OverrideReason).HasMaxLength(500);
@@ -66,6 +72,18 @@ public sealed class WorkDbContext(DbContextOptions<WorkDbContext> options)
             task.HasIndex(t => t.DecisionTraceId);
             task.HasIndex(t => t.SourceReference);
 
+            // SetNull rather than Cascade: handing a stop back clears the tour off
+            // the task, and deleting a tour must never take the work with it. A tour
+            // is a record of a walk; the picks are the work itself.
+            task.HasOne(t => t.Tour)
+                .WithMany(t => t.Tasks)
+                .HasForeignKey(t => t.PickTourId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // The walk, in order. Read once per stop by the handheld and once per
+            // tour by the console.
+            task.HasIndex(t => new { t.PickTourId, t.TourSequence });
+
             // A commitment is discharged by exactly one job. Two picks pointing at
             // one reservation would be refused by the ledger when the second tried
             // to consume it — this refuses them a step earlier, where the answer is
@@ -76,7 +94,17 @@ public sealed class WorkDbContext(DbContextOptions<WorkDbContext> options)
 
             task.ToTable(t =>
             {
-                t.HasCheckConstraint("CK_WorkTasks_PositiveQuantity", "\"Quantity\" > 0");
+                t.HasCheckConstraint("CK_WorkTasks_PositiveQuantity",
+                    $"\"Kind\" = {(int)WorkTaskKind.BinCount} AND \"Quantity\" = 0 AND \"ItemId\" IS NULL AND \"LotId\" IS NULL AND \"LicensePlateId\" IS NULL OR \"Kind\" <> {(int)WorkTaskKind.BinCount} AND \"Quantity\" > 0 AND \"ItemId\" IS NOT NULL");
+                t.HasCheckConstraint("CK_WorkTasks_BinCountClaim", "(\"BinCountVersion\" IS NULL) = (\"BinCountClaimId\" IS NULL)");
+
+                // A stop with no place in the walk, or a place in a walk it is not
+                // on, is a pick list that renders with a gap in it. The two columns
+                // are set and cleared together in every path that touches them, and
+                // this is what makes "every path" true rather than intended.
+                t.HasCheckConstraint(
+                    "CK_WorkTasks_TourSequenceBelongsToTour",
+                    "(\"PickTourId\" IS NULL) = (\"TourSequence\" IS NULL)");
 
                 // A completed task has to say where it was completed, or the
                 // override statistics that justify the rules engine are computed
@@ -104,6 +132,37 @@ public sealed class WorkDbContext(DbContextOptions<WorkDbContext> options)
                           OR "CountedQuantity" IS NOT NULL)
                      """);
             });
+        });
+
+        builder.Entity<PickTour>(tour =>
+        {
+            tour.HasKey(t => t.Id);
+
+            tour.Property(t => t.AssignedToUserName).HasMaxLength(256).IsRequired();
+            tour.Property(t => t.ClaimIdempotencyKey).HasMaxLength(128);
+            tour.Property(t => t.ReleaseIdempotencyKey).HasMaxLength(128);
+            tour.HasIndex(t => new { t.AssignedToUserId, t.ClaimIdempotencyKey })
+                .IsUnique().HasFilter("\"ClaimIdempotencyKey\" IS NOT NULL");
+
+            tour.HasMany(t => t.Segments)
+                .WithOne(s => s.Tour!)
+                .HasForeignKey(s => s.PickTourId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // A tour is claimed by one person and read back by them for the length of
+            // one walk, so the only listing that matters is "what am I on".
+            tour.HasIndex(t => new { t.AssignedToUserId, t.ClaimedAt });
+
+            tour.ToTable(t => t.HasCheckConstraint("CK_PickTours_PositiveStops", "\"StopCount\" > 0"));
+        });
+
+        builder.Entity<PickTourSegment>(segment =>
+        {
+            segment.HasKey(s => s.Id);
+            segment.Property(s => s.ZoneCode).HasMaxLength(8);
+            segment.Property(s => s.RequestedStrategy).HasMaxLength(64).IsRequired();
+            segment.Property(s => s.AppliedStrategy).HasMaxLength(64).IsRequired();
+            segment.Property(s => s.FellBackBecause).HasMaxLength(500);
         });
 
         builder.Entity<WorkTaskSource>(source =>

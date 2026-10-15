@@ -1,5 +1,5 @@
-import { currentLocale, formatNumber, useTranslation } from '@countflow/i18n';
-import {
+import { translateCount, currentLocale, formatNumber, useTranslation } from '@countflow/i18n';
+import { InfoHelp,
   Badge,
   Code,
   Spinner,
@@ -68,7 +68,7 @@ export function ItemDetailPage() {
           label={t('items.shelfLife')}
           value={
             data.shelfLifeDays
-              ? t('items.shelfLifeDays', { count: data.shelfLifeDays })
+              ? translateCount(t, 'items.shelfLifeDays', data.shelfLifeDays)
               : t('common.none')
           }
         />
@@ -76,9 +76,7 @@ export function ItemDetailPage() {
       </dl>
 
       <h3 className="mb-[var(--space-2)] text-[length:var(--text-lg)]">{t('items.packaging')}</h3>
-      <p className="mb-[var(--space-4)] mt-0 max-w-[78ch] text-[var(--color-text-secondary)]">
-        {t('items.packagingNote')}
-      </p>
+      <InfoHelp label={t('items.description')}>{t('items.packagingNote')}</InfoHelp>
 
       <TableContainer>
         <Table>

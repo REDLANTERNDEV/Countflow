@@ -42,6 +42,7 @@ public sealed class InventoryModule : ICountflowModule
         services.AddScoped<StockReferenceResolver>();
         services.AddScoped<LedgerReplay>();
         services.AddScoped<LedgerReconciler>();
+        services.AddScoped<IModuleSeeder, ReceiptAgeBackfill>();
 
         // Phase 4's addition, and deliberately a sibling of the ledger rather than
         // part of it: a reserved quantity is a claim on stock, not a movement of
@@ -53,6 +54,7 @@ public sealed class InventoryModule : ICountflowModule
         // at all (see StockCount). It sits beside the ledger because the counts that
         // do find something have to write the finding and the correction together.
         services.AddScoped<StockCounting>();
+        services.AddScoped<IBlindBinCounting, BlindBinCounting>();
 
         // Kept apart from LedgerReconciler deliberately. The reconciler stays a pure
         // read of the ledger it audits; the journal is what writes down what it
@@ -76,6 +78,7 @@ public sealed class InventoryModule : ICountflowModule
         // remembering anything — which is only possible because the ledger is
         // complete and immutable.
         services.AddScoped<IStockHistory, StockHistory>();
+        services.AddScoped<IStockChangeFeed, StockChangeFeed>();
 
         // TryAdd, because a clock is host-wide and every module that posts
         // timestamps will want the same one — including a test host that has
@@ -90,7 +93,14 @@ public sealed class InventoryModule : ICountflowModule
         // it: the drift alarm is part of what makes ADR 0001 a checkable claim
         // rather than an intention, and it belongs to the module that owns the
         // invariant. It is read-only, so running on every API replica is safe.
-        services.AddHostedService<PeriodicReconciliation>();
+        services.AddRecurringJob<PeriodicReconciliation>("inventory.reconciliation", configuration,
+            ReconciliationOptions.SectionName, options =>
+            {
+                var defaults = new ReconciliationOptions();
+                options.Enabled = defaults.Enabled;
+                options.Interval = defaults.Interval;
+                options.InitialDelay = defaults.InitialDelay;
+            });
 
         // No seeder. There is nothing to seed — the ledger starts empty, and the
         // virtual counterparty locations it posts against are MasterData's.
@@ -118,6 +128,7 @@ public sealed class InventoryModule : ICountflowModule
         // Work's override rates into one screen rather than any module growing a
         // cross-boundary query to build the dashboard server-side.
         GetCountAccuracy.Map(endpoints);
+        GetZoneDensity.Map(endpoints);
         GetStrandedReservations.Map(endpoints);
     }
 }

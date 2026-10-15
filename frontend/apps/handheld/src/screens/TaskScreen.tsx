@@ -1,9 +1,11 @@
 import type { components } from '@countflow/api-client';
+import { completionLocationAllowed } from '../lib/completion-location.js';
 import { currentLocale, formatDateTime, formatNumber, useTranslation } from '@countflow/i18n';
 import { Badge, Button, Code, Field, Input, Numeric, ScanField, Spinner } from '@countflow/ui';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import { WhyHere } from '../components/WhyHere.js';
+import { BlindBinCount } from '../components/BlindBinCount.js';
 import { newIdempotencyKey } from '../lib/idempotency.js';
 import { unanswered } from '../lib/outbox/dispatch.js';
 import { categorise, needsSupervisor } from '../lib/outbox/refusals.js';
@@ -162,10 +164,14 @@ export function TaskScreen({ taskId, ownerUserId, onDone }: TaskScreenProps) {
   async function complete() {
     if (!detail) return;
 
+    const task = detail.task;
+    if (!completionLocationAllowed(task.kind, confirmed, task.fromLocationCode, task.suggestedLocationCode)) {
+      setErrorCode(task.kind === 'Replenishment' ? 'work.replenishment_destination_mismatch' : task.kind === 'CycleCount' ? 'work.count_location_mismatch' : 'work.location_not_found');
+      return;
+    }
     setSubmitting(true);
     setErrorCode(null);
 
-    const task = detail.task;
     const isCount = task.kind === 'CycleCount';
     const at = confirmed.trim().toUpperCase();
     const reason = overrideReason.trim();
@@ -190,6 +196,7 @@ export function TaskScreen({ taskId, ownerUserId, onDone }: TaskScreenProps) {
       key: idempotencyKey.current,
       request: {
         taskId,
+        ...(task.pickTourId ? { pickTourId: task.pickTourId } : {}),
         toLocationCode: at,
         ...(reason ? { overrideReason: reason } : {}),
         ...(isCount && found ? { countedQuantity: Number(found) } : {}),
@@ -226,18 +233,21 @@ export function TaskScreen({ taskId, ownerUserId, onDone }: TaskScreenProps) {
   }
 
   const task = detail.task;
+  if (task.kind === 'BinCount') return <BlindBinCount key={task.binCountClaimId} detail={detail} ownerUserId={ownerUserId} staleSince={staleSince} onClaim={() => void claim()} onChanged={setDetail} onDone={onDone} />;
   const suggestion = task.suggestedLocationCode;
   const scanned = confirmed.trim().toUpperCase();
   const isPick = task.kind === 'Pick';
   const isCount = task.kind === 'CycleCount';
+  const isReplenishment = task.kind === 'Replenishment';
+  const locationMatches = completionLocationAllowed(task.kind, scanned, task.fromLocationCode, suggestion);
 
   // A count has nothing to override — the operator is not choosing a destination,
   // and the bay is fixed. Their disagreement with the system is the variance.
-  const overriding = !isCount && scanned.length > 0 && suggestion !== null && scanned !== suggestion;
+  const overriding = !isCount && !isReplenishment && scanned.length > 0 && suggestion !== null && scanned !== suggestion;
 
   const countedValue = counted.trim();
   const countIsValid = countedValue.length > 0 && Number.isFinite(Number(countedValue)) && Number(countedValue) >= 0;
-  const canConfirm = scanned.length > 0 && (!isCount || countIsValid);
+  const canConfirm = locationMatches && (!isCount || countIsValid);
 
   return (
     <div className="flex flex-col gap-[var(--space-4)]">
@@ -290,6 +300,7 @@ export function TaskScreen({ taskId, ownerUserId, onDone }: TaskScreenProps) {
           <p className="m-0 flex items-baseline gap-[var(--space-2)]">
             <Numeric
               value={task.quantity}
+              maximumFractionDigits={4}
               locale={locale}
               className="text-[length:var(--text-xl)]"
             />
@@ -324,10 +335,10 @@ export function TaskScreen({ taskId, ownerUserId, onDone }: TaskScreenProps) {
         </Code>
       </div>
 
-      {isPick && task.sourceReference ? (
+      {(isPick || isReplenishment) && task.sourceReference ? (
         <div className="flex flex-col gap-[var(--space-1)]">
           <span className="text-[length:var(--text-sm)] text-[var(--color-text-secondary)]">
-            {t('work.forOrder')}
+            {isReplenishment ? t('replenishment.plan') : t('work.forOrder')}
           </span>
           <Code>{task.sourceReference}</Code>
         </div>
@@ -343,7 +354,7 @@ export function TaskScreen({ taskId, ownerUserId, onDone }: TaskScreenProps) {
                      border border-[var(--color-border-default)] bg-[var(--color-surface-raised)]
                      p-[var(--space-4)]"
         >
-          <Field label={t('work.countedQuantity')} htmlFor="counted-quantity">
+          <Field label={t('work.countedQuantity')} hint={t('work.countedHint')} hintMode="instruction" htmlFor="counted-quantity">
             <Input
               id="counted-quantity"
               inputMode="decimal"
@@ -353,9 +364,6 @@ export function TaskScreen({ taskId, ownerUserId, onDone }: TaskScreenProps) {
               className="text-[length:var(--text-2xl)]"
             />
           </Field>
-          <p className="m-0 text-[length:var(--text-sm)] text-[var(--color-text-secondary)]">
-            {t('work.countedHint')}
-          </p>
 
           {detail.decision ? (
             <Button
@@ -375,7 +383,7 @@ export function TaskScreen({ taskId, ownerUserId, onDone }: TaskScreenProps) {
                      p-[var(--space-4)]"
         >
           <span className="text-[length:var(--text-sm)] text-[var(--color-text-secondary)]">
-            {isPick ? t('work.takeTo') : t('work.putAwayAt')}
+            {isReplenishment ? t('replenishment.face') : isPick ? t('work.takeTo') : t('work.putAwayAt')}
           </span>
 
           {suggestion ? (
@@ -423,6 +431,10 @@ export function TaskScreen({ taskId, ownerUserId, onDone }: TaskScreenProps) {
           <Code className="text-[length:var(--text-base)]">{scanned}</Code>
         </p>
       ) : null}
+
+      {scanned && !locationMatches ? <p role="alert" className="text-[var(--color-danger-text)]">
+        {t(`errors.${isReplenishment ? 'work.replenishment_destination_mismatch' : 'work.count_location_mismatch'}`)}
+      </p> : null}
 
       {overriding ? (
         <div className="flex flex-col gap-[var(--space-2)]">

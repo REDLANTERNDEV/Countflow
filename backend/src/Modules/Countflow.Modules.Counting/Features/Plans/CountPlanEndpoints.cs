@@ -16,7 +16,7 @@ namespace Countflow.Modules.Counting.Features.Plans;
 /// Raises a batch of counts by policy.
 /// <para>
 /// The endpoint the whole phase hangs off, and it is deliberately the only way
-/// counts come into being. There is no "count this bay" command, because a count
+/// counts come into being manually. Scheduled runs use the same planner. There is no "count this bay" command, because a count
 /// somebody chose by hand is a count with no policy behind it — the trace would be
 /// empty, the accuracy figures would be measuring wherever a supervisor's attention
 /// happened to fall, and the coverage claim would be worthless. If the rules will
@@ -171,10 +171,11 @@ public static class CancelCountPlan
                 Guid id,
                 CancelCountPlanRequest? request,
                 CountingDbContext dbContext,
+                CountPlanning planning,
                 IWorkQueue queue,
                 TimeProvider clock,
                 CancellationToken cancellationToken) =>
-                    (await HandleAsync(id, request, dbContext, queue, clock, cancellationToken))
+                    (await HandleAsync(id, request, dbContext, planning, queue, clock, cancellationToken))
                         .ToHttpResult())
             .RequireAuthorization(policy => policy.RequireRole(Roles.Admin, Roles.Supervisor))
             .WithTags("Counting")
@@ -190,10 +191,15 @@ public static class CancelCountPlan
         Guid id,
         CancelCountPlanRequest? request,
         CountingDbContext dbContext,
+        CountPlanning planning,
         IWorkQueue queue,
         TimeProvider clock,
         CancellationToken cancellationToken)
     {
+        var warehouseId = await dbContext.CountPlans.Where(plan => plan.Id == id)
+            .Select(plan => (Guid?)plan.WarehouseId).SingleOrDefaultAsync(cancellationToken);
+        if (warehouseId is null) return Result.Failure<CancelCountPlanResponse>(CountingErrors.PlanNotFound);
+        await using var lease = await CountPlanningLock.AcquireAsync(dbContext, warehouseId.Value, cancellationToken);
         var plan = await dbContext.CountPlans
             .Include(p => p.Lines)
             .SingleOrDefaultAsync(p => p.Id == id, cancellationToken);
@@ -204,6 +210,12 @@ public static class CancelCountPlan
         {
             return Result.Failure<CancelCountPlanResponse>(CountingErrors.PlanNotOpen);
         }
+
+        // Resolve every keyed enqueue before withdrawal. A stale planner that
+        // lost its lock can only rediscover these cancelled tasks afterward.
+        await planning.RaiseOutstandingAsync(plan, cancellationToken);
+        if (plan.Lines.Any(line => line.WorkTaskId is null))
+            return Result.Failure<CancelCountPlanResponse>(CountingErrors.PlanIncomplete);
 
         var taskIds = plan.Lines
             .Where(line => line.WorkTaskId is not null)

@@ -110,3 +110,31 @@ A movement may be reversed once; a second attempt is `inventory.already_reversed
 and a reversal cannot itself be reversed. The ledger read marks a reversed entry
 `isReversed: true`, because a corrected movement that looks identical to a live one
 is how a reader draws the wrong conclusion from a correct ledger.
+
+## Pick-face replenishment
+
+`PUT /replenishment/pick-faces/{locationCode}` saves an opt-in policy for an active,
+replenishable Forward location. Supervisor or Admin is required. Supply `sku`,
+`minimum`, `maximum`, and `enabled`; quantities use base units, are positive with
+maximum greater than minimum, have at most four decimal places, and maximum is
+at most 1,000,000,000. Known volume, weight, and temperature constraints apply.
+Changing the item requires an empty face with no pending or incoming work.
+
+`GET /replenishment/pick-faces` lists policies with optional `warehouse`, `page`,
+and `pageSize` (25 by default, capped at 100). It returns on-hand, available,
+incoming, shortfall, last plan/decision trace, and recovery status. Available is
+shown for operations; classic min/max evaluates on-hand plus incoming. Policies
+are disabled unless explicitly enabled. Jobs probes enabled or pending faces
+once per minute, subject to its global runner settings.
+
+`GET /replenishment/plans/{id}` exposes source lines and task states. Supervisor
+or Admin can `POST /replenishment/plans/{id}/cancel`; repeat cancellation is safe,
+but assigned tasks must first be handed back. Cancellation converges unresolved
+keyed tasks, withdraws work atomically, and then releases open source reservations.
+
+Operators use ordinary Work claim, release, and completion endpoints. A
+Replenishment task requires its suggested destination, including offline queued
+confirmation. Reuse the completion idempotency key on retry. Confirmed Work
+completion follows Inventory's reserved Replenishment posting; a queued handheld
+confirmation is not yet server acceptance. Disabling the policy does not cancel
+its existing tasks.

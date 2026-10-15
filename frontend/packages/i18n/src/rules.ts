@@ -1,4 +1,5 @@
 import type { TFunction } from 'i18next';
+import { translateCount, type PluralKey } from './plurals.js';
 
 /**
  * A coded reason from the rules engine, exactly as the API sends it.
@@ -23,12 +24,26 @@ export interface RuleNote {
  * rather than to a missing-key marker.
  */
 const TOKEN_ARGS = new Set(['role', 'item', 'location', 'abc', 'condition']);
+const COUNT_ARGS = {
+  'rules.allocation.expires_on': 'days',
+  'rules.count.recently_moved': 'hours',
+  'rules.count.counted_recently': 'days',
+  'rules.count.days_since_count': 'days',
+  'rules.disposition.days_since_despatch': 'days',
+} satisfies Partial<Record<PluralKey, string>>;
 
 export function translateRuleNote(t: TFunction, note: RuleNote): string {
   const args: Record<string, string> = {};
 
   for (const [key, value] of Object.entries(note.args ?? {})) {
     args[key] = TOKEN_ARGS.has(key) ? t(`rules.token.${value}`, { defaultValue: value }) : value;
+  }
+
+  const countArg = COUNT_ARGS[note.code as keyof typeof COUNT_ARGS];
+  if (countArg) {
+    const value = args[countArg]; const count = Number(value);
+    if (value !== undefined && value.trim() !== '' && Number.isFinite(count)) return translateCount(t, note.code as PluralKey, count, args);
+    return t(`${note.code}_other`, { ...args, defaultValue: note.code });
   }
 
   // The code is already namespaced (`rules.putaway.temperature_mismatch`), so it

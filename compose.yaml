@@ -62,6 +62,7 @@ services:
       context: .
       dockerfile: docker/api.Dockerfile
     environment:
+      Webhooks__EncryptionKey: ${WEBHOOKS_ENCRYPTION_KEY:-}
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
       # GSS Encryption Mode=Disable: Npgsql defaults to Prefer and probes for
       # Kerberos, which the chiseled image deliberately does not ship — producing

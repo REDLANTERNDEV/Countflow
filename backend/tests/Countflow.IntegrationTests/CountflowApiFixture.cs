@@ -77,5 +77,6 @@ public sealed class CountflowApiFixture : WebApplicationFactory<Program>, IAsync
         // covered by IntegrationSurfaceTests, which stands up its own host with it
         // enabled and turned down to a handful of permits.
         builder.UseSetting("RateLimiting:Enabled", "false");
+        builder.UseSetting("Jobs:Enabled", "false");
     }
 }

@@ -4,6 +4,9 @@ namespace Countflow.Modules.Work;
 
 public static class WorkErrors
 {
+    public static readonly Error ReplenishmentDestinationMismatch =
+        Error.Validation("work.replenishment_destination_mismatch", "Scan the replenishment task's pick face.");
+
     public static readonly Error TaskNotFound =
         Error.NotFound("work.task_not_found", "No task with that identifier.");
 
@@ -91,6 +94,20 @@ public static class WorkErrors
         Error.Validation(
             "work.count_location_mismatch",
             "A cycle count is confirmed at the location it names. Scan that bay, or reject the task.");
+
+    public static readonly Error TourNotFound =
+        Error.NotFound("work.tour_not_found", "No pick tour with that identifier.");
+
+    public static readonly Error TourNotYours =
+        Error.Forbidden("work.tour_not_yours", "That tour belongs to somebody else.");
+
+    /// <summary>
+    /// Every stop on the tour has been walked or has already gone back. Reported
+    /// rather than shrugged off, because a scanner that shows "released" over a tour
+    /// somebody else is standing in the middle of is worse than a refusal.
+    /// </summary>
+    public static readonly Error TourNothingToRelease =
+        Error.Conflict("work.tour_nothing_to_release", "There is nothing left on that tour to hand back.");
 
     public static readonly Error WarehouseRequired =
         Error.Validation("work.warehouse_required", "A warehouse is needed to know which queue to read.");

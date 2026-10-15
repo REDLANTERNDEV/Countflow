@@ -11,6 +11,12 @@ namespace Countflow.Modules.Work.Features;
 /// Where the rules said to go. Null when nothing was admissible — the task is
 /// still real, and <paramref name="DecisionTraceId"/> still explains it.
 /// </param>
+/// <param name="TourSequence">
+/// Where this stop comes in the walk it was claimed as part of, from one. Null on
+/// anything claimed one at a time. Carried on the task rather than only on the tour
+/// so a handheld out of signal can put the jobs it is holding in order without having
+/// to have fetched a second object.
+/// </param>
 public sealed record WorkTaskResponse(
     Guid Id,
     WorkTaskKind Kind,
@@ -34,7 +40,11 @@ public sealed record WorkTaskResponse(
     string? CompletedAtLocationCode,
     bool WasOverridden,
     string? OverrideReason,
-    decimal? CountedQuantity);
+    decimal? CountedQuantity,
+    Guid? PickTourId,
+    int? TourSequence,
+    long? BinCountVersion = null,
+    Guid? BinCountClaimId = null);
 
 /// <summary>
 /// A task together with the reasoning behind its suggestion.
@@ -63,7 +73,11 @@ public sealed record WorkTaskPage(IReadOnlyList<WorkTaskResponse> Items, int Tot
 public sealed record CompleteWorkTaskRequest(
     string ToLocationCode,
     string? OverrideReason = null,
-    decimal? CountedQuantity = null);
+    decimal? CountedQuantity = null,
+    Guid? PickTourId = null,
+    long? BinCountVersion = null,
+    Guid? BinCountClaimId = null,
+    IReadOnlyList<BinCountObservation>? Observed = null);
 
 /// <param name="Movements">
 /// One entry per ledger line posted. A whole-pallet putaway carrying three SKUs
@@ -79,4 +93,5 @@ public sealed record CompleteWorkTaskRequest(
 public sealed record CompleteWorkTaskResponse(
     WorkTaskResponse Task,
     IReadOnlyList<PostedMovement> Movements,
-    CountOutcome? Count = null);
+    CountOutcome? Count = null,
+    BinCountOutcome? BinCount = null);

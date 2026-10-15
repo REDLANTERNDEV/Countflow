@@ -10,6 +10,50 @@ features is in [docs/history.md](docs/history.md).
 
 ### Added
 
+- Blind bin counts: supervisor-raised location audits discover unrecorded stock,
+  reconcile the entire bin atomically, and support durable offline handheld
+  confirmations with movement and claim fences.
+
+- Opt-in FIFO allocation by receipt age, preserved through internal moves and
+  reconstructed for historical replay, with an atomic one-time projection upgrade.
+
+- Handheld camera barcode inspection using native DataMatrix detection and the
+  existing GS1 catalogue resolver, with explicit permission/compatibility errors
+  and camera cleanup on capture, dismissal, and backgrounding.
+
+- Locale-aware cardinal messages and a typed count helper for scan queues,
+  tours, shelf life, and rule explanations, with full catalogue/placeholder checks.
+
+- Fixed operational dashboard with completion-time throughput, current backlog,
+  count accuracy, and zone slot/cube utilization with explicit unknown values.
+
+- HMAC-signed ledger webhooks with verified receivers, immutable retry batches,
+  blocking dead letters, and confidential idempotent reconciliation triggers.
+
+- Opt-in min/max pick-face replenishment with supervisor policies, reserved bulk
+  sourcing, durable plans and traces, visible shortages, safe withdrawal, and
+  fixed-destination handheld confirmations through the offline outbox.
+
+- Supervisor-edited, opt-in cycle-count schedules per warehouse, with bounded
+  task budgets, next-run/retry status, and the existing policy traces. Retries reuse plan/task keys, and manual and scheduled
+  planning serialize their open-holding exclusions.
+
+- Durable recurring jobs with scoped handlers, replica exclusion, restart recovery,
+  and bounded retry backoff. Inventory reconciliation uses the shared runner
+  while keeping its existing deployment settings.
+
+- Shared contextual help in the console and handheld: optional introductions,
+  field hints, and section explanations open from a circled-i control on hover,
+  keyboard focus, or click/tap. Operational instructions and queue states remain
+  visible; English and Turkish queue messages are shorter.
+- Pick tours with S-Shape, Return, and Midpoint routing per zone. Operators claim
+  an ordered set of picks, resume cached stops offline, and hand unfinished stops
+  back online. The console configures routing and rear cross-aisle geometry.
+- Tour claims and releases retain retry keys; concurrent release and completion
+  serialize against the same task rows. Route settings and travel estimates are
+  recorded with each tour.
+
+
 - **A pallet has a printable identity.** `POST /labels/prints` generates a GS1
   logistics label as ZPL from a template held as data, and records that somebody
   made one. At a blind receipt — no advice note, no supplier label — the warehouse

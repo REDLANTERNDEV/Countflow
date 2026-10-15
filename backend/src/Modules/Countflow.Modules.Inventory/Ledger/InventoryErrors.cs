@@ -13,6 +13,9 @@ namespace Countflow.Modules.Inventory.Ledger;
 /// </summary>
 public static class InventoryErrors
 {
+    public static readonly Error ReplenishmentLocationsInvalid =
+        Error.Validation("inventory.replenishment_locations_invalid", "Replenishment moves bulk stock into a replenishable pick face in the same warehouse.");
+
     public static readonly Error ItemNotFound =
         Error.NotFound("inventory.item_not_found", "No item with that identifier.");
 

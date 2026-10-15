@@ -1,6 +1,6 @@
 import type { components } from '@countflow/api-client';
-import { currentLocale, formatDateTime, formatNumber, useTranslation } from '@countflow/i18n';
-import {
+import { translateCount, currentLocale, formatDateTime, formatNumber, useTranslation } from '@countflow/i18n';
+import { InfoHelp,
   Badge,
   Button,
   Code,
@@ -118,11 +118,7 @@ export function AccuracyPage() {
 
   return (
     <>
-      <PageHead title={t('accuracy.title')} />
-
-      <p className="mb-[var(--space-4)] max-w-[72ch] text-[length:var(--text-sm)] text-[var(--color-text-secondary)]">
-        {t('accuracy.subtitle')}
-      </p>
+      <PageHead help={t('accuracy.subtitle')} title={t('accuracy.title')} />
 
       <div className="mb-[var(--space-5)] flex flex-wrap items-center gap-[var(--space-3)]">
         <Select value={selected} onChange={(event) => setWarehouseId(event.target.value)}>
@@ -142,10 +138,7 @@ export function AccuracyPage() {
       <section className="mb-[var(--space-6)]">
         <h2 className="mb-[var(--space-1)] text-[length:var(--text-lg)]">
           {t('accuracy.counts.title')}
-        </h2>
-        <p className="mb-[var(--space-3)] max-w-[72ch] text-[length:var(--text-sm)] text-[var(--color-text-secondary)]">
-          {t('accuracy.counts.hint')}
-        </p>
+         <InfoHelp label={t('common.about', { topic: t('accuracy.counts.title') })}>{t('accuracy.counts.hint')}</InfoHelp></h2>
 
         {accuracy.isPending ? <Spinner label={t('common.loading')} /> : null}
 
@@ -158,13 +151,12 @@ export function AccuracyPage() {
             <div className="mb-[var(--space-4)]">
               <SliceTable
                 caption={t('accuracy.counts.overall')}
+                help={t('accuracy.counts.netHint')}
                 slices={[accuracy.data.overall]}
                 labelHeading={t('accuracy.counts.slice')}
                 locale={locale}
               />
-              <p className="mt-[var(--space-2)] max-w-[72ch] text-[length:var(--text-xs)] text-[var(--color-text-tertiary)]">
-                {t('accuracy.counts.netHint')}
-              </p>
+
             </div>
 
             <div className="grid gap-[var(--space-5)] lg:grid-cols-2">
@@ -190,10 +182,7 @@ export function AccuracyPage() {
       <section className="mb-[var(--space-6)]">
         <h2 className="mb-[var(--space-1)] text-[length:var(--text-lg)]">
           {t('accuracy.overrides.title')}
-        </h2>
-        <p className="mb-[var(--space-3)] max-w-[72ch] text-[length:var(--text-sm)] text-[var(--color-text-secondary)]">
-          {t('accuracy.overrides.hint')}
-        </p>
+         <InfoHelp label={t('common.about', { topic: t('accuracy.overrides.title') })}>{t('accuracy.overrides.hint')}</InfoHelp></h2>
 
         {overrides.isPending ? <Spinner label={t('common.loading')} /> : null}
 
@@ -245,14 +234,12 @@ export function AccuracyPage() {
 
       <section className="mb-[var(--space-6)]">
         <div className="mb-[var(--space-1)] flex flex-wrap items-baseline gap-[var(--space-3)]">
-          <h2 className="text-[length:var(--text-lg)]">{t('accuracy.drift.title')}</h2>
+          <h2 className="text-[length:var(--text-lg)]">{t('accuracy.drift.title')} <InfoHelp label={t('common.about', { topic: t('accuracy.drift.title') })}>{t('accuracy.drift.hint')}</InfoHelp></h2>
           <Button size="sm" disabled={reconcile.isPending} onClick={() => reconcile.mutate()}>
             {reconcile.isPending ? t('accuracy.drift.running') : t('accuracy.drift.run')}
           </Button>
         </div>
-        <p className="mb-[var(--space-3)] max-w-[72ch] text-[length:var(--text-sm)] text-[var(--color-text-secondary)]">
-          {t('accuracy.drift.hint')}
-        </p>
+
 
         {drift.isPending ? <Spinner label={t('common.loading')} /> : null}
 
@@ -327,10 +314,7 @@ export function AccuracyPage() {
       <section>
         <h2 className="mb-[var(--space-1)] text-[length:var(--text-lg)]">
           {t('accuracy.stranded.title')}
-        </h2>
-        <p className="mb-[var(--space-3)] max-w-[72ch] text-[length:var(--text-sm)] text-[var(--color-text-secondary)]">
-          {t('accuracy.stranded.hint')}
-        </p>
+         <InfoHelp label={t('common.about', { topic: t('accuracy.stranded.title') })}>{t('accuracy.stranded.hint')}</InfoHelp></h2>
 
         {stranded.isPending ? <Spinner label={t('common.loading')} /> : null}
 
@@ -379,7 +363,7 @@ export function AccuracyPage() {
                     </TD>
                     <TD>
                       <span className="text-[length:var(--text-xs)] text-[var(--color-text-tertiary)]">
-                        {t('accuracy.stranded.age', { days: row.ageDays })}
+                        {translateCount(t, 'accuracy.stranded.age', row.ageDays, { days: row.ageDays })}
                       </span>
                     </TD>
                   </TR>
@@ -395,18 +379,20 @@ export function AccuracyPage() {
 
 interface SliceTableProps {
   caption: string;
+  help?: string;
   slices: AccuracySlice[];
   labelHeading: string;
   locale: string;
 }
 
-function SliceTable({ caption, slices, labelHeading, locale }: SliceTableProps) {
+function SliceTable({ caption, help, slices, labelHeading, locale }: SliceTableProps) {
   const { t } = useTranslation();
 
   return (
     <div>
       <h3 className="mb-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--color-text-secondary)]">
         {caption}
+        {help ? <InfoHelp label={t('common.about', { topic: caption })}>{help}</InfoHelp> : null}
       </h3>
       <TableContainer>
         <Table>

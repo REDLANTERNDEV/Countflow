@@ -173,6 +173,9 @@ not a rule they can write code against.
 | Code | Status | Means |
 |---|---|---|
 | `counting.plan_not_found` | 404 | |
+| `counting.schedule_budget_invalid` | 400 | Choose 1–200 tasks. |
+| `counting.schedule_interval_invalid` | 400 | Choose 1–10080 minutes. |
+| `counting.plan_incomplete` | 409 | Retry cancellation once all keyed tasks can be resolved. |
 | `counting.plan_not_open` | 409 | |
 | `counting.counts_in_progress` | 409 | A plan cannot be withdrawn from under a counter. |
 | `counting.task_count_not_positive` · `counting.too_many_tasks` | 400 | |
@@ -252,3 +255,79 @@ same codes scanning raises, deliberately — one idea, one code.
 | `gs1.unknown_ai` | 400 | An application identifier this build cannot encode. |
 | `gs1.duplicate_ai` | 400 | |
 | `gs1.wrong_fixed_length` | 400 | A predefined-length AI given the wrong number of characters. Nothing terminates one, so a short value swallows the head of the next element. |
+
+
+### Pick routing
+
+| Code | Status | Meaning |
+|---|---|---|
+| `work.tour_not_found` | 404 | The tour does not exist. |
+| `work.tour_not_yours` | 403 | Release is restricted to its operator. |
+| `work.tour_nothing_to_release` | 409 | No unfinished stops remain; retry the original release key after a lost response. |
+| `masterdata.zone_not_found` | 404 | The zone does not exist. |
+| `masterdata.unknown_route_strategy` | 400 | This build has no registered strategy under that code. |
+| `masterdata.route_strategy_unsupported` | 409 | The zone lacks geometry required by the strategy. |
+
+Routing support and fallback fields contain reason codes: `route.no_aisles`,
+`route.no_bay_depth`, `route.no_rear_cross_aisle`, `route.no_zone`, and
+`route.unknown_strategy`. They are explanatory metadata, not separate HTTP
+failures, and are translated by the client.
+
+`counting.schedule_failed` is a persisted schedule diagnostic, not an HTTP error.
+It indicates that the pending warehouse run will retry; its plan key is retained.
+
+### Replenishment
+
+| Code | Status | Meaning |
+|---|---|---|
+| `replenishment.levels_invalid` | 400 | Positive minimum, greater maximum, at most four decimals, maximum up to 1,000,000,000. |
+| `replenishment.capacity_exceeded` | 400 | Maximum exceeds known face weight or volume capacity. |
+| `replenishment.face_invalid` | 400 | Requires an active replenishable Forward location and compatible temperature. |
+| `replenishment.item_not_found` | 404 | Requires an active item. |
+| `replenishment.stock_committed` | 409 | Finish or withdraw incoming work before lowering maximum below on-hand plus incoming stock. |
+| `replenishment.in_progress` | 409 | Face stock or pending/incoming work prevents changing its item. |
+| `replenishment.plan_not_found` | 404 | The replenishment plan does not exist. |
+| `replenishment.retry_cancellation` | 409 | Resolve intended task acknowledgements before releasing stock; retry cancellation. |
+| `work.replenishment_destination_mismatch` | 400 | Confirm only the task's fixed pick face. |
+| `inventory.replenishment_locations_invalid` | 400 | Active Reserve source and replenishable Forward destination must share a warehouse. |
+
+Persisted policy diagnostics `replenishment.no_source`,
+`replenishment.face_unavailable`, `replenishment.capacity_exceeded`, and
+`replenishment.retrying` report a shortage, changed face/capacity, or pending retry.
+The pending plan and line keys survive retries. Allocation exclusion
+`rules.allocation.source_role_required` explains why a holding is not a bulk source.
+
+### Webhooks
+
+| Code | Status | Meaning |
+|---|---|---|
+| `webhooks.receiver_invalid` | 400 | Public HTTPS URL without credentials, query, or fragment; internal origins need deployment allowlisting. |
+| `webhooks.limit_reached` | 400 | Names up to 100 characters; up to 100 subscriptions or triggers. |
+| `webhooks.key_not_configured` | 503 | Configure the persistent 32-byte base64 encryption key. |
+| `webhooks.verification_failed` | 400 | Receiver did not echo the signed challenge with HTTP 200. |
+| `webhooks.verification_required` | 400 | Verify before enabling. |
+| `webhooks.retry_key_required` | 400 | Inbound calls require an Idempotency-Key up to 128 characters. |
+
+Delivery diagnostics `webhooks.receiver_refused` and `webhooks.delivery_failed`
+report a non-2xx acknowledgement or failed network/secret access. Eight failed
+attempts enter DeadLetter and block later batches until manual retry. Invalid or
+revoked capability URLs return 404; a full inbound queue returns 429.
+
+`work.throughput_window_invalid` (400) requires a dashboard window of 1–90 days.
+Dashboard throughput and density return 404 for an unknown or inactive warehouse.
+
+### Blind bin counts
+
+| Code | HTTP | Action |
+| --- | --- | --- |
+| `work.bin_count_reason_required` | 400 | Supply the supervisor's reason, up to 120 characters. |
+| `work.idempotency_key_reused` | 409 | Use the original bin/reason or a new request key. |
+| `inventory.bin_count_invalid` | 400 | Check identities, nonnegative quantities, conditions and the 200-row limit. |
+| `inventory.bin_count_duplicate` | 400 | Combine identical item/lot/pallet/condition holdings. |
+| `inventory.bin_changed` | 409 | Discard the old observations, restart, and count the entire bin again. |
+| `work.bin_count_recorded` | 409 | Retry the saved confirmation; it was recorded and cannot be released or restarted. |
+
+`work.task_not_yours` (403) also fences obsolete bin claim IDs after restart or
+release/reclaim. Existing item tracking, lot expiry, SSCC, correct-bin and task
+state errors still apply. `work.bin_draft_storage` is a device-only diagnostic:
+keep the capture screen open when local draft persistence fails.

@@ -1,3 +1,5 @@
+using Countflow.SharedKernel.Routing;
+
 namespace Countflow.SharedKernel.Contracts;
 
 /// <summary>
@@ -110,7 +112,9 @@ public sealed record StorageLocationSnapshot(
     int PickSequence,
     decimal? MaxVolumeM3,
     decimal? MaxWeightKg,
-    int? MaxDistinctItems) : Rules.IRuleCandidate
+    int? MaxDistinctItems,
+    string? AreaCode = null,
+    bool IsHierarchyActive = true) : Rules.IRuleCandidate, IRoutePosition
 {
     /// <summary>The rack label. What a trace shows a human, and what they scan to confirm.</summary>
     string Rules.IRuleCandidate.Key => Code;
@@ -191,5 +195,42 @@ public interface ILocationDirectory
     /// </summary>
     Task<StorageLocationSnapshot?> FindStorageLocationByCodeAsync(
         string code,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// The aisle grid and per-zone walking configuration behind a set of locations,
+    /// for whoever has to put them in the order a picker walks them.
+    /// <para>
+    /// A separate read rather than more fields on
+    /// <see cref="StorageLocationSnapshot"/>, and the reasoning is that record's own:
+    /// the ledger needs three facts about a location and gets three, the rules engine
+    /// needs shape and capacity and route position and gets those. Routing needs the
+    /// aisle and the bay, which no rule has ever scored on, plus two facts that are
+    /// not about a location at all — how its zone is walked, and whether that zone
+    /// has a rear cross-aisle.
+    /// </para>
+    /// <para>
+    /// It returns the grid of the whole <i>zone</i> rather than of the locations
+    /// asked about, which is not an accident and not padding: a midpoint is the
+    /// middle of an aisle, and an aisle measured across the two bins a tour happens
+    /// to visit has a middle that moves every time the tour does.
+    /// </para>
+    /// </summary>
+    Task<PickRouteMap> FindPickRouteMapAsync(
+        IReadOnlyCollection<Guid> locationIds,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// The same map for whole zones, with no stops on it.
+    /// <para>
+    /// For the other end of the feature: refusing a zone a strategy whose geometry it
+    /// does not have, at the moment somebody configures it. That is the trick a rule
+    /// set already plays by building itself through the real catalogue, and a label
+    /// template by rendering itself against a specimen — check it where somebody is
+    /// looking at a screen, not at a rack.
+    /// </para>
+    /// </summary>
+    Task<PickRouteMap> FindZonePickRouteMapAsync(
+        IReadOnlyCollection<Guid> zoneIds,
         CancellationToken cancellationToken);
 }

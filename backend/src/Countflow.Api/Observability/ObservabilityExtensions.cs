@@ -21,6 +21,8 @@ public static class ObservabilityExtensions
         {
             configuration
                 .ReadFrom.Configuration(builder.Configuration)
+                // Capability URLs are bearer credentials, never log their request paths.
+                .Filter.ByExcluding(log => log.Properties.Values.Any(value => value.ToString().Contains("/webhooks/invoke/", StringComparison.OrdinalIgnoreCase)))
                 .ReadFrom.Services(services)
                 .Enrich.FromLogContext()
                 .Enrich.WithProperty("Service", ServiceName)
@@ -46,7 +48,7 @@ public static class ObservabilityExtensions
                     .AddAspNetCoreInstrumentation(options =>
                     {
                         // Health probes fire constantly and would drown the traces.
-                        options.Filter = context => !context.Request.Path.StartsWithSegments("/health");
+                        options.Filter = context => !context.Request.Path.StartsWithSegments("/health") && !context.Request.Path.StartsWithSegments("/api/v1/webhooks/invoke");
                     })
                     .AddHttpClientInstrumentation()
                     .AddNpgsql();

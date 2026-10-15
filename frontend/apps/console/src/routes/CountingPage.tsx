@@ -1,5 +1,5 @@
 import { currentLocale, formatDateTime, useTranslation } from '@countflow/i18n';
-import {
+import { InfoHelp,
   Badge,
   Button,
   Code,
@@ -20,6 +20,8 @@ import {
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { api } from '../api.js';
+import { CountSchedules } from '../components/CountSchedules.js';
+import { BinCountForm } from '../components/BinCountForm.js';
 import { DecisionTrace } from '../components/DecisionTrace.js';
 import { PageHead } from '../components/PageHead.js';
 
@@ -37,11 +39,8 @@ function newIdempotencyKey() {
 /**
  * What the system decided to go and check, and what came back.
  *
- * There is deliberately no "count this bay" button. A count somebody chose by
- * hand has no policy behind it, so its trace would be empty and the accuracy
- * figures downstream would be measuring wherever a supervisor's attention
- * happened to fall. If the rules will not raise a bay, the fix is to change the
- * rules — and the preview on the Rules screen shows what else that changes.
+ * Policy-led holding counts keep their decision traces. Manual bin audits are
+ * explicitly raised with a supervisor's reason and can discover unrecorded stock.
  */
 export function CountingPage() {
   const { t } = useTranslation();
@@ -161,22 +160,19 @@ export function CountingPage() {
 
   return (
     <>
-      <PageHead title={t('counting.title')} count={total} />
-
-      <p className="mb-[var(--space-4)] max-w-[72ch] text-[length:var(--text-sm)] text-[var(--color-text-secondary)]">
-        {t('counting.subtitle')}
-      </p>
+      <PageHead help={t('counting.subtitle')} title={t('counting.title')} count={total} />
+      <BinCountForm />
+      <CountSchedules />
 
       <section
         className="mb-[var(--space-5)] rounded-[var(--radius-surface)] border
                    border-[var(--color-border-default)] bg-[var(--color-surface-raised)]
                    p-[var(--space-4)]"
       >
-        <p className="mt-0 mb-[var(--space-3)] text-[length:var(--text-sm)] text-[var(--color-text-secondary)]">
-          {t('counting.planHint')}
-        </p>
+
 
         <div className="flex flex-wrap items-end gap-[var(--space-3)]">
+          <InfoHelp label={t('common.help')}>{t('counting.planHint')}</InfoHelp>
           <Field label={t('nav.warehouses')} htmlFor="plan-warehouse">
             <Select
               id="plan-warehouse"

@@ -16,6 +16,18 @@ namespace Countflow.Modules.Rules.Allocation;
 /// </summary>
 internal static class AllocationPreferences
 {
+    internal sealed class FirstInFirstOut(decimal weight) : IPreferenceRule<StockHolding, AllocationContext>
+    {
+        public const string RuleCode = "allocation.fifo";
+        public string Code => RuleCode;
+        public decimal Weight => weight;
+        public ScoreContribution Score(StockHolding candidate, AllocationContext context) =>
+            candidate.FirstReceivedAt is { } received
+                ? new ScoreContribution(context.ReceiptRotationScore(candidate), RuleNote.Of("rules.allocation.received_on",
+                    ("received", received.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture))))
+                : ScoreContribution.Of(0.5m, "rules.allocation.receipt_age_unknown");
+    }
+
     /// <summary>
     /// First expired, first out.
     /// <para>

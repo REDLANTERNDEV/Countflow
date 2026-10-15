@@ -11,11 +11,14 @@
     <Project Path="src/Modules/Countflow.Modules.Identity/Countflow.Modules.Identity.csproj" />
     <Project Path="src/Modules/Countflow.Modules.Inbound/Countflow.Modules.Inbound.csproj" />
     <Project Path="src/Modules/Countflow.Modules.Inventory/Countflow.Modules.Inventory.csproj" />
+    <Project Path="src/Modules/Countflow.Modules.Jobs/Countflow.Modules.Jobs.csproj" />
     <Project Path="src/Modules/Countflow.Modules.Labels/Countflow.Modules.Labels.csproj" />
     <Project Path="src/Modules/Countflow.Modules.MasterData/Countflow.Modules.MasterData.csproj" />
     <Project Path="src/Modules/Countflow.Modules.Outbound/Countflow.Modules.Outbound.csproj" />
     <Project Path="src/Modules/Countflow.Modules.Replay/Countflow.Modules.Replay.csproj" />
+    <Project Path="src/Modules/Countflow.Modules.Replenishment/Countflow.Modules.Replenishment.csproj" />
     <Project Path="src/Modules/Countflow.Modules.Rules/Countflow.Modules.Rules.csproj" />
+    <Project Path="src/Modules/Countflow.Modules.Webhooks/Countflow.Modules.Webhooks.csproj" />
     <Project Path="src/Modules/Countflow.Modules.Work/Countflow.Modules.Work.csproj" />
   </Folder>
   <Folder Name="/tests/">

@@ -41,13 +41,14 @@ public static class CompleteWorkTask
                 WorkDbContext dbContext,
                 WorkTaskDescriber describe,
                 IStockPosting posting,
+                IBlindBinCounting binCounting,
                 ILocationDirectory locations,
                 TimeProvider clock,
                 ILogger<WorkTask> logger,
                 CancellationToken cancellationToken) =>
-                    (await HandleAsync(
+                    (await dbContext.Database.CreateExecutionStrategy().ExecuteAsync(() => HandleAsync(
                         id, request, user, idempotencyKey, dbContext, describe,
-                        posting, locations, clock, logger, cancellationToken))
+                        posting, binCounting, locations, clock, logger, cancellationToken)))
                         .ToHttpResult())
             .RequireAuthorization()
             .WithTags("Work")
@@ -68,6 +69,7 @@ public static class CompleteWorkTask
         WorkDbContext dbContext,
         WorkTaskDescriber describe,
         IStockPosting posting,
+        IBlindBinCounting binCounting,
         ILocationDirectory locations,
         TimeProvider clock,
         ILogger logger,
@@ -81,8 +83,39 @@ public static class CompleteWorkTask
         var actor = PostingActor.From(user);
         if (actor.IsFailure) return Result.Failure<CompleteWorkTaskResponse>(actor.Error);
 
-        var task = await dbContext.WorkTasks.SingleOrDefaultAsync(t => t.Id == id, cancellationToken);
+        dbContext.ChangeTracker.Clear();
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+        var task = (await dbContext.WorkTasks.FromSqlInterpolated(
+            $"SELECT * FROM work.\"WorkTasks\" WHERE \"Id\" = {id} FOR UPDATE")
+            .ToListAsync(cancellationToken)).SingleOrDefault();
         if (task is null) return Result.Failure<CompleteWorkTaskResponse>(WorkErrors.TaskNotFound);
+
+        if (task.Kind == WorkTaskKind.BinCount)
+        {
+            if (task.Status is not (WorkTaskStatus.Assigned or WorkTaskStatus.Completed))
+                return Result.Failure<CompleteWorkTaskResponse>(WorkErrors.TaskNotOpen);
+            if (task.AssignedToUserId != actor.Value.UserId)
+                return Result.Failure<CompleteWorkTaskResponse>(WorkErrors.TaskNotYours);
+            if (task.Status == WorkTaskStatus.Completed && task.CompletionIdempotencyKey != idempotencyKey)
+                return Result.Failure<CompleteWorkTaskResponse>(WorkErrors.TaskAlreadyCompleted);
+            if (request.BinCountVersion is null || request.BinCountVersion != task.BinCountVersion
+                || request.BinCountClaimId is null || request.BinCountClaimId != task.BinCountClaimId)
+                return Result.Failure<CompleteWorkTaskResponse>(WorkErrors.TaskNotYours);
+            var bin = await locations.FindByCodeAsync(request.ToLocationCode.Trim(), cancellationToken);
+            if (bin?.Id != task.FromLocationId)
+                return Result.Failure<CompleteWorkTaskResponse>(WorkErrors.CountLocationMismatch);
+            if (request.Observed is null)
+                return Result.Failure<CompleteWorkTaskResponse>(WorkErrors.CountQuantityRequired);
+            var result = await binCounting.ConfirmAsync(new BinCountInstruction(task.Id, task.FromLocationId,
+                request.BinCountVersion.Value, request.Observed, idempotencyKey, actor.Value, task.SourceReference!), cancellationToken);
+            if (result.IsFailure) return Result.Failure<CompleteWorkTaskResponse>(result.Error);
+            task.Status = WorkTaskStatus.Completed; task.CompletedAt ??= result.Value.ConfirmedAt;
+            task.CompletedAtLocationId = task.FromLocationId; task.CompletedByUserId = actor.Value.UserId;
+            task.CompletedByUserName = actor.Value.UserName; task.CompletionIdempotencyKey = idempotencyKey;
+            await dbContext.SaveChangesAsync(cancellationToken); await transaction.CommitAsync(cancellationToken);
+            return new CompleteWorkTaskResponse(await describe.DescribeAsync(task, cancellationToken),
+                [.. result.Value.Counts.Where(count => count.Adjustment is not null).Select(count => count.Adjustment!)], BinCount: result.Value);
+        }
 
         if (task.Status == WorkTaskStatus.Completed)
         {
@@ -100,6 +133,12 @@ public static class CompleteWorkTask
             return Result.Failure<CompleteWorkTaskResponse>(WorkErrors.TaskNotOpen);
         }
 
+        // A cached tour stop is only authority for the claim that gave it to the
+        // device. Hand-back or reassignment invalidates that claim, even while
+        // the task is Ready and has no current owner.
+        if (request.PickTourId is { } expectedTour && task.PickTourId != expectedTour)
+            return Result.Failure<CompleteWorkTaskResponse>(WorkErrors.TaskNotYours);
+
         if (task.AssignedToUserId is { } owner && owner != actor.Value.UserId)
         {
             return Result.Failure<CompleteWorkTaskResponse>(WorkErrors.TaskNotYours);
@@ -115,6 +154,9 @@ public static class CompleteWorkTask
 
         var destination = await locations.FindByCodeAsync(request.ToLocationCode.Trim(), cancellationToken);
         if (destination is null) return Result.Failure<CompleteWorkTaskResponse>(WorkErrors.LocationNotFound);
+
+        if (task.Kind == WorkTaskKind.Replenishment && destination.Id != task.SuggestedLocationId)
+            return Result.Failure<CompleteWorkTaskResponse>(WorkErrors.ReplenishmentDestinationMismatch);
 
         var isCount = task.Kind == WorkTaskKind.CycleCount;
 
@@ -160,6 +202,7 @@ public static class CompleteWorkTask
         task.AssignedAt ??= task.CompletedAt;
 
         await dbContext.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
 
         if (overridden)
         {
@@ -253,7 +296,7 @@ public static class CompleteWorkTask
             var counted = await posting.CountAsync(
                 new CountInstruction
                 {
-                    ItemId = task.ItemId,
+                    ItemId = task.ItemId!.Value,
                     LotId = task.LotId,
                     LocationId = task.FromLocationId,
                     LicensePlateId = task.LicensePlateId,
@@ -274,7 +317,7 @@ public static class CompleteWorkTask
                 counted.Value);
         }
 
-        if (task.Kind == WorkTaskKind.Pick)
+        if (task.Kind is WorkTaskKind.Pick or WorkTaskKind.Replenishment)
         {
             // Refused rather than posted with a null, exactly as a directed
             // movement with no trace is. Stock leaving a bin against no claim is
@@ -284,8 +327,7 @@ public static class CompleteWorkTask
                 return Result.Failure<Confirmation>(WorkErrors.TaskHasNoReservation);
             }
 
-            var picked = await posting.PickAsync(
-                new PickInstruction
+            var instruction = new PickInstruction
                 {
                     ReservationId = reservationId,
                     ToLocationId = destinationId,
@@ -294,8 +336,10 @@ public static class CompleteWorkTask
                     TaskId = task.Id,
                     DecisionTraceId = decisionTraceId,
                     Notes = task.SourceReference
-                },
-                cancellationToken);
+                };
+            var picked = task.Kind == WorkTaskKind.Replenishment
+                ? await posting.ReplenishAsync(instruction, cancellationToken)
+                : await posting.PickAsync(instruction, cancellationToken);
 
             return picked.IsFailure
                 ? Result.Failure<Confirmation>(picked.Error)
@@ -325,7 +369,7 @@ public static class CompleteWorkTask
         var single = await posting.PutawayAsync(
             new PutawayInstruction
             {
-                ItemId = task.ItemId,
+                ItemId = task.ItemId!.Value,
                 LotId = task.LotId,
                 Quantity = task.Quantity,
                 FromLocationId = task.FromLocationId,

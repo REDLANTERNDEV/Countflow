@@ -38,6 +38,8 @@ public sealed class StockBalance
     // ---- The value ----
 
     public decimal Quantity { get; set; }
+    /// <summary>Rebuildable receipt age of the current holding cohort, preserved through internal moves.</summary>
+    public DateTimeOffset? FirstReceivedAt { get; set; }
 
     /// <summary>
     /// True only for the virtual counterparty locations, which are the contra

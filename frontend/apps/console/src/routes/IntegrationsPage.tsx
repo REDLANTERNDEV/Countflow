@@ -1,5 +1,5 @@
 import { currentLocale, formatDateTime, useTranslation } from '@countflow/i18n';
-import {
+import { InfoHelp,
   Badge,
   Button,
   Code,
@@ -18,6 +18,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { api } from '../api.js';
+import { WebhooksPanel } from '../components/WebhooksPanel.js';
 import { PageHead } from '../components/PageHead.js';
 
 /**
@@ -108,11 +109,8 @@ export function IntegrationsPage() {
 
   return (
     <>
-      <PageHead title={t('integrations.title')} count={data?.length} />
-
-      <p className="mb-[var(--space-5)] max-w-[72ch] text-[length:var(--text-sm)] text-[var(--color-text-secondary)]">
-        {t('integrations.subtitle')}
-      </p>
+      <PageHead help={t('integrations.subtitle')} title={t('integrations.title')} count={data?.length} />
+      <WebhooksPanel />
 
       {issued ? (
         <section
@@ -147,10 +145,7 @@ export function IntegrationsPage() {
                    rounded-[var(--radius-surface)] border border-[var(--color-border-subtle)]
                    bg-[var(--color-surface-raised)] p-[var(--space-4)]"
       >
-        <h3 className="m-0 text-[length:var(--text-lg)]">{t('integrations.create.title')}</h3>
-        <p className="m-0 max-w-[72ch] text-[length:var(--text-sm)] text-[var(--color-text-secondary)]">
-          {t('integrations.create.hint')}
-        </p>
+        <h3 className="m-0 text-[length:var(--text-lg)]">{t('integrations.create.title')} <InfoHelp label={t('common.about', { topic: t('integrations.create.title') })}>{t('integrations.create.hint')}</InfoHelp></h3>
 
         <div className="flex flex-wrap items-center gap-[var(--space-3)]">
           <Input

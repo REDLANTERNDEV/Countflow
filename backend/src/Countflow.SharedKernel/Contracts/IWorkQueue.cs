@@ -28,7 +28,8 @@ public enum WorkTaskKind
     /// would be decided by somebody who has not opened the carton.
     /// </para>
     /// </summary>
-    Inspection = 5
+    Inspection = 5,
+    BinCount = 6
 }
 
 /// <summary>A job for an operator, raised by whichever module knows it is needed.</summary>
@@ -53,7 +54,7 @@ public sealed record WorkTaskRequest
 
     public required Guid WarehouseId { get; init; }
 
-    public required Guid ItemId { get; init; }
+    public required Guid? ItemId { get; init; }
 
     public Guid? LotId { get; init; }
 
@@ -155,9 +156,9 @@ public interface IWorkQueue
 
     /// <summary>
     /// Withdraws jobs that have not been started, and returns how many actually
-    /// went. A claimed task is left standing: an operator halfway to the rack is
-    /// not something another module gets to cancel out from under them, and the
-    /// count is what tells the caller some of its work is still live.
+    /// went. If any task is assigned, refuses the whole set under row locks so
+    /// callers cannot release source stock while an operator is walking to it.
+    /// Completed and already cancelled tasks remain unchanged.
     /// </summary>
     Task<Result<int>> CancelAsync(
         IReadOnlyCollection<Guid> taskIds,

@@ -141,4 +141,6 @@ export {
 } from './format.js';
 export { translateRuleNote, translateRuleName } from './rules.js';
 export type { RuleNote } from './rules.js';
+export { translateCount } from './plurals.js';
+export type { PluralKey } from './plurals.js';
 export { useTranslation, Trans } from 'react-i18next';

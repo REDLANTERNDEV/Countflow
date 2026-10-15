@@ -138,6 +138,9 @@ public sealed class StockLedger(
         // completely, and the idempotency keys make the retry safe.
         var strategy = dbContext.Database.CreateExecutionStrategy();
 
+        if (dbContext.Database.CurrentTransaction is not null)
+            return await PostInTransactionAsync(commands, pending, replays, validated.Value, cancellationToken);
+
         return await strategy.ExecuteAsync(
             token => PostInTransactionAsync(commands, pending, replays, validated.Value, token),
             cancellationToken);
@@ -195,6 +198,12 @@ public sealed class StockLedger(
             // rotated. Silently returning the old receipt would report success for
             // a movement that never happened, which is the one failure mode worse
             // than an error.
+            if (command.ConsumesReservationId is { } reservationId
+                && !await dbContext.StockReservations.AsNoTracking().AnyAsync(
+                    reservation => reservation.Id == reservationId && reservation.ConsumedByMovementId == already.Id,
+                    cancellationToken))
+                return Result.Failure<(List<PostingCommand>, Dictionary<string, StockMovement>)>(InventoryErrors.IdempotencyKeyReused);
+
             if (!command.Matches(already))
             {
                 logger.LogWarning(
@@ -222,7 +231,10 @@ public sealed class StockLedger(
         // twice under one key family.
         dbContext.ChangeTracker.Clear();
 
-        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+        var enclosing = dbContext.Database.CurrentTransaction;
+        await using var ownedTransaction = enclosing is null
+            ? await dbContext.Database.BeginTransactionAsync(cancellationToken) : null;
+        var transaction = enclosing ?? ownedTransaction!;
 
         try
         {
@@ -306,17 +318,28 @@ public sealed class StockLedger(
                 // reported "after" figure is the state as that entry left it —
                 // which is what a confirmation screen showing the second line of a
                 // pallet move has to say.
+                var fromKey = new BalanceKey(command.ItemId, command.LotId, command.From);
+                var toKey = new BalanceKey(command.ItemId, command.LotId, command.To);
+                var source = locked[fromKey];
+                var incomingAge = ReceiptAge.Incoming(movement.Type, movement.OccurredAt, source.FirstReceivedAt);
+                var sourceAge = ReceiptAge.After(source.Quantity, source.FirstReceivedAt, -command.Quantity, null);
                 var fromAfter = await ApplyDeltaAsync(
-                    locked[new BalanceKey(command.ItemId, command.LotId, command.From)].Id,
+                    source.Id,
                     -command.Quantity,
                     movement.Sequence,
+                    sourceAge,
                     cancellationToken);
+                locked[fromKey] = source with { Quantity = fromAfter, FirstReceivedAt = sourceAge };
 
+                var destination = locked[toKey];
+                var destinationAge = ReceiptAge.After(destination.Quantity, destination.FirstReceivedAt, command.Quantity, incomingAge);
                 var toAfter = await ApplyDeltaAsync(
-                    locked[new BalanceKey(command.ItemId, command.LotId, command.To)].Id,
+                    destination.Id,
                     command.Quantity,
                     movement.Sequence,
+                    destinationAge,
                     cancellationToken);
+                locked[toKey] = destination with { Quantity = toAfter, FirstReceivedAt = destinationAge };
 
                 posted[command.IdempotencyKey] = new MovementReceipt(
                     movement.Id,
@@ -328,7 +351,7 @@ public sealed class StockLedger(
                     WasAlreadyPosted: false);
             }
 
-            await transaction.CommitAsync(cancellationToken);
+            if (ownedTransaction is not null) await transaction.CommitAsync(cancellationToken);
 
             foreach (var command in pending)
             {
@@ -357,6 +380,8 @@ public sealed class StockLedger(
         }
         catch (DbUpdateException exception) when (IsIdempotencyCollision(exception))
         {
+            if (ownedTransaction is null)
+                return Result.Failure<IReadOnlyList<MovementReceipt>>(InventoryErrors.IdempotencyKeyReused);
             // Two copies of the same retried batch arrived close enough together
             // that both got past the check above. The unique index settles it; the
             // loser reports the winner's entries, which is the same answer either
@@ -614,7 +639,7 @@ public sealed class StockLedger(
                     0, @allowsNegative, 0, @now)
             ON CONFLICT ("ItemId", "LotId", "LocationId", "LicensePlateId", "Status")
             DO UPDATE SET "UpdatedAt" = EXCLUDED."UpdatedAt"
-            RETURNING "Id", "Quantity", "AllowsNegative"
+            RETURNING "Id", "Quantity", "AllowsNegative", "FirstReceivedAt"
             """;
 
         await using var command = CreateCommand(sql);
@@ -641,7 +666,8 @@ public sealed class StockLedger(
         return new LockedBalance(
             reader.GetGuid(0),
             reader.GetDecimal(1),
-            reader.GetBoolean(2));
+            reader.GetBoolean(2),
+            reader.IsDBNull(3) ? null : reader.GetFieldValue<DateTimeOffset>(3));
     }
 
     /// <summary>
@@ -653,12 +679,14 @@ public sealed class StockLedger(
         Guid balanceId,
         decimal delta,
         long sequence,
+        DateTimeOffset? firstReceivedAt,
         CancellationToken cancellationToken)
     {
         const string sql = $"""
             UPDATE {BalancesTable}
             SET "Quantity" = "Quantity" + @delta,
                 "LastMovementSequence" = @sequence,
+                "FirstReceivedAt" = @firstReceivedAt,
                 "UpdatedAt" = @now
             WHERE "Id" = @id
             RETURNING "Quantity"
@@ -668,6 +696,7 @@ public sealed class StockLedger(
 
         command.Parameters.Add(new NpgsqlParameter("delta", NpgsqlDbType.Numeric) { Value = delta });
         command.Parameters.Add(new NpgsqlParameter("sequence", NpgsqlDbType.Bigint) { Value = sequence });
+        command.Parameters.Add(new NpgsqlParameter("firstReceivedAt", NpgsqlDbType.TimestampTz) { Value = firstReceivedAt.HasValue ? firstReceivedAt.Value : DBNull.Value });
         command.Parameters.Add(new NpgsqlParameter("now", NpgsqlDbType.TimestampTz) { Value = clock.GetUtcNow() });
         command.Parameters.Add(new NpgsqlParameter("id", NpgsqlDbType.Uuid) { Value = balanceId });
 
@@ -771,5 +800,5 @@ public sealed class StockLedger(
         } postgres
         && postgres.ConstraintName?.Contains("IdempotencyKey", StringComparison.Ordinal) == true;
 
-    private readonly record struct LockedBalance(Guid Id, decimal Quantity, bool AllowsNegative);
+    private readonly record struct LockedBalance(Guid Id, decimal Quantity, bool AllowsNegative, DateTimeOffset? FirstReceivedAt);
 }

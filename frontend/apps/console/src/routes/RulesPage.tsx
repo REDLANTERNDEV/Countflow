@@ -1,5 +1,5 @@
 import { currentLocale, formatDateTime, translateRuleName, useTranslation } from '@countflow/i18n';
-import {
+import { InfoHelp,
   Badge,
   Button,
   Code,
@@ -91,11 +91,7 @@ export function RulesPage() {
 
   return (
     <>
-      <PageHead title={t('rules.title')} count={data?.items.length} />
-
-      <p className="mb-[var(--space-5)] max-w-[72ch] text-[length:var(--text-sm)] text-[var(--color-text-secondary)]">
-        {t('rules.subtitle')}
-      </p>
+      <PageHead help={t('rules.subtitle')} title={t('rules.title')} count={data?.items.length} />
 
       {/* The preview sits above the rule sets deliberately: the question a
           supervisor arrives with is "what would it do", and the configuration is
@@ -105,10 +101,7 @@ export function RulesPage() {
                    rounded-[var(--radius-surface)] border border-[var(--color-border-subtle)]
                    bg-[var(--color-surface-raised)] p-[var(--space-4)]"
       >
-        <h3 className="m-0 text-[length:var(--text-lg)]">{t('rules.preview.title')}</h3>
-        <p className="m-0 text-[length:var(--text-sm)] text-[var(--color-text-secondary)]">
-          {t('rules.preview.hint')}
-        </p>
+        <h3 className="m-0 text-[length:var(--text-lg)]">{t('rules.preview.title')} <InfoHelp label={t('common.about', { topic: t('rules.preview.title') })}>{t('rules.preview.hint')}</InfoHelp></h3>
 
         <div className="flex flex-wrap items-center gap-[var(--space-3)]">
           <Input
@@ -163,7 +156,7 @@ export function RulesPage() {
       {data?.items.map((set) => (
         <section key={set.id} className="mb-[var(--space-5)]">
           <div className="mb-[var(--space-3)] flex flex-wrap items-baseline gap-[var(--space-3)]">
-            <h3 className="m-0 text-[length:var(--text-lg)]">{set.name}</h3>
+            <h3 className="m-0 text-[length:var(--text-lg)]">{set.name}{set.notes ? <InfoHelp label={t('common.about', { topic: set.name })}>{set.notes}</InfoHelp> : null}</h3>
             <Badge tone="neutral">{t('rules.version', { version: set.version })}</Badge>
             <Badge tone={statusTone(set.status)}>{t(`rules.status.${set.status}`)}</Badge>
             <span className="text-[length:var(--text-sm)] text-[var(--color-text-tertiary)]">
@@ -176,11 +169,7 @@ export function RulesPage() {
             ) : null}
           </div>
 
-          {set.notes ? (
-            <p className="mb-[var(--space-3)] mt-0 max-w-[72ch] text-[length:var(--text-sm)] text-[var(--color-text-secondary)]">
-              {set.notes}
-            </p>
-          ) : null}
+
 
           <div className="mb-[var(--space-3)]">
             <RuleSetDraft
@@ -256,10 +245,8 @@ export function RulesPage() {
         <section className="mt-[var(--space-5)]">
           <h3 className="mb-[var(--space-2)] mt-0 text-[length:var(--text-base)]">
             {t('rules.available')}
-          </h3>
-          <p className="mb-[var(--space-3)] mt-0 max-w-[72ch] text-[length:var(--text-sm)] text-[var(--color-text-secondary)]">
-            {t('rules.availableHint')}
-          </p>
+           <InfoHelp label={t('common.about', { topic: t('rules.available') })}>{t('rules.availableHint')}</InfoHelp></h3>
+
           {/* Grouped by decision kind, because the two vocabularies are not
               interchangeable: an allocation rule is written about holdings of
               stock and a putaway rule about empty bins, so offering one where the

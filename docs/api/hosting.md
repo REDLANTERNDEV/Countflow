@@ -28,7 +28,7 @@ API keys into it.
 
 | Service | Does |
 |---|---|
-| `postgres` | One database, nine schemas, one per module. Not published. |
+| `postgres` | One database, one schema per module. Not published. |
 | `migrator` | Runs every module's migrations and seeders, then exits. |
 | `api` | The published surface. Not published — Caddy is the only way in. |
 | `simulator` | **Builds the warehouse, through the API.** Runs once and exits. |
@@ -163,3 +163,125 @@ building they are made in. From an empty database the same seed gives the same
 result every time; run it against a database that already has stock in it and the
 totals will differ, because allocation has more to choose from. That is the
 intended behaviour and not a bug in the seeding.
+
+## Recurring jobs
+
+The API hosts the runner; the migrator creates its `jobs` schema. `Jobs:Enabled`
+(default `true`) controls dispatch and `Jobs:PollInterval` defaults to five seconds
+(allowed: one second to one minute). Use double underscores in environment names,
+for example `Jobs__Enabled=false`. The OpenAPI export never dispatches jobs.
+
+Inventory reconciliation remains enabled by default, with
+`Inventory:Reconciliation:Interval=01:00:00` and `InitialDelay=00:05:00`.
+Intervals must be one minute to seven days, initial delays zero to seven days.
+Disabling a job preserves its stored schedule. Changing an interval applies after
+the next successful run; changing initial delay only affects new schedules.
+
+Each module registers an `IBackgroundJob` implementation with `AddRecurringJob`,
+a stable unique name, and its configuration section. Each execution gets a fresh
+DI scope and a `BackgroundJobRun.IdempotencyKey`. Handlers that write business
+state must use that key through their owning module's idempotent command seam.
+The runner guarantees at-least-once delivery, not exactly-once side effects.
+
+A dedicated PostgreSQL session lock excludes healthy API replicas per job. A
+crash, cancellation, or lost acknowledgement leaves the persisted run identity
+for the next attempt. A lost database connection can release that lock while a
+handler is still running, so handler idempotency remains necessary. Independent
+jobs may run together; the same healthy job cannot overlap itself.
+
+Failures retain the key and retry after 30 seconds, doubling to a five-minute
+cap. Successful completion schedules the next run from completion time; downtime
+does not produce a burst of catch-up runs. Structured logs include job name, run
+ID, scheduled time, completion, and retry due time. The `jobs.JobStates` table
+records pending identity, last attempt, next due time, and failure count;
+`jobs.execution_failed` is a diagnostic code, not an HTTP error. Reconciliation
+remains read-only and may record another audit observation after a retry.
+
+Dispatch tracks each in-flight job independently, so a blocked handler does not
+delay other schedules. Every attempt writes a fresh concurrency token before execution;
+success and failure saves reject stale attempts after lock loss, preserving a
+replacement run’s identity and due time.
+
+### Opt-in cycle counting
+
+A supervisor edits each warehouse's schedule on the console Counting screen.
+Schedules are disabled by default. Observe the counting policy before enabling
+one; daily cadence and 20 tasks are the starting values. The interval is 1–10080
+minutes and the budget 1–200 tasks. Enabling or changing cadence sets the next
+run one interval from the save. These are elapsed intervals after completion,
+not a wall-clock cron or local-midnight promise.
+
+`GET /counting/schedules` lists active warehouses with their current or default
+schedules. `PUT /counting/schedules/{warehouseId}` atomically saves `enabled`,
+`intervalMinutes`, and `maxTasks`; only supervisors and administrators can save.
+Responses show next due time, pending/retry state, last plan/run, and failure
+code. The versioned API prefix applies as usual.
+
+Counting publishes a scoped job catalog through SharedKernel. It discovers
+configured warehouse instances of the code handler, named `counting.{warehouseId}`,
+without exposing Counting tables to Jobs. The runner tracks each instance
+independently, so a blocked warehouse cannot delay another warehouse's next run.
+`Jobs:Enabled=false` stops all dispatch; schedule edits take effect without an
+API restart. Due schedules are normally noticed within a minute.
+
+Each warehouse persists a pending run ID before planning. Its key identifies the
+plan and line keys identify tasks; lost enqueue acknowledgements resume those
+same tasks. Partial enqueues and unavailable/inactive warehouses remain pending
+for retry. A concurrency token rejects stale scheduler saves after lock loss. A persistent
+warehouse fence rotates in the same transaction as every planning write, so a
+stale policy result cannot commit duplicate open holdings after another intent
+acquires the released lock.
+Disabling a schedule stops future plans while an already pending plan finishes;
+existing count tasks can be withdrawn through the ordinary plan action.
+
+The handler uses the existing count policy, retaining its quiet period, exclusions,
+trace, and task budget. Open holdings from manual or scheduled plans are excluded.
+No due holdings is a successful empty plan with a decision trace. Plans appear
+under actor `count-scheduler` (reserved system actor ID, `Guid.Empty`), without
+borrowing a human account. Operators still confirm counts; Inventory computes
+any variance.
+
+Planning, schedule saves, and cancellation share a warehouse-scoped session lock.
+Before cancelling, unresolved task enqueues converge under their keys so a stale
+planner can only rediscover cancelled tasks afterward. Closed plans are not
+re-enqueued on retry.
+
+### Webhook configuration
+
+Set `Webhooks__EncryptionKey` (`WEBHOOKS_ENCRYPTION_KEY` in Compose) to a persistent
+base64-encoded random 32-byte key before registering production receivers. Keep
+it in deployment secrets, share it across replicas, and preserve it on restart;
+changing it makes existing signing secrets unreadable. The development override
+has a public demo key that must never be used in production.
+
+Public HTTPS receivers require no allowlist. For deliberately internal receivers,
+set exact `Webhooks__AllowedOrigins__0` origins; these permit private addresses and
+HTTP only for those origins. Development allows `http://host.docker.internal:9099`
+for the local verification receiver. Network redirects and proxies are disabled,
+DNS is checked at socket connection, responses are limited to 513 bytes, and a
+whole request has a ten-second deadline. Exclude confidential `/webhooks/invoke/`
+paths from upstream proxy access logs and tracing as the application does.
+
+### Receipt-age projection upgrade
+
+Stop older API writers before the first receipt-age migration, then run the
+migrator before starting the new API. Migration `ReceiptAgeProjection` adds a
+nullable balance age and a completion marker. Its module seeder locks balances,
+streams existing ledger history once, and bulk-updates only derived age fields.
+Large histories require a migration maintenance window; subsequent starts skip
+the completed rebuild. A failure rolls the update and marker back together and
+can be retried. Quantities and immutable ledger entries are preserved, and a
+drifted quantity remains without a claimed receipt age. Rolling back the schema
+drops only the derived age/marker; rebuilding them again requires the migrator.
+
+### Blind-bin task upgrade
+
+Stop the old API before applying `BlindBinTasks`, `BlindBinCounts` and
+`BinCountProvenance`, then run
+the migrator and start the matching API/frontend build. Existing item tasks and
+holding-count records are retained. New bin tasks deliberately have no item and
+quantity zero; older application builds cannot interpret them. Once bin audits
+exist, roll forward or restore a complete pre-upgrade database backup instead of
+running the old schema against those audit records. Entire-bin confirmations are
+bounded to 200 holding observations and briefly serialize balance writers while
+checking the movement version and committing all corrections.

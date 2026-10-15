@@ -449,6 +449,8 @@ test('the task cache is reconciled against the warehouse, not merged into', asyn
 test('the three refusals the phase was written for are different news', () => {
   assert.equal(categorise('work.task_already_completed'), 'already_done');
   assert.equal(categorise('inventory.insufficient_stock'), 'stock_missing');
+  assert.equal(categorise('inventory.bin_changed'), 'bin_changed');
+  assert.equal(needsSupervisor('bin_changed'), false);
   assert.equal(categorise('inventory.reservation_not_open'), 'claim_spent');
 
   // All three leave goods in a state somebody has to look at.

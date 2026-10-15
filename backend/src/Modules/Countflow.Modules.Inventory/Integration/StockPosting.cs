@@ -226,9 +226,11 @@ public sealed class StockPosting(
     /// happened to it.
     /// </para>
     /// </summary>
-    public async Task<Result<PostedMovement>> PickAsync(
-        PickInstruction instruction,
-        CancellationToken cancellationToken)
+    public Task<Result<PostedMovement>> PickAsync(PickInstruction instruction, CancellationToken cancellationToken) =>
+        ReservedMoveAsync(instruction, MovementType.Pick, MovementReason.OrderPick, cancellationToken);
+
+    private async Task<Result<PostedMovement>> ReservedMoveAsync(PickInstruction instruction,
+        MovementType type, MovementReason reason, CancellationToken cancellationToken)
     {
         var reservation = await reservations.FindAsync(instruction.ReservationId, cancellationToken);
         if (reservation is null)
@@ -236,15 +238,9 @@ public sealed class StockPosting(
             return Result.Failure<PostedMovement>(InventoryErrors.ReservationNotFound);
         }
 
-        // Checked here so an operator gets a coded answer, and checked again
-        // inside the posting transaction so two confirmations arriving together
-        // cannot both pass. This one is for the person; that one is for the
-        // invariant.
-        if (reservation.State != ReservationState.Open)
-        {
-            return Result.Failure<PostedMovement>(InventoryErrors.ReservationNotOpen);
-        }
-
+        // The ledger checks consumption inside its posting transaction. A claim
+        // already consumed under this same command key must still replay after
+        // a lost acknowledgement; an early state refusal would prevent that.
         var holding = reservation.Balance!;
 
         var posted = await ledger.PostAsync(
@@ -255,8 +251,8 @@ public sealed class StockPosting(
                 Quantity = reservation.Quantity,
                 From = new Holding(holding.LocationId, holding.LicensePlateId, holding.Status),
                 To = new Holding(instruction.ToLocationId, null, holding.Status),
-                Type = MovementType.Pick,
-                Reason = MovementReason.OrderPick,
+                Type = type,
+                Reason = reason,
                 IdempotencyKey = instruction.IdempotencyKey,
                 Actor = ToActor(instruction.Actor),
                 TaskId = instruction.TaskId,
@@ -269,6 +265,23 @@ public sealed class StockPosting(
         return posted.IsFailure
             ? Result.Failure<PostedMovement>(posted.Error)
             : Describe(posted.Value, holding.LotId, licensePlateId: null);
+    }
+
+    public async Task<Result<PostedMovement>> ReplenishAsync(PickInstruction instruction, CancellationToken cancellationToken)
+    {
+        var reservation = await reservations.FindAsync(instruction.ReservationId, cancellationToken);
+        if (reservation?.Balance is not { } balance)
+            return Result.Failure<PostedMovement>(InventoryErrors.ReservationNotFound);
+        if (reservation.State != ReservationState.Open)
+            return await ReservedMoveAsync(instruction, MovementType.Replenishment, MovementReason.ReplenishmentPull, cancellationToken);
+        var storage = await locations.FindStorageLocationsAsync([balance.LocationId, instruction.ToLocationId], cancellationToken);
+        var source = storage.GetValueOrDefault(balance.LocationId);
+        var target = storage.GetValueOrDefault(instruction.ToLocationId);
+        if (source is not { Role: StorageRole.Reserve, IsActive: true }
+            || target is not { Role: StorageRole.Forward, IsActive: true, IsReplenishable: true }
+            || source.WarehouseId != target.WarehouseId)
+            return Result.Failure<PostedMovement>(InventoryErrors.ReplenishmentLocationsInvalid);
+        return await ReservedMoveAsync(instruction, MovementType.Replenishment, MovementReason.ReplenishmentPull, cancellationToken);
     }
 
     /// <summary>

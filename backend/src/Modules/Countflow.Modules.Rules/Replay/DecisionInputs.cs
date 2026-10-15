@@ -49,7 +49,8 @@ public sealed record AllocationInputs(
     string Sku,
     Guid? RequiredLotId,
     decimal Quantity,
-    DateOnly ShipOn);
+    DateOnly ShipOn,
+    StorageRole? RequiredSourceRole = null);
 
 /// <summary>
 /// What a counting policy was asked.

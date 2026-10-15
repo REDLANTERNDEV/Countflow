@@ -6,7 +6,78 @@
  * so adding a language is a catalogue rather than a backend change.
  */
 export const en = {
+  pickTours: {
+  "title": "Pick tour",
+  "claim": "Next pick tour",
+  resume_one: "Resume pick tour · {{count}} stop",
+  resume_other: "Resume pick tour · {{count}} stops",
+  "release": "Release remaining stops",
+  "cached": "Cached · may be out of date",
+  "saved": "Travel steps saved: {{count}}",
+  "pending": "Confirmations need to be sent or resolved before release.",
+  "noStops": "No stops left to work."
+},
+  zones: {
+  "title": "Zone routing",
+  "warehouse": "Warehouse",
+  "strategy": "Route",
+  "rear": "Rear cross-aisle",
+  "geometry": "Aisles: {{aisles}} · Bays: {{bays}}",
+  "noGeometry": "Record aisle and bay data to enable routing heuristics.",
+  "needsRear": "S-Shape and Midpoint require a rear cross-aisle.",
+  "strategies": {
+    "sequence_ordinal": "Pick sequence",
+    "s_shape": "S-Shape",
+    "return": "Return",
+    "midpoint": "Midpoint"
+  }
+},
+  dashboard: {
+    title: 'Operations', help: 'Warehouse accuracy, completed work and current storage occupancy. Refreshes every 30 seconds. Unknown measurements appear as a dash; figures are observed separately, not a transactional snapshot.',
+    window: 'Window', windows: { '7': '7 days', '30': '30 days', '90': '90 days' }, refresh: 'Refresh', updated: 'Updated', refreshFailed: 'Update failed. Retry.', noWarehouse: 'No active warehouse.',
+    completed: 'Completed', ready: 'Ready', assigned: 'Assigned', accuracy: 'Count accuracy', counted: 'Counted', occupied: 'Slot occupancy',
+    throughput: 'Throughput', throughputHelp: 'Counts completed during the selected window, by completion time. UTC calendar days include today so its bar is partial. Backlog includes all ready and assigned work regardless of age.',
+    dailyTotals: 'Daily totals', date: 'Date', noCompletions: 'No completions in this window.',
+    density: 'Zone occupancy', densityHelp: 'Stocked active bulk and pick-face locations divided by eligible locations. Inactive areas and zones are excluded. Cube utilization is shown only when every capacity and occupied item volume is known; it may exceed 100% if reference capacity is smaller than stock.',
+    zone: 'Zone', slots: 'Stocked / total', cube: 'Cube utilization', capacityKnown: 'Capacity known', unzoned: 'No zone', noStorage: 'No active storage locations.',
+  },
+  webhooks: {
+    add: 'Add', title: 'Webhooks', name: 'Name', receiver: 'Receiver URL', cursor: 'After cursor', register: 'Register receiver',
+    cursorHelp: 'Zero replays history. A saved change-feed cursor starts from that point.',
+    help: 'Deliveries sign the exact JSON body with base64 HMAC-SHA256. Verify by echoing the signed challenge before enabling. Receivers must deduplicate delivery IDs. Retries keep the body and ID; eight failures block the stream until retry. Pause retains pending work.',
+    triggers: 'Reconciliation triggers', triggerHelp: 'Keep this URL confidential. POST with a unique Idempotency-Key to queue an inventory reconciliation; repeat the key on retries. The URL is shown once. Revoke stops new calls; already queued runs finish.',
+    verify: 'Verify', enable: 'Enable', pause: 'Pause', on: 'On', paused: 'Paused', unverified: 'Unverified', revoked: 'Revoked',
+    deliveries: 'Deliveries', retry: 'Retry', attempts: 'Attempts', state: { Pending: 'Pending', Delivered: 'Delivered', DeadLetter: 'Blocked' },
+  },
+  replenishment: {
+    title: 'Replenishment',
+    help: 'Below the on-hand stock minimum, top up from bulk toward the maximum. Incoming work counts toward the target; the maximum caps physical on-hand plus incoming stock. Short bulk stock produces a partial top-up. Disabling stops future plans; existing work continues.',
+    configure: 'Configure pick face',
+    face: 'Pick face',
+    minimum: 'Min',
+    maximum: 'Max',
+    onHand: 'On hand',
+    available: 'Available',
+    incoming: 'Incoming',
+    state: 'State',
+    actions: 'Actions',
+    empty: 'No pick-face policies.',
+    enabled: 'Enabled',
+    units: 'Base units · up to 4 decimals',
+    maxHint: 'Greater than Min · up to 1 billion',
+    pending: 'Preparing / retrying',
+    on: 'On',
+    off: 'Off',
+    short: 'Short',
+    plan: 'Plan',
+    withdraw: 'Withdraw',
+    refused: 'Not reserved',
+    edit: 'Edit',
+    planState: { Open: 'Open', Finished: 'Finished', Cancelled: 'Cancelled' },
+  },
   common: {
+    help: 'More information',
+    about: 'About {{topic}}',
     signIn: 'Sign in',
     signOut: 'Sign out',
     signingIn: 'Signing in…',
@@ -18,7 +89,7 @@ export const en = {
     previous: 'Previous',
     next: 'Next',
     page: 'Page {{page}} of {{total}}',
-    total: '{{count}} total',
+    total: '{{total}} total',
     none: '—',
     yes: 'Yes',
     no: 'No',
@@ -34,6 +105,9 @@ export const en = {
   },
 
   nav: {
+    dashboard: 'Operations',
+    replenishment: 'Replenishment',
+    zones: 'Zone routing',
     warehouses: 'Warehouses',
     locations: 'Locations',
     items: 'Items',
@@ -211,7 +285,8 @@ export const en = {
     hazard: 'hazard',
     baseUnit: 'Base unit',
     shelfLife: 'Shelf life',
-    shelfLifeDays: '{{count}} days',
+    shelfLifeDays_one: '{{count}} day',
+    shelfLifeDays_other: '{{count}} days',
     hazardous: 'Hazardous',
     lotTracked: 'Lot tracked',
     expiryTracked: 'Expiry tracked',
@@ -291,9 +366,9 @@ export const en = {
     reconcile: 'Verify against the ledger',
     reconciling: 'Replaying…',
     reconcileClean:
-      'Clean: {{holdings}} holdings replayed from {{movements}} entries, and the ledger sums to zero.',
-    reconcileDrift:
-      'Drift on {{count}} holdings. The balance projection disagrees with the ledger.',
+      'Clean · Holdings: {{holdings}} · Entries: {{movements}}',
+    reconcileDrift_one: 'Drift: {{count}} holding',
+    reconcileDrift_other: 'Drift: {{count}} holdings',
     reconcileNote:
       'Replays the whole ledger and compares the result with the stored balances. It reports drift and never repairs it: the fix is a compensating entry posted by someone who understands the cause.',
 
@@ -311,6 +386,20 @@ export const en = {
   },
 
   scan: {
+    camera: {
+      scan: 'Scan barcode', title: 'Camera scanner', open: 'Camera', preview: 'Camera preview', back: 'Back',
+      aim: 'Frame one barcode', retry: 'Try camera again',
+      help: 'Uses the rear camera and this browser’s barcode detector. HTTPS and DataMatrix support are required. Keyboard scanners and typed input remain available.',
+      readOnly: 'Resolves barcode details against the catalogue. Scanning here does not book stock or complete a task.',
+      secure: 'Open the handheld over HTTPS to use the camera.',
+      unsupported: 'This browser cannot scan DataMatrix. Use a supported browser or type the barcode.',
+      permission: 'Camera access was denied. Allow it in browser settings and try again.',
+      unavailable: 'No camera is available. Close other camera apps and try again.',
+      failed: 'Camera scanning stopped. Try again or type the barcode.',
+      multiple: 'Frame only one barcode.',
+      online: 'Connect to resolve this barcode.',
+      connection: 'The catalogue is unavailable. Reconnect and decode again.',
+    },
     title: 'Scan test',
     intro:
       'Decodes a GS1-128 or GS1 DataMatrix element string and resolves it against the catalogue. One scan of a logistics label carries the item, its packaging level, batch, expiry and quantity — which is what lets receiving verify a delivery instead of trusting a typed number.',
@@ -353,6 +442,13 @@ export const en = {
   },
 
   work: {
+    bin: {
+      help: 'Count all contents in base units, including unexpected items. Separate batches, pallets and conditions.',
+      scanItem: 'Scan item', quantity: 'Base units found', details: 'Batch, pallet and condition', condition: 'Condition',
+      add: 'Add holding', remove: 'Remove', checked: 'I checked the whole bin', empty: 'I checked: this bin is empty',
+      warning: 'Unlisted stock will be cleared.', restart: 'Start a fresh count', reason: 'Reason', raise: 'Raise bin count',
+      raised: 'Bin count raised', location: 'Bin',
+    },
     title: 'Work queue',
     mine: 'Mine',
     nextJob: 'Next job',
@@ -372,7 +468,7 @@ export const en = {
     suggested: 'Suggested',
     noSuggestion: 'No location suggested',
     noSuggestionHint:
-      'Nothing in the building met the rules. Scan where you actually put it — the reason is recorded either way.',
+      "Scan the actual destination. The override will be recorded.",
     scanLocation: 'Scan the rack label',
     scanDrop: 'Scan the bench label',
     whyHere: 'Why here?',
@@ -383,7 +479,7 @@ export const en = {
     countAt: 'Count',
     scanCounted: 'Scan the rack label to confirm you are there',
     countedQuantity: 'How many are there?',
-    countedHint: 'Count what you can see. Do not look at the figure below first.',
+    countedHint: "Count before checking the recorded quantity.",
     bookSays: 'The book says {{quantity}}',
     revealBook: 'Show what the book says',
     countAgrees: 'Agreed — {{quantity}} is what the system had.',
@@ -411,6 +507,7 @@ export const en = {
       Replenishment: 'Replenishment',
       Pick: 'Pick',
       CycleCount: 'Cycle count',
+      BinCount: 'Bin count',
     },
     status: {
       Ready: 'Ready',
@@ -429,22 +526,23 @@ export const en = {
     title: 'On this device',
     open: 'On this device',
     toSend: '{{count}} to send',
-    needsYou: '{{count}} need you',
+    needsYou_one: '{{count}} needs you',
+    needsYou_other: '{{count}} need you',
     sending: 'Sending…',
     sent: '{{count}} sent',
     sentAndRefused: '{{sent}} sent · {{refused}} refused',
     notDurable: 'This device cannot store work safely — stay in signal',
-    empty: 'Nothing waiting. Everything you have scanned has reached the warehouse.',
+    empty: "All scans have reached the warehouse.",
 
     needsYouHeading: 'Needs you',
-    needsYouBlurb: 'The warehouse could not accept these. Read what happened before you clear them.',
+    needsYouBlurb: "Review refusals before clearing.",
     waitingHeading: 'Waiting to send',
-    waitingBlurb: 'Saved here. They go as soon as there is a signal.',
+    waitingBlurb: "Saved on this device; not yet sent.",
     sentHeading: 'Sent',
     sentBlurb: 'The warehouse has these.',
     strandedHeading: 'Waiting for {{operator}}',
     strandedBlurb:
-      'Scanned on this device by somebody else. Only they can send it — it is their name the warehouse records against the movement.',
+      "Only the operator who scanned these can send them.",
 
     kind: {
       receipt: 'Booking in',
@@ -454,7 +552,8 @@ export const en = {
     from: 'From {{location}}',
     counted: 'Counted {{quantity}}',
     scannedAt: 'Scanned {{time}}',
-    attempts: 'Tried {{count}} times',
+    attempts_one: 'Tried {{count}} time',
+    attempts_other: 'Tried {{count}} times',
     acknowledge: 'Got it',
     tryAgain: 'Try again',
     said: 'The warehouse says',
@@ -464,6 +563,7 @@ export const en = {
     // What happened, keyed by what kind of news it is rather than by the error
     // code. Several codes mean the same thing to somebody standing in an aisle.
     cause: {
+      bin_changed: 'Stock moved during this count. Nothing was recorded.',
       stock_missing: 'There was no stock there to move.',
       already_done: 'Somebody else confirmed this job before yours reached us.',
       claim_spent: 'The order this stock was promised to has let it go.',
@@ -473,6 +573,7 @@ export const en = {
       unknown: 'The warehouse refused this, and this device does not understand the reason.',
     },
     advice: {
+      bin_changed: 'Acknowledge this refusal, reopen the task, and start a fresh count.',
       stock_missing:
         'The goods you moved are real and the record is not. Count {{location}} and tell your supervisor.',
       already_done:
@@ -486,20 +587,21 @@ export const en = {
       unknown: 'Show this to your supervisor, with the code below.',
     },
 
-    signOutBlocked: '{{count}} scans have not reached the warehouse.',
+    signOutBlocked_one: '{{count}} scan has not reached the warehouse.',
+    signOutBlocked_other: '{{count}} scans have not reached the warehouse.',
     signOutBlockedHint:
-      'They stay on this device until you send them, and nobody else can send them for you. Get a signal if you can.',
+      "Saved here. Only you can send them; reconnect before signing out.",
     signOutAnyway: 'Sign out anyway',
     sendNow: 'Send them now',
 
-    offlineNoNewWork: 'A new job comes from the warehouse, so it needs a signal.',
+    offlineNoNewWork: "Reconnect to claim new work.",
     myTasks: 'Jobs on this device',
     noCachedTasks: 'This device is not holding any jobs.',
     cachedAt: 'Read {{time}}',
     queuedTitle: 'Saved on this device',
     queuedBlurb:
-      'It has not reached the warehouse yet. It goes as soon as there is a signal — carry on.',
-    alreadyConfirmed: 'You have already confirmed this job. It is waiting to be sent.',
+      "Not yet sent to the warehouse.",
+    alreadyConfirmed: "Confirmation saved; waiting to send.",
   },
 
   rules: {
@@ -601,11 +703,13 @@ export const en = {
 
       'allocation.stock_available': 'Not already promised to another order',
       'allocation.condition_allocatable': 'Stock is sellable',
+      'allocation.required_source_role': 'Required source storage role',
       'allocation.pickable_location': 'Somewhere a picker can be sent',
       'allocation.lot_match': 'The batch the customer asked for',
       'allocation.not_expired': 'Not past its expiry date',
       'allocation.minimum_shelf_life': 'Enough shelf life left for the customer',
-      'allocation.fefo': 'Ship the oldest batch first',
+      'allocation.fefo': 'Earliest expiry (FEFO)',
+      'allocation.fifo': 'Oldest receipt (FIFO)',
       'allocation.clear_holding': 'Clear part-used locations',
       'allocation.prefer_pick_face': 'Pick from the pick face',
       'allocation.travel_distance': 'Shorter walk',
@@ -644,6 +748,7 @@ export const en = {
 
     // The coded reasons the allocation rules give about one holding of stock.
     allocation: {
+      source_role_required: 'Requires {{role}} storage for this operation.',
       fully_committed: 'All {{onHand}} here is already promised to other orders.',
       not_allocatable: 'This stock is {{condition}}.',
       not_pickable: 'Not somewhere a picker can be sent — it is a {{role}}.',
@@ -653,8 +758,11 @@ export const en = {
       expired: 'Expired on {{expiry}}.',
       short_dated:
         'Only {{remaining}}% of its life left, and the customer requires {{required}}% (expires {{expiry}}).',
-      expires_on: 'Expires {{expiry}}, in {{days}} days.',
+      expires_on_one: 'Expires {{expiry}}, in {{days}} day.',
+      expires_on_other: 'Expires {{expiry}}, in {{days}} days.',
       no_expiry: 'No expiry date.',
+      received_on: 'Received {{received}}',
+      receipt_age_unknown: 'Receipt age unknown.',
       would_clear: 'This would clear the last {{units}} here.',
       would_leave: 'This would leave {{units}} behind.',
       nothing_free: 'Nothing free here.',
@@ -666,11 +774,14 @@ export const en = {
     count: {
       not_countable: 'Counting a {{role}} measures the work going on there.',
       location_unknown: 'Not a storage location.',
-      recently_moved: 'Worked {{hours}} hours ago; it has to stand for {{required}}.',
+      recently_moved_one: 'Worked {{hours}} hour ago; it has to stand for {{required}}.',
+      recently_moved_other: 'Worked {{hours}} hours ago; it has to stand for {{required}}.',
       already_scheduled: 'Already on somebody’s list.',
-      counted_recently: 'Counted {{days}} days ago, and {{required}} has to pass first.',
+      counted_recently_one: 'Counted {{days}} day ago, and {{required}} has to pass first.',
+      counted_recently_other: 'Counted {{days}} days ago, and {{required}} has to pass first.',
       never_counted: 'Never counted.',
-      days_since_count: 'Checked {{days}} days ago, against a {{target}}-day target.',
+      days_since_count_one: 'Checked {{days}} day ago, against a {{target}}-day target.',
+      days_since_count_other: 'Checked {{days}} days ago, against a {{target}}-day target.',
       velocity_band: '{{band}}-class item.',
       share_of_item_stock: '{{units}} here — {{percent}}% of everything we hold of it.',
       travel_distance: 'Zone {{zone}}, {{percent}}% along the route.',
@@ -702,7 +813,8 @@ export const en = {
       handling_deferred: 'Cheap today; somebody has to come back to it.',
       handling_putaway: 'A release and a putaway of {{units}}.',
       handling_vendor_round_trip: 'A vendor, a despatch and a receipt weeks later.',
-      days_since_despatch: 'Back after {{days}} days, against a {{window}}-day window.',
+      days_since_despatch_one: 'Back after {{days}} day, against a {{window}}-day window.',
+      days_since_despatch_other: 'Back after {{days}} days, against a {{window}}-day window.',
       no_despatch_on_record: 'No order behind it, so nobody knows how long they had it.',
       shelf_life_left: '{{remaining}}% of its shelf life is left.',
       shelf_life_unknown: 'No shelf life on file.',
@@ -763,7 +875,7 @@ export const en = {
       quantity: 'Quantity',
       dock: 'Dock',
       pallet: 'Pallet label',
-      palletHint: 'Scan the SSCC if the goods are on a pallet. Everything on it moves together.',
+      palletHint: "Scan a pallet SSCC to move its contents together.",
       asnReference: 'Advice note',
       optional: 'optional',
       book: 'Book in',
@@ -814,9 +926,10 @@ export const en = {
     cancelReason: 'Why is it being cancelled?',
 
     releasedSummary:
-      'Committed {{allocations}} holdings and raised {{tasks}} picks.',
+      'Reserved holdings: {{allocations}} · Picks: {{tasks}}',
     shortfall: '{{quantity}} could not be found. Release again once stock arrives.',
-    despatchedSummary: '{{count}} ledger entries posted to the customer account.',
+    despatchedSummary_one: '{{count}} ledger entry posted to the customer account.',
+    despatchedSummary_other: '{{count}} ledger entries posted to the customer account.',
 
     status: {
       New: 'New',
@@ -833,7 +946,8 @@ export const en = {
       statusLabel: 'Status',
       contents: 'Orders',
       releasedAt: 'Released',
-      orders: '{{count}} orders',
+      orders_one: '{{count}} order',
+      orders_other: '{{count}} orders',
       release: 'Release the wave',
       empty: 'No waves.',
       status: {
@@ -909,12 +1023,23 @@ export const en = {
       reserved: 'Promised',
       onHand: 'On hand',
       shortfall: 'Short by',
-      age: '{{days}} days old',
+      age_one: '{{days}} day old',
+      age_other: '{{days}} days old',
       empty: 'Every commitment is backed by stock that is still there.',
     },
   },
 
   counting: {
+    schedules: 'Schedules',
+    scheduleHelp: 'Observe the counting policy before enabling a schedule. Runs use the same policy and exclude open counts. Intervals start after completion. Disabling stops future plans; counts already started continue.',
+    scheduleEnabled: 'Enabled',
+    scheduleInterval: 'Interval',
+    scheduleIntervalRange: '1–10080 minutes',
+    scheduleBudget: 'Tasks',
+    schedulePending: 'Running / retrying',
+    scheduleOn: 'On',
+    scheduleOff: 'Off',
+    scheduleNext: 'Next',
     title: 'Counting',
     subtitle: 'Which of the numbers to go and check, chosen by policy rather than by whoever asks loudest.',
     reference: 'Plan',
@@ -1041,6 +1166,36 @@ export const en = {
   },
 
   errors: {
+    'inventory.bin_changed': 'Stock moved. Start a fresh count.',
+    'inventory.bin_count_invalid': 'Check item/condition. Quantity: 0 or more, up to 4 decimals.',
+    'inventory.bin_count_duplicate': 'Combine duplicate holdings. Check quantities.',
+    'work.bin_count_reason_required': 'Enter a reason (up to 120 characters).',
+    'work.idempotency_key_reused': 'This request belongs to another bin count.',
+    'work.bin_draft_storage': 'Could not save this count on the device. Keep this screen open.',
+    'work.bin_count_recorded': 'Count recorded. Retry the saved confirmation.',
+    'work.throughput_window_invalid': 'Choose a window from 1 to 90 days.',
+    'webhooks.receiver_invalid': 'Use a public HTTPS receiver URL.',
+    'webhooks.limit_reached': 'Limit reached; use a name up to 100 characters.',
+    'webhooks.key_not_configured': 'Configure the webhook encryption key.',
+    'webhooks.verification_failed': 'Receiver must echo the signed challenge as plain text.',
+    'webhooks.verification_required': 'Verify this receiver first.',
+    'webhooks.retry_key_required': 'Supply an Idempotency-Key up to 128 characters.',
+    'webhooks.receiver_refused': 'Receiver refused delivery.',
+    'webhooks.delivery_failed': 'Receiver unreachable; delivery will retry.',
+
+    'route.no_aisles': 'Record aisle data for this zone.',
+    'route.no_bay_depth': 'Record at least two distinct bays.',
+    'route.no_rear_cross_aisle': 'This route requires a rear cross-aisle.',
+    'route.unknown_strategy': 'Routing strategy is not registered.',
+    'route.no_zone': 'These locations have no zone.',
+
+    "work.tour_not_found": "Pick tour not found.",
+    "work.tour_not_yours": "This tour belongs to another operator.",
+    "work.tour_nothing_to_release": "No stops left to release.",
+    "masterdata.zone_not_found": "Zone not found.",
+    "masterdata.unknown_route_strategy": "Unknown routing strategy.",
+    "masterdata.route_strategy_unsupported": "The zone cannot support this route.",
+
     'rules.rule_set_not_found': 'No rule set with that identifier.',
     'rules.rule_set_not_editable': 'Only a draft rule set can be edited. Clone this one and edit the copy.',
     'rules.rule_set_not_promotable': 'Only a draft rule set can be promoted.',
@@ -1267,6 +1422,23 @@ export const en = {
     'counting.idempotency_key_required': 'This request is missing its idempotency key.',
     'counting.task_count_not_positive': 'A count plan has to ask for at least one job.',
     'counting.too_many_tasks': 'That is more counts than one plan may raise. Raise another when these are done.',
+    'counting.schedule_budget_invalid': 'Choose 1–200 tasks.',
+    'counting.schedule_interval_invalid': 'Choose 1–10080 minutes.',
+    'counting.plan_incomplete': 'Some tasks could not be resolved. Retry withdrawal.',
+    'counting.schedule_failed': 'Schedule failed. It will retry.',
+    'replenishment.levels_invalid': 'Use Min > 0 and Max > Min, up to 1 billion and 4 decimal places.',
+    'replenishment.capacity_exceeded': 'Maximum exceeds pick-face capacity.',
+    'replenishment.retrying': 'Planning failed. It will retry.',
+    'replenishment.face_invalid': 'Choose an active replenishable pick face.',
+    'replenishment.item_not_found': 'Choose an active item.',
+    'replenishment.stock_committed': 'Finish or withdraw incoming work before reducing maximum below committed stock.',
+    'replenishment.in_progress': 'Finish or withdraw replenishments and empty this face before changing the item.',
+    'replenishment.plan_not_found': 'Plan not found.',
+    'replenishment.retry_cancellation': 'Some tasks could not be resolved. Retry withdrawal.',
+    'replenishment.face_unavailable': 'Pick face or item unavailable.',
+    'replenishment.no_source': 'No eligible bulk stock.',
+    'inventory.replenishment_locations_invalid': 'Replenishment needs bulk and a pick face in the same warehouse.',
+    'work.replenishment_destination_mismatch': 'Scan the assigned pick face.',
     'counting.plan_not_open': 'That plan has already been completed or cancelled.',
     'counting.counts_in_progress':
       'An operator is holding a count from this plan. Ask them to release the job, then cancel.',

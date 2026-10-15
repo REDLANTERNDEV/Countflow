@@ -1,4 +1,4 @@
-import { currentLocale, useTranslation } from '@countflow/i18n';
+import { translateCount, currentLocale, useTranslation } from '@countflow/i18n';
 import { Badge, Button, Code, Numeric, Spinner } from '@countflow/ui';
 import { useEffect, useState } from 'react';
 import { api } from '../api.js';
@@ -8,13 +8,16 @@ import { needsAttention } from '../lib/outbox/outbox.js';
 import { outbox } from '../outbox.js';
 import type { CurrentUser } from '../session.js';
 import { recallMyTasks, reconcileTasks, rememberTask, type TaskDetail } from '../tasks.js';
+import { tourStops } from '../lib/pick-tours.js';
 import { useOutbox } from '../useOutbox.js';
 
 interface HomeScreenProps {
   user: CurrentUser;
   online: boolean;
   onReceive: () => void;
+  onScan: () => void;
   onOpenTask: (taskId: string) => void;
+  onOpenTour: (tourId: string) => void;
   onOpenQueue: () => void;
   onSignOut: () => void;
 }
@@ -35,7 +38,7 @@ interface HomeScreenProps {
  * already given, which is the honest half of the same idea. See ADR 0008.
  */
 export function HomeScreen(props: HomeScreenProps) {
-  const { user, online, onReceive, onOpenTask, onOpenQueue, onSignOut } = props;
+  const { user, online, onReceive, onScan, onOpenTask, onOpenTour, onOpenQueue, onSignOut } = props;
   const { t } = useTranslation();
   const locale = currentLocale();
   const { commands } = useOutbox();
@@ -60,14 +63,23 @@ export function HomeScreen(props: HomeScreenProps) {
       // Offline the call fails in milliseconds and the cache below answers.
       try {
         const { data, response } = await api.GET('/api/v1/work/tasks', {
-          params: { query: { mine: true, status: 'Assigned' } },
+          params: { query: { mine: true, status: 'Assigned', pageSize: 100 } },
         });
 
         outbox.noteReachable(!unanswered(response.status));
 
         // Reconciled against the warehouse rather than merged into, so a job
         // somebody else finished stops being advertised on this device.
-        if (data) await reconcileTasks(data.items, user.id);
+        if (data) {
+          const pages = await Promise.all(Array.from({ length: Math.ceil(data.total / 100) - 1 }, async (_, i) => {
+            const result = await api.GET('/api/v1/work/tasks', {
+              params: { query: { mine: true, status: 'Assigned', pageSize: 100, page: i + 2 } },
+            });
+            if (!result.data) throw new Error('Incomplete assigned-work listing');
+            return result.data.items;
+          }));
+          await reconcileTasks([...data.items, ...pages.flat()], user.id);
+        }
       } catch {
         // No answer at all. The cache below is what this whole path exists for.
         outbox.noteReachable(false);
@@ -116,6 +128,36 @@ export function HomeScreen(props: HomeScreenProps) {
     }
   }
 
+  async function takeTour() {
+    setFinding(true); setErrorCode(null);
+    const storageKey = `countflow.tour.claim.${user.id}`;
+    try {
+      const key = localStorage.getItem(storageKey) ?? crypto.randomUUID();
+      localStorage.setItem(storageKey, key);
+      const { data, response, error } = await api.POST('/api/v1/work/tours/claim-next', {
+        body: { maxStops: 12 }, headers: { 'Idempotency-Key': key },
+      });
+      outbox.noteReachable(!unanswered(response.status));
+      if (!data) {
+        if (!unanswered(response.status)) localStorage.removeItem(storageKey);
+        setErrorCode(unanswered(response.status) ? 'offline' : (error as { code?: string })?.code ?? 'unknown');
+        return;
+      }
+      // Cache all assigned stops before any further round trip can lose signal.
+      for (const task of data.stops) await rememberTask({ task, decision: null }, user.id);
+      await Promise.all(data.stops.map(async task => {
+        try {
+          const { data: detail } = await api.GET('/api/v1/work/tasks/{id}', { params: { path: { id: task.id } } });
+          if (detail) await rememberTask(detail, user.id);
+        } catch { /* The stop remains workable from its claim payload. */ }
+      }));
+      localStorage.removeItem(storageKey);
+      onOpenTour(data.id);
+    } catch { outbox.noteReachable(false); setErrorCode('offline'); }
+    finally { setFinding(false); }
+  }
+  const tours = [...new Set(held.map(detail => detail.task.pickTourId).filter((id): id is string => !!id))];
+
   return (
     <>
       <h1 className="m-0 mt-[var(--space-2)] text-[length:var(--text-2xl)] tracking-[var(--tracking-display)]">
@@ -135,7 +177,7 @@ export function HomeScreen(props: HomeScreenProps) {
                      border border-[var(--color-danger)] bg-[var(--color-danger-muted)]
                      p-[var(--space-4)] text-left"
         >
-          <Badge tone="danger">{t('queue.needsYou', { count: attention.length })}</Badge>
+          <Badge tone="danger">{translateCount(t, 'queue.needsYou', attention.length)}</Badge>
           <span className="text-[var(--color-text-secondary)]">{t('queue.needsYouBlurb')}</span>
         </button>
       ) : null}
@@ -155,9 +197,16 @@ export function HomeScreen(props: HomeScreenProps) {
         </p>
       ) : null}
 
+      <Button className="w-full" disabled={finding || !online} onClick={() => void takeTour()}>
+        {t('pickTours.claim')}
+      </Button>
+      {tours.map(id => <Button key={id} className="w-full" onClick={() => onOpenTour(id)}>
+        {translateCount(t, 'pickTours.resume', tourStops(held.map(detail => detail.task), id).length)}
+      </Button>)}
       <Button className="w-full" onClick={onReceive}>
         {t('inbound.receive.title')}
       </Button>
+      <Button className="w-full" onClick={onScan}>{t('scan.camera.scan')}</Button>
 
       <Button className="w-full" onClick={onOpenQueue}>
         {t('queue.open')}
@@ -165,13 +214,13 @@ export function HomeScreen(props: HomeScreenProps) {
 
       {/* The jobs already given to this operator. Workable with no network,
           because the device has them; and stale, because the device has them. */}
-      {held.length > 0 ? (
+      {held.some(detail => !detail.task.pickTourId) ? (
         <div className="mt-[var(--space-3)] flex flex-col gap-[var(--space-2)]">
           <span className="text-[length:var(--text-sm)] text-[var(--color-text-secondary)]">
             {t('queue.myTasks')}
           </span>
 
-          {held.map((detail) => (
+          {held.filter(detail => !detail.task.pickTourId).map((detail) => (
             <button
               key={detail.task.id}
               type="button"
@@ -181,14 +230,14 @@ export function HomeScreen(props: HomeScreenProps) {
                          bg-[var(--color-surface-raised)] p-[var(--space-4)] text-left"
             >
               <Badge>{t(`work.kind.${detail.task.kind}`)}</Badge>
-              <span className="flex items-baseline gap-[var(--space-2)] text-[length:var(--text-lg)]">
-                <Numeric value={detail.task.quantity} locale={locale} />
+              {detail.task.kind !== 'BinCount' ? <span className="flex items-baseline gap-[var(--space-2)] text-[length:var(--text-lg)]">
+                <Numeric value={detail.task.quantity} locale={locale} maximumFractionDigits={4} />
                 <span className="text-[var(--color-text-secondary)]">×</span>
                 <Code className="text-[length:var(--text-lg)]">{detail.task.sku}</Code>
-              </span>
+              </span> : null}
               <span className="text-[length:var(--text-sm)] text-[var(--color-text-secondary)]">
                 <Code>{detail.task.fromLocationCode}</Code>
-                {detail.task.suggestedLocationCode ? (
+                {detail.task.kind !== 'BinCount' && detail.task.suggestedLocationCode ? (
                   <>
                     {' → '}
                     <Code>{detail.task.suggestedLocationCode}</Code>

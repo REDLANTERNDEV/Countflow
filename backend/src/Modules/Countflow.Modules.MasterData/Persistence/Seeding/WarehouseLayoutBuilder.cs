@@ -1,4 +1,5 @@
 using Countflow.Modules.MasterData.Domain;
+using Countflow.SharedKernel.Routing;
 
 namespace Countflow.Modules.MasterData.Persistence.Seeding;
 
@@ -45,7 +46,14 @@ public sealed class WarehouseLayoutBuilder
             return area;
         }
 
-        Zone AddZone(Area area, string code, string name, TemperatureClass temperature, int pickSequence)
+        Zone AddZone(
+            Area area,
+            string code,
+            string name,
+            TemperatureClass temperature,
+            int pickSequence,
+            string routeStrategy = PickRouteCatalogue.SequenceOrdinal,
+            bool hasRearCrossAisle = false)
         {
             var zone = new Zone
             {
@@ -53,7 +61,9 @@ public sealed class WarehouseLayoutBuilder
                 Code = code,
                 Name = name,
                 TemperatureClass = temperature,
-                PickSequence = pickSequence
+                PickSequence = pickSequence,
+                PickRouteStrategy = routeStrategy,
+                HasRearCrossAisle = hasRearCrossAisle
             };
 
             zones.Add(zone);
@@ -67,8 +77,26 @@ public sealed class WarehouseLayoutBuilder
         var returns = AddArea("RTN", "Returns");
 
         var inboundDock = AddZone(receiving, "DOCK", "Inbound docks", TemperatureClass.Ambient, 0);
-        var ambient = AddZone(storage, "AMB", "Ambient storage", TemperatureClass.Ambient, 10);
-        var chilled = AddZone(storage, "CHL", "Chilled storage", TemperatureClass.Chilled, 20);
+
+        // The two halls are seeded with different strategies on purpose, and not to
+        // show off. A demo where every zone walks the same way cannot demonstrate the
+        // one property the design turns on — that the strategy is chosen per zone
+        // because which one wins depends on the shape of the rack and the density of
+        // the picks, which is a thing a supervisor knows and the system cannot infer.
+        //
+        // Ambient is twenty-four aisles of ten bays with a cross-aisle at each end,
+        // which is the textbook S-Shape hall. Chilled is six short aisles off a single
+        // gangway; traversing one of those to the far wall for a single carton is the
+        // failure Return exists to avoid, and marking it as having a rear cross-aisle
+        // it does not have would send every picker in it into a dead end.
+        var ambient = AddZone(
+            storage, "AMB", "Ambient storage", TemperatureClass.Ambient, 10,
+            PickRouteCatalogue.SShape, hasRearCrossAisle: true);
+
+        var chilled = AddZone(
+            storage, "CHL", "Chilled storage", TemperatureClass.Chilled, 20,
+            PickRouteCatalogue.Return);
+
         var packZone = AddZone(packing, "PACK", "Pack benches", TemperatureClass.Ambient, 90);
         var outboundDock = AddZone(shipping, "DOCK", "Outbound docks", TemperatureClass.Ambient, 99);
         var quarantine = AddZone(returns, "QUAR", "Quarantine", TemperatureClass.Ambient, 100);

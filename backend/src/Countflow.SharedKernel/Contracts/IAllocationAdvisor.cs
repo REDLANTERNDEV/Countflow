@@ -22,6 +22,9 @@ public sealed record AllocationQuery
 
     public Guid? RequiredLotId { get; init; }
 
+    /// <summary>Operation boundary, e.g. replenishment may draw only from reserve storage.</summary>
+    public StorageRole? RequiredSourceRole { get; init; }
+
     /// <summary>In base units, and what is still outstanding rather than what was ordered.</summary>
     public required decimal Quantity { get; init; }
 
