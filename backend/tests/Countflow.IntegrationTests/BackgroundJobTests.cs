@@ -24,7 +24,11 @@ public sealed class BackgroundJobTests(CountflowApiFixture fixture) : IClassFixt
         using var scope = host.Services.CreateScope();
         var state = await scope.ServiceProvider.GetRequiredService<JobsDbContext>().JobStates.FindAsync(name);
         Assert.NotNull(state);
-        Assert.Equal(clock.GetUtcNow().AddMinutes(1), state.NextRunAt);
+        Assert.Equal(new DateTimeOffset(2026, 10, 15, 12, 1, 0, TimeSpan.Zero), state.NextRunAt);
+        var startedAt = new DateTimeOffset(2026, 10, 15, 12, 0, 0, TimeSpan.Zero);
+        Assert.Equal(startedAt, state.LastStartedAt);
+        Assert.Equal(startedAt, state.LastFinishedAt);
+        Assert.Equal(startedAt, Assert.Single(probe.Runs).ScheduledAt);
         Assert.Null(state.PendingRunId);
         Assert.NotNull(state.LastFinishedAt);
     }
@@ -40,11 +44,19 @@ public sealed class BackgroundJobTests(CountflowApiFixture fixture) : IClassFixt
         await runner.RunDueAsync(CancellationToken.None);
         await runner.RunDueAsync(CancellationToken.None);
         Assert.Single(probe.Runs);
+        using (var failedScope = host.Services.CreateScope())
+        {
+            var failed = await failedScope.ServiceProvider.GetRequiredService<JobsDbContext>().JobStates.FindAsync(name);
+            Assert.Equal(new DateTimeOffset(2026, 10, 15, 12, 0, 30, TimeSpan.Zero), failed!.NextRunAt);
+            Assert.Equal(new DateTimeOffset(2026, 10, 15, 12, 0, 0, TimeSpan.Zero), failed.PendingScheduledAt);
+            Assert.Equal(failed.PendingScheduledAt, failed.LastStartedAt);
+            Assert.Equal(failed.PendingScheduledAt, failed.LastFinishedAt);
+        }
         probe.Fail = false;
         clock.Advance(TimeSpan.FromSeconds(31));
         await runner.RunDueAsync(CancellationToken.None);
         Assert.Equal(2, probe.Runs.Count);
-        Assert.Equal(probe.Runs.First().IdempotencyKey, probe.Runs.Last().IdempotencyKey);
+        Assert.Equal(probe.Runs.First(), probe.Runs.Last());
         using var scope = host.Services.CreateScope();
         var state = await scope.ServiceProvider.GetRequiredService<JobsDbContext>().JobStates.FindAsync(name);
         Assert.Null(state!.PendingRunId);
@@ -217,7 +229,9 @@ public sealed class BackgroundJobTests(CountflowApiFixture fixture) : IClassFixt
 
     private sealed class ManualClock : TimeProvider
     {
-        private DateTimeOffset _now = DateTimeOffset.UtcNow;
+        // Keep sub-microsecond ticks so PostgreSQL round trips exercise the
+        // precision boundary on every platform, including macOS clocks.
+        private DateTimeOffset _now = new DateTimeOffset(2026, 10, 15, 12, 0, 0, TimeSpan.Zero).AddTicks(7);
         public override DateTimeOffset GetUtcNow() => _now;
         public void Advance(TimeSpan amount) => _now += amount;
     }

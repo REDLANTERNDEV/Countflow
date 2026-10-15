@@ -8,6 +8,11 @@ features is in [docs/history.md](docs/history.md).
 
 ## [Unreleased]
 
+### Fixed
+
+- Background job timestamps retain the same microsecond precision in memory and
+  PostgreSQL, keeping scheduled run records stable across failures and restarts.
+
 ### Added
 
 - Blind bin counts: supervisor-raised location audits discover unrecorded stock,

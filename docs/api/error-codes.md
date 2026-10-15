@@ -276,6 +276,13 @@ failures, and are translated by the client.
 `counting.schedule_failed` is a persisted schedule diagnostic, not an HTTP error.
 It indicates that the pending warehouse run will retry; its plan key is retained.
 
+The scheduler logs `counting.schedule_warehouse_unavailable` when its warehouse
+is inactive or missing, and `counting.schedule_incomplete` when a plan still has
+unresolved task lines. Both are internal causes of `counting.schedule_failed`,
+not separate HTTP refusals. Jobs persists `jobs.execution_failed` when a handler
+fails; the same run retries after backoff. These diagnostics have English and
+Turkish messages and cannot be returned by a handheld completion command.
+
 ### Replenishment
 
 | Code | Status | Meaning |

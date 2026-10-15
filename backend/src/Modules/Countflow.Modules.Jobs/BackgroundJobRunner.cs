@@ -46,7 +46,7 @@ public sealed class BackgroundJobRunner(
             var state = await db.JobStates.SingleOrDefaultAsync(jobState => jobState.Name == job.Name, cancellationToken);
             if (state is null)
             {
-                state = new JobState { Name = job.Name, NextRunAt = clock.GetUtcNow() + settings.InitialDelay };
+                state = new JobState { Name = job.Name, NextRunAt = JobTimestamp.Normalize(clock.GetUtcNow() + settings.InitialDelay) };
                 db.JobStates.Add(state);
                 await db.SaveChangesAsync(cancellationToken);
             }
@@ -57,7 +57,7 @@ public sealed class BackgroundJobRunner(
             // Fence completion/failure saves if a replica replaces this attempt
             // after its separate advisory-lock connection is lost.
             state.AttemptId = Guid.CreateVersion7();
-            state.LastStartedAt = clock.GetUtcNow();
+            state.LastStartedAt = JobTimestamp.Normalize(clock.GetUtcNow());
             await db.SaveChangesAsync(cancellationToken);
             var run = new BackgroundJobRun(job.Name, state.PendingRunId.Value, state.PendingScheduledAt!.Value);
 
@@ -70,24 +70,24 @@ public sealed class BackgroundJobRunner(
             catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
             {
                 state.LastRunId = run.Id;
-                state.LastFinishedAt = clock.GetUtcNow();
+                state.LastFinishedAt = JobTimestamp.Normalize(clock.GetUtcNow());
                 state.ConsecutiveFailures++;
                 state.LastErrorCode = "jobs.execution_failed";
                 var backoff = TimeSpan.FromSeconds(Math.Min(300, 30 * Math.Pow(2, Math.Min(state.ConsecutiveFailures - 1, 4))));
-                state.NextRunAt = clock.GetUtcNow() + backoff;
+                state.NextRunAt = JobTimestamp.Normalize(clock.GetUtcNow() + backoff);
                 await db.SaveChangesAsync(cancellationToken);
                 logger.LogError(exception, "Background job {Job} run {RunId} failed; retry due {NextRunAt}", job.Name, run.Id, state.NextRunAt);
                 return;
             }
             state.LastRunId = run.Id;
-            state.LastFinishedAt = clock.GetUtcNow();
+            state.LastFinishedAt = JobTimestamp.Normalize(clock.GetUtcNow());
             state.PendingRunId = null;
             state.PendingScheduledAt = null;
             state.ConsecutiveFailures = 0;
             state.LastErrorCode = null;
             // No burst of catch-up runs after downtime; resume the cadence from
             // completion. An unfinished run remains due and retains its key.
-            state.NextRunAt = clock.GetUtcNow() + settings.Interval;
+            state.NextRunAt = JobTimestamp.Normalize(clock.GetUtcNow() + settings.Interval);
             await db.SaveChangesAsync(cancellationToken);
             logger.LogInformation("Background job {Job} run {RunId} finished; next due {NextRunAt}", job.Name, run.Id, state.NextRunAt);
 

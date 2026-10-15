@@ -698,6 +698,10 @@ source and deliberately not in the repository.
   deployment settings; Jobs never reads another module's business tables.
   Cancellation preserves unfinished work, failure backs off, and successful
   cadence resumes from completion without a catch-up burst.
+- **Job timestamps use UTC microseconds before assignment.** Initial and next
+  due times, starts, and finishes use PostgreSQL's precision in memory as well as
+  storage. The pending schedule inherits that normalized due time, so a handler
+  sees the same run record before and after a retry or process restart.
 
 Dispatch tracks each in-flight job independently, so a blocked handler does not
 delay other schedules. Every attempt writes a fresh concurrency token before execution;

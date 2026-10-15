@@ -8,6 +8,13 @@ when you come looking. Phase numbers refer to [history.md](history.md).
 
 ---
 
+- **A job can keep its ID but change its run record after a restart.** PostgreSQL
+  truncates timestamps to microseconds; .NET clocks can carry 100-nanosecond
+  ticks. Normalize Jobs timestamps before assignment, including the complete
+  due-time calculation after adding an interval. Otherwise the first handler
+  sees precision its resumed run cannot retain. The regression clock includes
+  seven sub-microsecond ticks explicitly: platform clock precision must not hide
+  this persistence mismatch.
 - **A namespace that shares a name with a type shadows it inside that namespace.**
   The disposition vocabulary lives in `Countflow.Modules.Rules.Dispositions`,
   plural, and the plural is load-bearing. Under a `…Rules.Disposition` namespace
