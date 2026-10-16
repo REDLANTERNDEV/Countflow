@@ -16,7 +16,7 @@ namespace Countflow.Modules.Inventory.Integration;
 /// thing standing between an eager sales team and the same pallet sold twice.
 /// </para>
 /// </summary>
-public sealed class StockReservations(ReservationLedger reservations) : IStockReservations
+public sealed class StockReservations(ReservationLedger reservations, StrandedReservations stranded) : IStockReservations
 {
     public async Task<Result<ReservedStock>> ReserveAsync(
         ReservationInstruction instruction,
@@ -62,6 +62,17 @@ public sealed class StockReservations(ReservationLedger reservations) : IStockRe
         var open = await reservations.FindOpenByOwnerAsync(ownerId, cancellationToken);
 
         return [.. open.Select(reservation => Describe(reservation, wasAlreadyReserved: true))];
+    }
+
+    public async Task<IReadOnlyList<StrandedStock>> FindStrandedByOwnerAsync(
+        Guid ownerId,
+        CancellationToken cancellationToken)
+    {
+        var rows = await stranded.FindAsync(ownerId, cancellationToken);
+        return [.. rows.Select(row => new StrandedStock(
+            Describe(row.Reservation, wasAlreadyReserved: true),
+            row.Reservation.Balance!.Quantity,
+            row.TotalReserved))];
     }
 
     private static ReservedStock Describe(StockReservation reservation, bool wasAlreadyReserved) =>

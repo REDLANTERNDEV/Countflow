@@ -131,7 +131,12 @@ public sealed record WorkTaskSummary(
     DateTimeOffset? CompletedAt,
     string? CompletedByUserName,
     bool WasOverridden,
-    decimal? CountedQuantity = null);
+    decimal? CountedQuantity = null,
+    Guid? SuggestedLocationId = null,
+    Guid? DecisionTraceId = null,
+    bool PutawayAdviceStale = false,
+    long PutawayRevision = 0,
+    bool CompletionPending = false);
 
 /// <summary>
 /// The Work module's published surface for directed work raised by another
@@ -152,6 +157,14 @@ public interface IWorkQueue
     /// <summary>Batch lookup by id. Absent ids are simply missing from the result.</summary>
     Task<IReadOnlyDictionary<Guid, WorkTaskSummary>> FindManyAsync(
         IReadOnlyCollection<Guid> taskIds,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Recover work whose enqueue acknowledgement was lost. A reservation has at
+    /// most one task, independently of which historical retry key created it.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, WorkTaskSummary>> FindByReservationsAsync(
+        IReadOnlyCollection<Guid> reservationIds,
         CancellationToken cancellationToken);
 
     /// <summary>

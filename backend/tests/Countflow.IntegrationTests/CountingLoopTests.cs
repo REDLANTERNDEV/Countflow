@@ -227,6 +227,9 @@ public sealed class CountingLoopTests(CountflowApiFixture fixture)
 
     private sealed class BlockingCountQueue(IWorkQueue inner, EnqueueGate gate) : IWorkQueue
     {
+        public Task<IReadOnlyDictionary<Guid, WorkTaskSummary>> FindByReservationsAsync(IReadOnlyCollection<Guid> ids, CancellationToken ct) =>
+            inner.FindByReservationsAsync(ids, ct);
+
         public async Task<Countflow.SharedKernel.Results.Result<Guid>> EnqueueAsync(WorkTaskRequest request, CancellationToken cancellationToken)
         {
             if (request.Kind == WorkTaskKind.CycleCount && Interlocked.CompareExchange(ref gate.Blocked, 1, 0) == 0)
@@ -1111,6 +1114,18 @@ public sealed class CountingLoopTests(CountflowApiFixture fixture)
         Assert.Equal(0m, row.OnHandQuantity);
         Assert.Equal(30m, row.Shortfall);
         Assert.Equal(order.Reference + "#1", row.OwnerReference);
+
+        using var scope = fixture.Services.CreateScope();
+        var inventory = scope.ServiceProvider.GetRequiredService<InventoryDbContext>();
+        var ownerId = await inventory.StockReservations
+            .Where(reservation => reservation.Id == row.ReservationId)
+            .Select(reservation => reservation.OwnerId).SingleAsync();
+        var owned = Assert.Single(await scope.ServiceProvider.GetRequiredService<IStockReservations>()
+            .FindStrandedByOwnerAsync(ownerId, CancellationToken.None));
+        Assert.Equal(row.ReservationId, owned.Reservation.Id);
+        Assert.Equal(row.ReservedQuantity, owned.Reservation.Quantity);
+        Assert.Equal(row.OnHandQuantity, owned.OnHandQuantity);
+        Assert.Equal(row.Shortfall, owned.Shortfall);
     }
 
     [Fact]

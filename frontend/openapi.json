@@ -2612,6 +2612,85 @@
         }
       }
     },
+    "/api/v1/work/tasks/{id}/reslot": {
+      "post": {
+        "tags": [
+          "Work"
+        ],
+        "summary": "Re-evaluate an unclaimed pallet and append its new explanation.",
+        "operationId": "ReslotPutaway",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReslotPutawayRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReslotPutawayResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/work/tasks/claim-next": {
       "post": {
         "tags": [
@@ -3603,6 +3682,94 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ReleaseOrderResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem\u002Bjson": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/outbound/orders/{id}/lines/{lineId}/repair": {
+      "post": {
+        "tags": [
+          "Outbound"
+        ],
+        "summary": "Withdraw an unclaimed stranded commitment and reallocate that order line by rule.",
+        "operationId": "RepairSalesOrderLine",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "lineId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RepairOrderLineRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepairOrderLineResponse"
                 }
               }
             }
@@ -6844,6 +7011,13 @@
             "items": {
               "$ref": "#/components/schemas/BinCountObservation"
             }
+          },
+          "expectedDecisionTraceId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
           }
         }
       },
@@ -8166,6 +8340,19 @@
                 "$ref": "#/components/schemas/AsnLineProgress"
               }
             ]
+          },
+          "putawayAdviceStale": {
+            "type": "boolean",
+            "default": false
+          },
+          "putawayRevision": {
+            "type": "integer",
+            "format": "int64",
+            "default": 0
+          },
+          "completionPending": {
+            "type": "boolean",
+            "default": false
           }
         }
       },
@@ -9208,6 +9395,58 @@
               "null",
               "string"
             ]
+          },
+          "supersededByRepairId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          }
+        }
+      },
+      "OrderLineRepairResponse": {
+        "required": [
+          "id",
+          "idempotencyKey",
+          "reason",
+          "requestedByUserName",
+          "createdAt",
+          "completedAt",
+          "shortfallQuantity"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "idempotencyKey": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "requestedByUserName": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "shortfallQuantity": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
           }
         }
       },
@@ -9275,6 +9514,15 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/OrderAllocationResponse"
+            }
+          },
+          "repairs": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/OrderLineRepairResponse"
             }
           }
         }
@@ -9738,6 +9986,35 @@
           "stops": {
             "type": "integer",
             "format": "int32"
+          }
+        }
+      },
+      "PlateLine": {
+        "required": [
+          "itemId",
+          "lotId",
+          "condition",
+          "quantity"
+        ],
+        "type": "object",
+        "properties": {
+          "itemId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "lotId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "condition": {
+            "$ref": "#/components/schemas/StockCondition"
+          },
+          "quantity": {
+            "type": "number",
+            "format": "double"
           }
         }
       },
@@ -10281,6 +10558,68 @@
           }
         }
       },
+      "PutawayDecisionRevisionResponse": {
+        "required": [
+          "revision",
+          "idempotencyKey",
+          "reason",
+          "previousDecisionTraceId",
+          "decisionTraceId",
+          "suggestedLocationId",
+          "decidedAt",
+          "userId",
+          "userName",
+          "contents"
+        ],
+        "type": "object",
+        "properties": {
+          "revision": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "idempotencyKey": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "previousDecisionTraceId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "decisionTraceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "suggestedLocationId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "decidedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "userName": {
+            "type": "string"
+          },
+          "contents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlateLine"
+            }
+          }
+        }
+      },
       "ReceiveStockRequest": {
         "required": [
           "sku",
@@ -10566,6 +10905,57 @@
           "shortfallQuantity": {
             "type": "number",
             "format": "double"
+          }
+        }
+      },
+      "RepairOrderLineRequest": {
+        "required": [
+          "reason"
+        ],
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string"
+          }
+        }
+      },
+      "RepairOrderLineResponse": {
+        "required": [
+          "order",
+          "reservationsReleased",
+          "tasksCancelled",
+          "allocationsRaised",
+          "tasksRaised",
+          "shortfallQuantity",
+          "wasAlreadyRepaired"
+        ],
+        "type": "object",
+        "properties": {
+          "order": {
+            "$ref": "#/components/schemas/SalesOrderResponse"
+          },
+          "reservationsReleased": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "tasksCancelled": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "allocationsRaised": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "tasksRaised": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "shortfallQuantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "wasAlreadyRepaired": {
+            "type": "boolean"
           }
         }
       },
@@ -11044,6 +11434,36 @@
           "Cancelled"
         ],
         "type": "string"
+      },
+      "ReslotPutawayRequest": {
+        "required": [
+          "reason"
+        ],
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string"
+          }
+        }
+      },
+      "ReslotPutawayResponse": {
+        "required": [
+          "current",
+          "appliedRevision",
+          "wasAlreadyApplied"
+        ],
+        "type": "object",
+        "properties": {
+          "current": {
+            "$ref": "#/components/schemas/WorkTaskDetailResponse"
+          },
+          "appliedRevision": {
+            "$ref": "#/components/schemas/PutawayDecisionRevisionResponse"
+          },
+          "wasAlreadyApplied": {
+            "type": "boolean"
+          }
+        }
       },
       "ResolveScanRequest": {
         "required": [
@@ -12859,6 +13279,15 @@
                 "$ref": "#/components/schemas/DecisionTraceView"
               }
             ]
+          },
+          "putawayHistory": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/PutawayDecisionRevisionResponse"
+            }
           }
         }
       },
@@ -13069,6 +13498,24 @@
               "string"
             ],
             "format": "uuid"
+          },
+          "pendingReceiptCount": {
+            "type": "integer",
+            "format": "int32",
+            "default": 0
+          },
+          "putawayRevision": {
+            "type": "integer",
+            "format": "int64",
+            "default": 0
+          },
+          "putawayAdviceStale": {
+            "type": "boolean",
+            "default": false
+          },
+          "completionPending": {
+            "type": "boolean",
+            "default": false
           }
         }
       },

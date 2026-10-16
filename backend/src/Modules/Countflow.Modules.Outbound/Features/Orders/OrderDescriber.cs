@@ -1,4 +1,6 @@
 using Countflow.Modules.Outbound.Domain;
+using Countflow.Modules.Outbound.Persistence;
+using Microsoft.EntityFrameworkCore;
 using Countflow.SharedKernel.Contracts;
 
 namespace Countflow.Modules.Outbound.Features.Orders;
@@ -18,7 +20,8 @@ namespace Countflow.Modules.Outbound.Features.Orders;
 public sealed class OrderDescriber(
     IItemDirectory items,
     ILocationDirectory locations,
-    IWorkQueue work)
+    IWorkQueue work,
+    OutboundDbContext db)
 {
     public async Task<IReadOnlyList<SalesOrderResponse>> DescribeAsync(
         IReadOnlyList<SalesOrder> orders,
@@ -31,6 +34,13 @@ public sealed class OrderDescriber(
 
         var lines = orders.SelectMany(o => o.Lines).ToList();
         var allocations = lines.SelectMany(l => l.Allocations).ToList();
+        var lineIds = lines.Select(line => line.Id).ToArray();
+        var repairs = await db.OrderLineRepairs.AsNoTracking().Where(repair => lineIds.Contains(repair.SalesOrderLineId))
+            .OrderBy(repair => repair.CreatedAt).ToListAsync(cancellationToken);
+        var repairsByLine = repairs.GroupBy(repair => repair.SalesOrderLineId)
+            .ToDictionary(group => group.Key, group => group.Select(repair => new OrderLineRepairResponse(
+                repair.Id, repair.IdempotencyKey, repair.Reason, repair.RequestedByUserName,
+                repair.CreatedAt, repair.CompletedAt, repair.CompletedAt is null ? null : repair.ShortfallQuantity)).ToList());
 
         var itemsById = await items.FindManyAsync(
             [.. lines.Select(l => l.ItemId).Distinct()], cancellationToken);
@@ -77,7 +87,7 @@ public sealed class OrderDescriber(
                 [
                     .. order.Lines
                         .OrderBy(line => line.LineNumber)
-                        .Select(line => Describe(line, itemsById, locationsById, tasksById))
+                        .Select(line => Describe(line, itemsById, locationsById, tasksById, repairsByLine))
                 ]))
         ];
     }
@@ -89,7 +99,8 @@ public sealed class OrderDescriber(
         SalesOrderLine line,
         IReadOnlyDictionary<Guid, ItemSnapshot> itemsById,
         IReadOnlyDictionary<Guid, LocationSnapshot> locationsById,
-        IReadOnlyDictionary<Guid, WorkTaskSummary> tasksById)
+        IReadOnlyDictionary<Guid, WorkTaskSummary> tasksById,
+        IReadOnlyDictionary<Guid, List<OrderLineRepairResponse>> repairsByLine)
     {
         var item = itemsById.GetValueOrDefault(line.ItemId);
 
@@ -115,7 +126,8 @@ public sealed class OrderDescriber(
                     picked ? allocation.Quantity : 0m,
                     task?.CompletedAtLocationId is { } dropped
                         ? locationsById.GetValueOrDefault(dropped)?.Code
-                        : null);
+                        : null,
+                    allocation.SupersededByRepairId);
             })
             .ToList();
 
@@ -134,6 +146,7 @@ public sealed class OrderDescriber(
             // was created with, and the console shows it against the allocations
             // where the lot is already resolved.
             null,
-            allocations);
+            allocations,
+            repairsByLine.GetValueOrDefault(line.Id) ?? []);
     }
 }

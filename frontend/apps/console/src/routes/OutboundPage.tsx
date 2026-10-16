@@ -21,6 +21,7 @@ import { useState } from 'react';
 import { api } from '../api.js';
 import { DecisionTrace } from '../components/DecisionTrace.js';
 import { PageHead } from '../components/PageHead.js';
+import { RepairCommitment } from '../components/RepairCommitment.js';
 
 const STATUSES = ['New', 'Released', 'Packed', 'Despatched', 'Cancelled'] as const;
 
@@ -396,6 +397,8 @@ export function OutboundPage() {
             </Table>
           </TableContainer>
 
+          {order.lines.map(line => <RepairCommitment key={`${order.id}:${line.id}`} orderId={order.id} status={order.status} line={line} />)}
+
           {order.lines.some((line) => line.allocations.length > 0) ? (
             <div className="mt-[var(--space-3)]">
               <h4 className="mb-[var(--space-2)] mt-0 text-[length:var(--text-sm)] text-[var(--color-text-secondary)]">
@@ -437,6 +440,7 @@ export function OutboundPage() {
                             <Numeric value={allocation.quantity} locale={locale} />
                           </TD>
                           <TD>
+                            {allocation.supersededByRepairId ? <Badge tone="neutral">{t('outbound.repair.superseded')}</Badge> : null}
                             {allocation.taskState ? (
                               <Badge
                                 tone={allocation.taskState === 'Completed' ? 'success' : 'neutral'}

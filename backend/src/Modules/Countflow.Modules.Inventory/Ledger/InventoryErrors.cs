@@ -67,6 +67,12 @@ public static class InventoryErrors
     public static readonly Error NothingToPost =
         Error.Validation("inventory.nothing_to_post", "A posting must carry at least one movement.");
 
+    public static readonly Error PalletCommandInvalid =
+        Error.Validation("inventory.pallet_command_invalid", "A pallet command needs a retry key fitting its movement family and notes of at most 1000 characters.");
+
+    public static readonly Error PalletContentsChanged =
+        Error.Conflict("inventory.pallet_contents_changed", "The pallet contents no longer match the decision. Re-slot the pallet before confirming.");
+
     public static readonly Error LicensePlateEmpty =
         Error.Conflict(
             "inventory.license_plate_empty",

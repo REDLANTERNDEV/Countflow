@@ -1341,3 +1341,228 @@ changed payload under the same key. Work closes only afterward. If that final
 write fails, the saved confirmation retries against Inventory's receipt. Release
 and restart refuse to invalidate a confirmation already recorded. Draft captures
 and queued confirmations are isolated by operator and claim on the device.
+
+## 25. A repair replaces a promise, and its writes keep the lock session
+
+A stranded commitment is repaired for one order line by an explicit supervisor
+request. The old allocation keeps its quantity, source and decision trace; a
+repair record links its withdrawal to the replacement plan and receipt. The
+replacement plan is saved before reserving stock. This makes interrupted writes
+recoverable with the same reservation and pick intent keys, including Work tasks
+whose IDs Outbound never managed to record. A partial replacement remains a
+shortfall, rather than cancelling the customer's order to hide it.
+
+An advisory lock on an idle connection does not protect writes on another
+connection after its session dies. An Outbound-only concurrency fence notices
+too late: Inventory may already have reserved or despatched, or Work enqueued.
+Order mutations therefore pin their scoped module contexts to the physical
+session holding the order lock. Transactions remain sequential and owned by each
+module; no transaction spans schemas and no module reads another's tables.
+Pinned commands fail closed on session loss and never transparently reconnect.
+The whole request resumes with its durable intent under a new lease. Ordinary
+module requests retain the existing provider retry policy.
+
+The cost is deliberate: order orchestration cannot issue parallel database
+commands, and a transient session failure reaches the caller instead of being
+retried inside a module. Monotonic downstream fencing in every participating
+write contract would also work, but would add order-orchestration vocabulary to
+Inventory and Work. Keeping the lock and the side effects on one session avoids
+that coupling while retaining their transaction boundaries.
+
+## 26. A mixed load shares rules, not a representative SKU
+
+The first item unloaded onto a pallet cannot represent the capacity,
+temperature or lot restrictions of everything unloaded after it. Repeating a
+single-item evaluation independently would still miss the combined cube and
+weight, the incoming SKU union, and two incoming batches of the same item.
+
+Whole-load evaluation therefore has its own typed context, adapting the
+existing putaway catalogue rather than adding a second rules engine or a second
+set of configuration rows. Item-specific constraints inspect every line;
+load-specific constraints and preferences run once over the combined load.
+Unknown dimensions stay unknown, on the same terms as single-item putaway.
+
+Consolidation and velocity average each SKU's score equally. Within one SKU,
+lots are weighted by quantity. A thousand screws and one appliance are not a
+thousand votes against one, and splitting a delivery into more lot lines does
+not earn it extra influence. The trace note records the per-SKU percentages so
+the average remains explainable. This is a chosen policy, not a claim that base
+units across unrelated products are comparable.
+
+The cost is an explicit adapter for each existing rule kind. A future rule must
+decide whether it concerns an item or the entire load; an unknown adapter fails
+closed. The original single-item context and catalogue retain their behavior.
+The caller supplies the exact contents it is asking about; the advisor copies
+them before awaiting and stores them on the trace. That list records decision
+intent, not a second warehouse snapshot. Bin occupancy still comes from the
+ledger during replay. The optional contents field is also the explicit replay
+discriminator: old traces containing a plate ID remain single-item questions,
+and growing the plate later never broadens their meaning. Live and historical
+whole-load evaluations share one context builder. Inventory reads physical
+holdings once for every requested item/lot perspective, including quarantined
+stock, rather than combining separately timed occupancy queries.
+
+Task revision history and re-slot orchestration are described in decision 28.
+These advisory services do not themselves coordinate task ownership or guarantee
+that a caller's supplied contents are still physically current.
+
+## 27. A receipt reserves its handoff before it posts stock
+
+Stock-first receiving had a gap: Inventory could commit a receipt, then Work
+could complete the existing pallet task before receiving its source. That move
+took the new stock too; the delayed enqueue then raised a new job for an empty
+dock. Re-slotting or a task version alone could not repair that missing handoff.
+
+Inbound now registers a durable receipt intent in Work before booking SSCC
+stock. Work binds the retry key to the request fingerprint. An SSCC lane
+serializes registration and acknowledgement even before Inventory creates the
+plate, and later maps that lane to its opaque plate ID. A pending count on the
+task blocks claims, confirmation and withdrawal. New receipts onto assigned
+pallets are refused; the operator hands the task back before growing the load.
+
+Work acknowledges the intent in the same transaction as its source append and
+quantity update. A definite Inventory refusal clears pending state; an ambiguous
+failure leaves evidence to resume with the original key. No transaction spans
+modules, and Work's intent is not a second inventory booking.
+
+Receipts whose source keys predate the protocol retain their existing Inventory
+replay checks without acquiring a new intent. There is no historical request
+fingerprint to infer honestly. Creating a pending intent for such a replay would
+strand it behind Work's existing-source fast path, or wrongly refuse a receipt
+whose task is already assigned. New receipts bind their fingerprint normally.
+
+The task counter is a deliberate projection. Claim must recheck an updated task
+row after waiting for its lock; a child-table NOT EXISTS check can retain an old
+statement snapshot and miss a just-committed receipt. All lane/task writers lock
+in that order. The cost is a retained intent per pallet receipt and a requirement
+to retry interrupted receipts before taking the load. Whole-pallet decision
+revisions and durable completion intent are described below.
+
+
+## 28. Re-slotting records the decision the operator must acknowledge
+
+A pallet can grow after its first receipt, while the first item's suggestion
+remains attached to its Work task. Re-slotting is an explicit supervisor action
+on Ready work: evaluate every current item and lot, record the reason and actor,
+and append a revision pointing to both the old and new explanations. The original
+trace remains unchanged. Task quantity reflects the evaluated holdings while
+receipt sources retain their original quantities. No winning candidate is also
+an explainable decision.
+
+Work serializes the action against receipt acknowledgement, claiming and other
+re-slots using its task row lock. A task-scoped idempotency key binds the reason;
+retries return the original applied revision alongside current task state, even
+if the task has since moved on. Console stores that key and reason before sending
+and retains them across an ambiguous response and reload.
+
+A later receipt marks revised advice stale, blocking claim and confirmation until
+another evaluation. Handheld confirmations carry the exact trace ID shown when
+queued; Work refuses an old trace before stock posting. List refreshes discard
+cached explanations when their trace ID changes rather than retaining an old
+explanation beneath a new suggestion.
+
+Inventory checks the saved revision contents inside the whole-pallet posting
+transaction. Every ledger writer takes compatible balance-table intent, then
+sorted plate locks, then balance locks. The same plate lock spans replay, contents
+read, comparison and posting; a new item/lot/condition row cannot bypass it.
+Table intent goes first to respect blind counting's stronger table lock. Normal
+writers remain concurrent across different plates. Replays validate their
+original movement family and supplied contents before returning the old result;
+they do not compare against an origin the first attempt has already emptied.
+
+The cost is retained revision history, an explicit reslot after growing a revised
+pallet, and serialization of physical writers on the same plate. Durable Work
+completion recovery after loss of its lock session uses the intent below.
+
+Inbound returns advice from the effective task after enqueue, including on source
+retry. It reads one Work summary rather than reporting the incoming line's new
+trace while the task retains an older explanation. Counts follow the task's
+immutable trace. Stale advice returns its trace/revision with no destination; the
+handheld asks for a supervisor re-slot. A receipt retry can therefore observe a
+newer task revision, while its booked stock movement remains idempotent.
+
+
+## 29. A refused pallet command cannot later become stock
+
+Work completion recovery needs more than a pending flag. If one attempt refuses
+and releases that flag while an older request is delayed, the older request could
+later succeed after physical contents change. Work would then be free to re-slot
+or receive onto a pallet that the delayed request is about to move.
+
+Inventory records a terminal whole-pallet command result in the same transaction
+as its stock batch. A global root-key row serializes requests even when competing
+bodies name different plates. Its fingerprint binds plate, origin, destination,
+task, trace, actor identity, notes and optional expected holdings. Holdings are
+ordered and decimal scale normalized; a renamed operator remains the same user.
+The original movement and outcome retain their original audit identity.
+
+A committed success replays its movement identities; a committed refusal keeps
+returning that refusal even if contents later match. Correcting the operation
+requires a new key. Exceptions leave no partially committed journal or movements;
+commit ambiguity is resolved by looking up the same root key. Pure structural
+validation happens before the journal and remains deterministic for that body.
+
+Legacy movement families are recognized before reading today's origin. A matching
+legacy success gains a journal outcome, while a conflicting attempt rolls its
+new journal row back so it cannot poison the original key. Existing plate and
+balance locking still protect physical contents; this journal owns command
+finality, not a second stock ledger.
+
+The cost is retained terminal results for whole-pallet commands. This is the
+Inventory half of durable completion recovery; Work owns the orchestration below.
+
+
+## 30. Pallet confirmation survives the Work lock session
+
+Work commits a completion intent and task pointer before calling Inventory. The
+intent freezes the original instruction, actor identity and display name,
+destination, override reason and decision trace. Its task-scoped key binds the
+request body and actor identity. Inventory runs without an open Work transaction;
+a separate task-locked transaction settles the durable terminal outcome.
+
+A pending pointer blocks claim, release, cancellation, new receipt sources and
+new re-slots. Already acknowledged receipt and re-slot retries still return their
+original evidence. Task and receipt responses expose `completionPending`; receipt
+responses suppress the destination while it is pending. The operator resumes the
+original device command with its original key and body. Exceptions retain the
+pointer, including lost commit acknowledgements. A username change cannot rewrite
+the original audit identity.
+
+A definite refusal is saved and releases only its own pointer; changed revised
+contents also mark advice stale. A corrected operation uses a fresh decision and
+key. Inventory key-ownership rejection is different: Work removes its provisional
+attempt because that root belongs to another instruction. This permits a correct
+legacy retry after a mistaken destination without poisoning the historical key.
+A delayed rejected caller cannot clear a successor's pointer.
+
+Revised tasks freeze their revision holdings. Unrevised legacy decisions retain
+null expected contents rather than inventing a snapshot after a previous binary
+already emptied the origin. Old completed tasks have no saved request fingerprint
+and retain their historical same-key empty-movement replay. New successful intents
+also replay task state without reporting another stock batch.
+
+The cost is retained completion intents and an explicit recovery obligation for
+ambiguous requests. The pending flag is a durable fence, not an expiry or a lease;
+restarting a process or losing a database session cannot silently release it.
+
+## 31. The demo owns disposable data; the platform owns its edge
+
+A public demo is one shared warehouse with deliberately published human sign-in
+credentials. Database, signing, webhook encryption and machine credentials remain
+private and independent of any real deployment. The simulator builds operational
+history through the same APIs visitors use. The first hosted rollout uses manual
+resets; an automatic destructive schedule is deferred until operating needs
+justify one.
+
+Dokploy terminates HTTPS and injects domain/network configuration. Its standalone
+Compose file reuses the existing demo services, while the web gateway listens only
+on internal port80. A database reset must not replace those platform settings with
+a raw Compose restart. Standalone deployments can restart directly; Dokploy resets
+stop after database removal and require a platform redeploy.
+
+Reset authority requires an explicit confirmation, exact Compose project identity
+and a database volume marked as demo data. Arbitrary Compose project/file options
+are refused. TLS state and logs are retained. Unmarked older volumes require
+manual inspection instead of silent adoption. The cost is a visible outage and
+operator action during reset; public DNS, certificate and routing verification
+remain release requirements, not claims a local container test can establish.

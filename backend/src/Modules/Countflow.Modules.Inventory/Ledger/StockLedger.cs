@@ -31,9 +31,9 @@ namespace Countflow.Modules.Inventory.Ledger;
 /// <item>Resolve the items and locations through MasterData's published
 /// directory — there is no cross-schema foreign key to lean on (ADR 0002), so
 /// referential integrity across the boundary is checked here.</item>
-/// <item>Open a transaction, create-or-lock every balance row the batch will
-/// touch <b>in a globally consistent order</b>, and only then decide whether the
-/// sources have enough.</item>
+/// <item>Open a transaction, take balance-table intent and sorted plate locks,
+/// then create-or-lock every touched balance <b>in a globally consistent order</b>.
+/// Only then decide whether the sources have enough.</item>
 /// <item>Append the movements, fold them into the balances, commit. The ledger
 /// lines and the projection are written together or not at all — that is what
 /// makes the projection reconstructible rather than merely usually right.</item>
@@ -146,6 +146,27 @@ public sealed class StockLedger(
             cancellationToken);
     }
 
+    /// <summary>
+    /// All physical writers take these before balance locks. Table intent precedes
+    /// plate locks so a blind count's table lock cannot deadlock with a plate owner.
+    /// Normal writers' ROW EXCLUSIVE locks are mutually compatible.
+    /// </summary>
+    internal async Task LockLicensePlatesAsync(IEnumerable<Guid> plateIds, CancellationToken ct)
+    {
+        if (dbContext.Database.CurrentTransaction is null)
+            throw new InvalidOperationException("Pallet locks require an Inventory transaction.");
+        await dbContext.Database.ExecuteSqlRawAsync(
+            """LOCK TABLE inventory."StockBalances" IN ROW EXCLUSIVE MODE""", ct);
+        foreach (var id in plateIds.Distinct().Order())
+        {
+            // NO KEY UPDATE leaves FK key-share readers free while excluding
+            // every other physical writer, including inserts of new balance rows.
+            await dbContext.LicensePlates.FromSqlInterpolated(
+                $"SELECT * FROM inventory.\"LicensePlates\" WHERE \"Id\" = {id} FOR NO KEY UPDATE")
+                .AsNoTracking().ToListAsync(ct);
+        }
+    }
+
     private static Result ValidateWithoutDatabase(PostingCommand command)
     {
         if (string.IsNullOrWhiteSpace(command.IdempotencyKey))
@@ -238,6 +259,9 @@ public sealed class StockLedger(
 
         try
         {
+            await LockLicensePlatesAsync(pending.SelectMany(command =>
+                new[] { command.From.LicensePlateId, command.To.LicensePlateId })
+                .OfType<Guid>(), cancellationToken);
             var locked = await LockEveryTouchedBalanceAsync(pending, locationsById, cancellationToken);
 
             // Running quantities, not the locked snapshot: two lines of one pallet

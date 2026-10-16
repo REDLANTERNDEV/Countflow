@@ -42,6 +42,7 @@ public static class ReleaseOrder
                         cancellationToken))
                         .ToHttpResult())
             .RequireAuthorization(policy => policy.RequireRole(Roles.Admin, Roles.Supervisor))
+            .AddEndpointFilter<OrderMutationFilter>()
             .WithTags("Outbound")
             .WithName("ReleaseSalesOrder")
             .WithSummary("Allocate stock by rule and raise the picks.")

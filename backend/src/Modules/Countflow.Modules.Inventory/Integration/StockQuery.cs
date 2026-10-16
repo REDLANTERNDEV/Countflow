@@ -23,9 +23,21 @@ public sealed class StockQuery(InventoryDbContext dbContext, IItemDirectory item
         Guid? subjectLotId,
         CancellationToken cancellationToken)
     {
-        if (locationIds.Count == 0)
+        var subject = new StockSubject(subjectItemId, subjectLotId);
+        var batch = await OccupancyAsync(locationIds, [subject], cancellationToken);
+        return batch[subject];
+    }
+
+    public async Task<IReadOnlyDictionary<StockSubject, IReadOnlyDictionary<Guid, LocationOccupancy>>> OccupancyAsync(
+        IReadOnlyCollection<Guid> locationIds,
+        IReadOnlyCollection<StockSubject> subjects,
+        CancellationToken cancellationToken)
+    {
+        var wanted = subjects.Distinct().ToArray();
+        if (locationIds.Count == 0 || wanted.Length == 0)
         {
-            return new Dictionary<Guid, LocationOccupancy>();
+            return wanted.ToDictionary(subject => subject,
+                _ => (IReadOnlyDictionary<Guid, LocationOccupancy>)new Dictionary<Guid, LocationOccupancy>());
         }
 
         var ids = locationIds.Distinct().ToArray();
@@ -41,7 +53,8 @@ public sealed class StockQuery(InventoryDbContext dbContext, IItemDirectory item
 
         if (rows.Count == 0)
         {
-            return new Dictionary<Guid, LocationOccupancy>();
+            return wanted.ToDictionary(subject => subject,
+                _ => (IReadOnlyDictionary<Guid, LocationOccupancy>)new Dictionary<Guid, LocationOccupancy>());
         }
 
         // One batch lookup across the module boundary rather than a join —
@@ -53,7 +66,8 @@ public sealed class StockQuery(InventoryDbContext dbContext, IItemDirectory item
 
         // The fold itself lives on the contract, so that shadow replay describing
         // this bay as it stood in March describes it in exactly these terms.
-        return LocationOccupancy.Summarise(rows, itemsById, subjectItemId, subjectLotId);
+        return wanted.ToDictionary(subject => subject,
+            subject => LocationOccupancy.Summarise(rows, itemsById, subject.ItemId, subject.LotId));
     }
 
     public async Task<IReadOnlyList<PlateLine>> PlateContentsAsync(

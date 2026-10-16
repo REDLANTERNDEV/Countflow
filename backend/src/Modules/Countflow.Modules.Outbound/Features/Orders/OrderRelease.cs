@@ -68,6 +68,9 @@ public sealed class OrderRelease(
         PostingActor actor,
         CancellationToken cancellationToken)
     {
+        if (await OrderRepair.HasPendingAsync(dbContext, order.Id, cancellationToken))
+            return Result.Failure<ReleaseOutcome>(OutboundErrors.RepairInProgress);
+
         if (order.Status is not (SalesOrderStatus.New or SalesOrderStatus.Released))
         {
             return Result.Failure<ReleaseOutcome>(OutboundErrors.OrderNotReleasable(order.Status.ToString()));
@@ -129,9 +132,10 @@ public sealed class OrderRelease(
         // what this pass created, so an interrupted run finishes rather than
         // stopping short.
         var alreadyThisRelease = line.Allocations
+            .Where(a => a.SupersededByRepairId == null)
             .Any(a => string.Equals(a.ReleaseIdempotencyKey, idempotencyKey, StringComparison.Ordinal));
 
-        var outstanding = line.OrderedQuantity - line.Allocations.Sum(a => a.Quantity);
+        var outstanding = line.OrderedQuantity - line.Allocations.Where(a => a.SupersededByRepairId == null).Sum(a => a.Quantity);
 
         if (!alreadyThisRelease && outstanding > 0m)
         {
@@ -154,7 +158,55 @@ public sealed class OrderRelease(
 
             shortfall = plan.Value.ShortfallQuantity;
 
-            foreach (var chosen in plan.Value.Lines)
+            var applied = await ReservePlanAsync(order, line, idempotencyKey, actor, plan.Value, cancellationToken);
+            if (applied.IsFailure) return Result.Failure<ReleaseOutcome>(applied.Error);
+            allocations += applied.Value.Allocations;
+            shortfall += applied.Value.Shortfall;
+
+            // Saved before any task is raised, so a job never points at a
+            // commitment this module has not written down.
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        var tasks = await EnsurePicksAsync(order, line, cancellationToken);
+        if (tasks.IsFailure)
+        {
+            return Result.Failure<ReleaseOutcome>(tasks.Error);
+        }
+
+        // Re-derived from the rows rather than incremented. See
+        // SalesOrderLine.AllocatedQuantity — a running total cannot be made
+        // idempotent, and this is the third table in the system to make the point.
+        line.AllocatedQuantity = line.Allocations.Where(a => a.SupersededByRepairId == null).Sum(a => a.Quantity);
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return new ReleaseOutcome(allocations, tasks.Value, shortfall);
+    }
+
+    /// <summary>Applies a durably recorded repair plan without releasing its own interrupted reservations.</summary>
+    public async Task<Result<ReleaseOutcome>> ApplyRepairPlanAsync(
+        SalesOrder order, SalesOrderLine line, string idempotencyKey, PostingActor actor,
+        AllocationPlan plan, CancellationToken cancellationToken)
+    {
+        var reserved = await ReservePlanAsync(order, line, idempotencyKey, actor, plan, cancellationToken);
+        if (reserved.IsFailure) return reserved;
+        await dbContext.SaveChangesAsync(cancellationToken);
+        var tasks = await EnsurePicksAsync(order, line, cancellationToken);
+        if (tasks.IsFailure) return Result.Failure<ReleaseOutcome>(tasks.Error);
+        line.AllocatedQuantity = line.Allocations.Where(a => a.SupersededByRepairId == null).Sum(a => a.Quantity);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return new ReleaseOutcome(reserved.Value.Allocations, tasks.Value, line.OutstandingQuantity);
+    }
+
+    private async Task<Result<ReleaseOutcome>> ReservePlanAsync(
+        SalesOrder order, SalesOrderLine line, string idempotencyKey, PostingActor actor,
+        AllocationPlan plan, CancellationToken cancellationToken)
+    {
+        var reference = $"{order.Reference}#{line.LineNumber}";
+        var allocations = 0;
+        var shortfall = 0m;
+            foreach (var chosen in plan.Lines)
             {
                 var reserved = await reservations.ReserveAsync(
                     new ReservationInstruction
@@ -163,7 +215,7 @@ public sealed class OrderRelease(
                         Quantity = chosen.Quantity,
                         OwnerId = line.Id,
                         OwnerReference = reference,
-                        DecisionTraceId = plan.Value.DecisionTraceId,
+                        DecisionTraceId = plan.DecisionTraceId,
 
                         // Keyed on the holding rather than on the position in the
                         // plan. A retry re-runs the rules against a warehouse that
@@ -194,6 +246,9 @@ public sealed class OrderRelease(
                     continue;
                 }
 
+                if (line.Allocations.Any(allocation => allocation.StockReservationId == reserved.Value.Id))
+                    continue;
+
                 // Added through the *set*, not through `line.Allocations`. A new
                 // entity discovered through a navigation on an already-tracked
                 // parent is inferred to be Modified rather than Added when its key
@@ -209,7 +264,7 @@ public sealed class OrderRelease(
                     ReleaseIdempotencyKey = idempotencyKey,
                     Quantity = chosen.Quantity,
                     StockReservationId = reserved.Value.Id,
-                    DecisionTraceId = plan.Value.DecisionTraceId,
+                    DecisionTraceId = plan.DecisionTraceId,
                     LocationId = chosen.LocationId,
                     LocationCode = chosen.LocationCode,
                     LotId = chosen.LotId,
@@ -222,25 +277,7 @@ public sealed class OrderRelease(
                 allocations++;
             }
 
-            // Saved before any task is raised, so a job never points at a
-            // commitment this module has not written down.
-            await dbContext.SaveChangesAsync(cancellationToken);
-        }
-
-        var tasks = await RaisePicksAsync(order, line, reference, idempotencyKey, cancellationToken);
-        if (tasks.IsFailure)
-        {
-            return Result.Failure<ReleaseOutcome>(tasks.Error);
-        }
-
-        // Re-derived from the rows rather than incremented. See
-        // SalesOrderLine.AllocatedQuantity — a running total cannot be made
-        // idempotent, and this is the third table in the system to make the point.
-        line.AllocatedQuantity = line.Allocations.Sum(a => a.Quantity);
-
-        await dbContext.SaveChangesAsync(cancellationToken);
-
-        return new ReleaseOutcome(allocations, tasks.Value, shortfall);
+        return new ReleaseOutcome(allocations, 0, shortfall);
     }
 
     /// <summary>
@@ -290,17 +327,24 @@ public sealed class OrderRelease(
     /// so there is nothing here to merge and nothing for the handheld to learn.
     /// </para>
     /// </summary>
-    private async Task<Result<int>> RaisePicksAsync(
+    public async Task<Result<int>> EnsurePicksAsync(
         SalesOrder order,
         SalesOrderLine line,
-        string reference,
-        string idempotencyKey,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        IReadOnlyCollection<Guid>? allocationIds = null)
     {
         var raised = 0;
-
-        foreach (var allocation in line.Allocations.Where(a => a.WorkTaskId is null).OrderBy(a => a.AllocatedAt))
+        var reference = $"{order.Reference}#{line.LineNumber}";
+        var missing = line.Allocations.Where(a => a.WorkTaskId is null && a.SupersededByRepairId == null
+            && (allocationIds == null || allocationIds.Contains(a.Id))).OrderBy(a => a.AllocatedAt).ToList();
+        var existing = await work.FindByReservationsAsync(missing.Select(a => a.StockReservationId).ToArray(), cancellationToken);
+        foreach (var allocation in missing)
         {
+            if (existing.TryGetValue(allocation.StockReservationId, out var recovered))
+            {
+                allocation.WorkTaskId = recovered.Id;
+                continue;
+            }
             var task = await work.EnqueueAsync(
                 new WorkTaskRequest
                 {
@@ -320,7 +364,7 @@ public sealed class OrderRelease(
                     StockReservationId = allocation.StockReservationId,
                     Priority = order.Priority,
                     SourceReference = reference,
-                    IdempotencyKey = $"{idempotencyKey}:{allocation.Id}:pick"
+                    IdempotencyKey = $"{allocation.ReleaseIdempotencyKey}:{allocation.Id}:pick"
                 },
                 cancellationToken);
 

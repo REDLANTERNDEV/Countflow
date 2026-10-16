@@ -101,6 +101,9 @@ public static class ClaimNextTask
                 SELECT "Id"
                 FROM {WorkDbContext.SchemaName}."WorkTasks"
                 WHERE "Status" = @ready
+                  AND "PendingPutawayCompletionId" IS NULL
+                  AND "PendingReceiptCount" = 0
+                  AND NOT "PutawayAdviceStale"
                   AND (@warehouseId IS NULL OR "WarehouseId" = @warehouseId)
                   AND (@kind IS NULL OR "Kind" = @kind)
                 ORDER BY "Priority", "CreatedAt"
@@ -162,7 +165,7 @@ public static class ClaimTask
                 }
 
                 var now = clock.GetUtcNow();
-                var updated = await dbContext.WorkTasks.Where(task => task.Id == id
+                var updated = await dbContext.WorkTasks.Where(task => task.Id == id && task.PendingPutawayCompletionId == null && task.PendingReceiptCount == 0 && !task.PutawayAdviceStale
                     && (task.Status == WorkTaskStatus.Ready || (task.Status == WorkTaskStatus.Assigned && task.AssignedToUserId == actor.Value.UserId)))
                     .ExecuteUpdateAsync(update => update.SetProperty(task => task.Status, WorkTaskStatus.Assigned)
                         .SetProperty(task => task.AssignedToUserId, actor.Value.UserId)
@@ -170,6 +173,13 @@ public static class ClaimTask
                         .SetProperty(task => task.AssignedAt, task => task.AssignedAt ?? now), cancellationToken);
                 var task = await dbContext.WorkTasks.AsNoTracking().SingleOrDefaultAsync(task => task.Id == id, cancellationToken);
                 if (task is null) return Result.Failure<WorkTaskDetailResponse>(WorkErrors.TaskNotFound).ToHttpResult();
+                if (updated == 0 && task.PendingPutawayCompletionId is not null)
+                    return Result.Failure<WorkTaskDetailResponse>(WorkErrors.CompletionPending).ToHttpResult();
+                if (updated == 0 && task.PutawayAdviceStale)
+                    return Result.Failure<WorkTaskDetailResponse>(WorkErrors.PutawayContentsChanged).ToHttpResult();
+                if (updated == 0)
+                    if (task.PendingReceiptCount > 0)
+                        return Result.Failure<WorkTaskDetailResponse>(WorkErrors.ReceiptPending).ToHttpResult();
                 if (updated == 0)
                     return Result.Failure<WorkTaskDetailResponse>(task.Status == WorkTaskStatus.Assigned
                         ? WorkErrors.TaskAlreadyClaimed : WorkErrors.TaskNotOpen).ToHttpResult();
@@ -221,7 +231,7 @@ public static class ReleaseTask
                     return (await BlindBinCounts.ReleaseAsync(id, actor.Value, dbContext, binCounting, cancellationToken)).ToHttpResult();
 
                 var released = await dbContext.WorkTasks
-                    .Where(t => t.Id == id && t.Status == WorkTaskStatus.Assigned
+                    .Where(t => t.Id == id && t.PendingPutawayCompletionId == null && t.Status == WorkTaskStatus.Assigned
                                 && t.AssignedToUserId == actor.Value.UserId)
                     .ExecuteUpdateAsync(update => update
                         .SetProperty(t => t.Status, WorkTaskStatus.Ready)
@@ -237,6 +247,7 @@ public static class ReleaseTask
                     var current = await dbContext.WorkTasks.AsNoTracking()
                         .SingleOrDefaultAsync(t => t.Id == id, cancellationToken);
                     var error = current is null ? WorkErrors.TaskNotFound
+                        : current.PendingPutawayCompletionId is not null ? WorkErrors.CompletionPending
                         : current.Status != WorkTaskStatus.Assigned ? WorkErrors.TaskNotOpen
                         : WorkErrors.TaskNotYours;
                     return Result.Failure(error).ToHttpResult();

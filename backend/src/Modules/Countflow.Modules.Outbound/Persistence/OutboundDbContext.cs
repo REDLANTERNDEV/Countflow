@@ -19,6 +19,16 @@ public sealed class OutboundDbContext(DbContextOptions<OutboundDbContext> option
     /// </summary>
     public DbSet<OrderLineAllocation> OrderLineAllocations => Set<OrderLineAllocation>();
 
+    public DbSet<OrderLineRepair> OrderLineRepairs => Set<OrderLineRepair>();
+    public DbSet<OrderMutationFence> OrderMutationFences => Set<OrderMutationFence>();
+
+    public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        foreach (var entry in ChangeTracker.Entries<OrderMutationFence>())
+            entry.Entity.Revision = Guid.CreateVersion7();
+        return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
     public DbSet<Wave> Waves => Set<Wave>();
 
     public DbSet<Return> Returns => Set<Return>();
@@ -111,6 +121,24 @@ public sealed class OutboundDbContext(DbContextOptions<OutboundDbContext> option
 
             allocation.ToTable(table =>
                 table.HasCheckConstraint("CK_OrderLineAllocations_PositiveQuantity", "\"Quantity\" > 0"));
+        });
+
+        builder.Entity<OrderMutationFence>(fence =>
+        {
+            fence.HasKey(row => row.OrderId);
+            fence.Property(row => row.Revision).IsConcurrencyToken();
+        });
+
+        builder.Entity<OrderLineRepair>(repair =>
+        {
+            repair.HasKey(row => row.Id);
+            repair.Property(row => row.IdempotencyKey).HasMaxLength(128).IsRequired();
+            repair.Property(row => row.Reason).HasMaxLength(500).IsRequired();
+            repair.Property(row => row.RequestedByUserName).HasMaxLength(256).IsRequired();
+            repair.Property(row => row.ShortfallQuantity).HasPrecision(18, 4);
+            repair.HasIndex(row => row.IdempotencyKey).IsUnique();
+            repair.HasIndex(row => row.SalesOrderLineId);
+            repair.HasOne<SalesOrderLine>().WithMany().HasForeignKey(row => row.SalesOrderLineId);
         });
 
         builder.Entity<Wave>(wave =>

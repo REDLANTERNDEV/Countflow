@@ -176,6 +176,7 @@ export const tr: Catalogue = {
         body: 'Bir irsaliye, rampa kabulü ve operatörün el terminalinde onayladığı yönlendirilmiş bir yerleştirme — rafın önünde “neden burası?” sorusunun yanıtıyla birlikte.',
       },
       outbound: {
+
         title: 'Sevkiyat döngüsü',
         body: 'Serbest bırakılan, kuralla tahsis edilen, toplanan, paketlenen ve sevk edilen bir sipariş. Bir toplama, kapattığı rezervasyonu adıyla anar; kimseye söz verilmemiş stoğu toplamak ifade edilemez.',
       },
@@ -443,6 +444,15 @@ export const tr: Catalogue = {
   },
 
   work: {
+    reslot: {
+      title: 'Palet önerisini yenile',
+      help: 'Bu paletteki tüm ürün ve partiler birlikte değerlendirilir. Her yeni karar ayrı kaydedilir; önceki açıklamalar korunur. Alınmış işi önce geri bırakın.',
+      reason: 'Gerekçe', apply: 'Öneriyi yeniden hesapla', retry: 'Aynı isteği yeniden dene',
+      working: 'Palet değerlendiriliyor…', stale: 'Öneri güncellenmeli',
+      handBack: 'Önerisini değiştirmeden önce bu işi geri bırakın.',
+      original: 'İlk açıklama', revision: '{{revision}}. açıklama',
+    },
+    receiving: 'Mal kabul sürüyor',
     bin: {
       help: 'Beklenmeyen ürünler dahil tüm içeriği temel birimle sayın. Parti, palet ve durumları ayrı kaydedin.',
       scanItem: 'Ürün okut', quantity: 'Bulunan temel birim', details: 'Parti, palet ve durum', condition: 'Durum',
@@ -720,6 +730,10 @@ export const tr: Catalogue = {
       holds_same_item: '{{sku}} ürününden {{units}} adet zaten burada.',
       holds_other_items: 'Rafta başka {{held}} çeşit var.',
       velocity_slotting: '{{abc}} sınıfı ürün, {{role}} raf.',
+      pallet_consolidation: '{{items}} ürün çeşidi, ortalama birleştirme uyumu %{{percent}} ({{scores}}).',
+      pallet_velocity: '{{items}} ürün çeşidi, ortalama hız uyumu %{{percent}} ({{scores}}).',
+      pallet_lot_commingling: 'Palet, {{sku}} ürününün farklı partilerini içeriyor.',
+      pallet_distinct_item_limit: 'Rafta {{held}} çeşit var; palet {{incoming}} yeni çeşit ekleyerek {{limit}} sınırını aşıyor.',
       travel_distance: '{{zone}} bölgesi, rotanın %{{percent}} noktası.',
       cube_unknown: 'Kapasite bilgisi yok.',
       cube_full: 'Boş yer kalmadı.',
@@ -866,6 +880,17 @@ export const tr: Catalogue = {
   },
 
   outbound: {
+    repair: {
+      title: "Rezervasyon onarımı",
+      help: "Eksik stok için üstlenilmemiş toplamaları geri çeker; kurallar bu satıra yeni stok seçer. Tamamlanmış toplamalar ve diğer satırlar korunur. Bulunamayan stok eksik olarak görünür kalır.",
+      pending: "Onarım bekliyor",
+      start: "Rezervasyonu onar",
+      resume: "Onarımı sürdür",
+      reason: "Onarım gerekçesi nedir?",
+      working: "Onarılıyor…",
+      done: "Onarım tamamlandı",
+      superseded: "Yenilenen rezervasyon",
+    },
     title: 'Sevkiyat',
     subtitle: 'Müşterilerin istedikleri, bunlara söz verilen stok ve işin ne aşamada olduğu.',
     reference: 'Sipariş',
@@ -1299,6 +1324,8 @@ export const tr: Catalogue = {
     'inventory.unknown_actor': 'Oturumunuz bir kullanıcı tanımlamıyor. Lütfen tekrar giriş yapın.',
     'inventory.idempotency_keys_not_distinct': 'Toplu kayıttaki her satırın kendi tekrar anahtarı olmalı.',
     'inventory.nothing_to_post': 'Taşınacak bir şey yoktu.',
+    'inventory.pallet_command_invalid': 'Palet onay anahtarı veya notu çok uzun. Daha kısa bir anahtar veya notla yeni bir onay başlatın.',
+    'inventory.pallet_contents_changed': 'Paletin içeriği değişti. Onaylamadan önce bir amirden palet önerisini yenilemesini isteyin.',
     'inventory.license_plate_empty': 'Bu palet, okutulduğu yerde stok tutmuyor.',
 
     'rules.no_active_rule_set':
@@ -1315,6 +1342,20 @@ export const tr: Catalogue = {
     'work.task_not_found': 'Bu kimliğe sahip iş yok.',
     'work.no_work_available': 'Bekleyen iş yok.',
     'work.task_already_claimed': 'Bu işi başka biri üstlenmiş durumda.',
+    'work.reslot_request_invalid': '1–500 karakterlik bir gerekçe ve tekrar deneme anahtarı gerekli.',
+    'work.reslot_key_conflict': 'Bu tekrar anahtarı farklı bir öneri yenileme gerekçesine ait.',
+    'work.not_pallet_putaway': 'Yalnızca tam palet yerleştirme işinin önerisi yenilenebilir.',
+    'work.pallet_empty': 'İşin başlangıç konumunda bu palete ait stok yok.',
+    'work.putaway_decision_changed': 'Bu palet için yeni bir karar var. Onaylamadan önce işi yenileyin.',
+    'work.putaway_contents_changed': 'Palet içeriği değişti. İşi almadan önce bir sorumludan öneriyi yenilemesini isteyin.',
+    'work.reslot_storage_unavailable': 'Tarayıcı tekrar denemeyi kaydedemiyor. Öneriyi yenilemeden önce oturum depolamasını etkinleştirin.',
+    'work.completion_pending': 'Bir onay bekliyor. Gönderen cihazdan ilk isteği sürdürün.',
+    'work.completion_key_conflict': 'Bu onay anahtarı farklı bir isteğe ait. İlk isteği sürdürün.',
+    'work.completion_request_invalid': 'En fazla 124 karakterlik onay anahtarı, hedef konum ve en fazla 500 karakterlik geçersiz kılma gerekçesi kullanın.',
+    'work.receipt_pending': 'Bu işi almadan önce bekleyen palet mal kabulünü tamamlayın veya yeniden deneyin.',
+    'work.pallet_in_use': 'Palete yeni ürün kabul etmeden önce palet işini geri bırakın.',
+    'work.receipt_key_conflict': 'Bu mal kabul anahtarı farklı bir isteğe ait.',
+    'work.receipt_invalid': 'Mal kabul bilgileri geçersiz.',
     'work.task_not_yours': 'Bu iş başka birine atanmış.',
     'work.task_not_open': 'Bu iş zaten tamamlanmış veya iptal edilmiş.',
     'work.task_already_completed': 'Bu iş zaten onaylanmış.',
@@ -1353,6 +1394,14 @@ export const tr: Catalogue = {
       'Bu toplama işi bir rezervasyon taşımıyor; onaylamak, kimsenin söz vermediği stoğu almak olurdu.',
 
     // Sevkiyat.
+    'outbound.order_line_not_found': "Siparişte böyle bir satır yok.",
+    'outbound.repair_reason_required': "1–500 karakterlik bir onarım gerekçesi girin.",
+    'outbound.repair_in_progress': "Siparişi değiştirmeden önce bekleyen rezervasyon onarımını sürdürün.",
+    'outbound.no_stranded_commitment': "Bu satırda onarılacak eksik stok rezervasyonu yok.",
+    'outbound.idempotency_key_reused': "Bu anahtar başka bir onarım isteğine ait.",
+    'outbound.repair_key_invalid': "Onarım yeniden deneme anahtarı geçersiz.",
+    'outbound.repair_task_missing': "Rezervasyonun toplama işi bulunamıyor. Yöneticinizden incelemesini isteyin.",
+    'outbound.repair_storage_unavailable': "Tarayıcı yeniden deneme isteğini kaydedemiyor. Oturum depolamasını etkinleştirin.",
     'outbound.order_not_found': 'Bu referansa sahip sipariş yok.',
     'outbound.item_not_found': 'Bu stok koduna sahip ürün yok.',
     'outbound.location_not_found': 'Bu koda sahip lokasyon yok.',

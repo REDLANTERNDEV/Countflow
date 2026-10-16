@@ -47,6 +47,7 @@ public sealed class OutboundModule : ICountflowModule
         // releases its orders, and a wave that did it through a second path would
         // be a second definition of what "released" means.
         services.AddScoped<OrderRelease>();
+        services.AddScoped<OrderRepair>();
 
         services.TryAddSingleton(TimeProvider.System);
     }
@@ -57,6 +58,7 @@ public sealed class OutboundModule : ICountflowModule
         GetOrder.Map(endpoints);
         CreateOrder.Map(endpoints);
         ReleaseOrder.Map(endpoints);
+        RepairOrderLine.Map(endpoints);
         PackOrder.Map(endpoints);
         DespatchOrder.Map(endpoints);
         CancelOrder.Map(endpoints);

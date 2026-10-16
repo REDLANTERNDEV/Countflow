@@ -20,6 +20,7 @@ import { useState } from 'react';
 import { api } from '../api.js';
 import { DecisionTrace } from '../components/DecisionTrace.js';
 import { PageHead } from '../components/PageHead.js';
+import { ReslotPutaway } from '../components/ReslotPutaway.js';
 
 const STATUSES = ['Ready', 'Assigned', 'Completed', 'Cancelled'] as const;
 const KINDS = ['Putaway', 'Replenishment', 'Pick', 'CycleCount', 'BinCount'] as const;
@@ -160,6 +161,11 @@ export function WorkPage() {
                     <TD>
                       <div className="flex items-center gap-[var(--space-2)]">
                         <Badge tone={statusTone(task.status)}>{t(`work.status.${task.status}`)}</Badge>
+                        {(task.pendingReceiptCount ?? 0) > 0 ? (
+                          <Badge tone="warning" title={t('errors.work.receipt_pending')}>{t('work.receiving')}</Badge>
+                        ) : null}
+                        {task.completionPending ? <Badge tone="warning" title={t('errors.work.completion_pending')}>{t('work.confirming')}</Badge> : null}
+                        {task.putawayAdviceStale ? <Badge tone="warning">{t('work.reslot.stale')}</Badge> : null}
                         {task.wasOverridden ? (
                           <Badge tone="warning" title={task.overrideReason ?? undefined}>
                             {t('work.wasOverridden')}
@@ -231,12 +237,13 @@ export function WorkPage() {
         </>
       ) : null}
 
-      {openTaskId && detail?.decision ? (
+      {openTaskId && detail ? (
         <section className="mt-[var(--space-5)]">
+          <ReslotPutaway key={detail.task.id} detail={detail} />
           <h3 className="mb-[var(--space-3)] mt-0 text-[length:var(--text-lg)]">
             {t('rules.trace.title')}
           </h3>
-          <DecisionTrace trace={detail.decision} />
+          {detail.decision ? <DecisionTrace trace={detail.decision} /> : null}
         </section>
       ) : null}
     </>

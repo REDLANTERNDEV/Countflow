@@ -172,6 +172,7 @@ export const en = {
         body: 'An advice note, a dock receipt, and a directed putaway an operator confirms on a handheld — with “why here?” available at the rack.',
       },
       outbound: {
+
         title: 'The outbound loop',
         body: 'An order released, allocated by rule, picked, packed and despatched. A pick names the reservation it discharges, so picking stock nobody promised is not expressible.',
       },
@@ -442,6 +443,15 @@ export const en = {
   },
 
   work: {
+    reslot: {
+      title: 'Re-slot pallet',
+      help: 'Re-check every item and lot on this pallet. Each new decision is a revision; earlier explanations remain available. Hand assigned work back first.',
+      reason: 'Reason', apply: 'Recalculate suggestion', retry: 'Retry the same request',
+      working: 'Evaluating pallet…', stale: 'Re-slot needed',
+      handBack: 'Hand this job back before changing its suggestion.',
+      original: 'Original explanation', revision: 'Explanation {{revision}}',
+    },
+    receiving: 'Receiving',
     bin: {
       help: 'Count all contents in base units, including unexpected items. Separate batches, pallets and conditions.',
       scanItem: 'Scan item', quantity: 'Base units found', details: 'Batch, pallet and condition', condition: 'Condition',
@@ -740,6 +750,10 @@ export const en = {
       holds_same_item: 'Already holds {{units}} of {{sku}}.',
       holds_other_items: 'Holds {{held}} other SKUs.',
       velocity_slotting: '{{abc}}-class item in a {{role}} location.',
+      pallet_consolidation: '{{items}} SKUs, average consolidation {{percent}}% ({{scores}}).',
+      pallet_velocity: '{{items}} SKUs, average velocity fit {{percent}}% ({{scores}}).',
+      pallet_lot_commingling: 'The pallet contains different batches of {{sku}}.',
+      pallet_distinct_item_limit: 'Holds {{held}} SKUs; this pallet adds {{incoming}}, exceeding the limit of {{limit}}.',
       travel_distance: 'Zone {{zone}}, {{percent}}% along the route.',
       cube_unknown: 'Capacity is not on file.',
       cube_full: 'No space left.',
@@ -891,6 +905,17 @@ export const en = {
   },
 
   outbound: {
+    repair: {
+      title: "Commitment repair",
+      help: "Withdraw unclaimed picks for missing stock and reallocate this line by rule. Completed picks and other lines stay in place. Unavailable stock remains a visible shortage.",
+      pending: "Repair pending",
+      start: "Repair commitment",
+      resume: "Resume repair",
+      reason: "Why is this repair needed?",
+      working: "Repairing…",
+      done: "Repair complete",
+      superseded: "Replaced commitment",
+    },
     title: 'Outbound',
     subtitle: 'What customers have asked for, which stock is promised to it, and how far it has got.',
     reference: 'Order',
@@ -1325,6 +1350,8 @@ export const en = {
     'inventory.unknown_actor': 'Your session does not identify a user. Please sign in again.',
     'inventory.idempotency_keys_not_distinct': 'Every entry in a batch needs its own idempotency key.',
     'inventory.nothing_to_post': 'There was nothing to move.',
+    'inventory.pallet_command_invalid': 'The pallet confirmation key or notes are too long. Start a new confirmation with a shorter key or note.',
+    'inventory.pallet_contents_changed': 'The pallet contents changed. Ask a supervisor to re-slot it before confirming.',
     'inventory.license_plate_empty': 'That pallet holds no stock where it was scanned.',
 
     // Rules. A failure here means the warehouse cannot decide where something
@@ -1344,6 +1371,20 @@ export const en = {
     'work.task_not_found': 'No job with that identifier.',
     'work.no_work_available': 'There is no work waiting.',
     'work.task_already_claimed': 'Somebody else is already working on that job.',
+    'work.reslot_request_invalid': 'Enter a reason of 1–500 characters and use a retry key.',
+    'work.reslot_key_conflict': 'That retry key belongs to a different re-slot reason.',
+    'work.not_pallet_putaway': 'Only a whole-pallet putaway can be re-slotted.',
+    'work.pallet_empty': 'This pallet has no stock at the job origin.',
+    'work.putaway_decision_changed': 'This pallet has a new decision. Refresh the job before confirming.',
+    'work.putaway_contents_changed': 'Pallet contents changed. Ask a supervisor to re-slot it before taking the job.',
+    'work.reslot_storage_unavailable': 'This browser cannot save the retry. Enable session storage before re-slotting.',
+    'work.completion_pending': 'A confirmation is pending. Resume its original request on the device that sent it.',
+    'work.completion_key_conflict': 'This confirmation key belongs to a different request. Resume the original request.',
+    'work.completion_request_invalid': 'Use a confirmation key of at most 124 characters, a destination, and an override reason of at most 500 characters.',
+    'work.receipt_pending': 'Finish or retry the pending pallet receipt before taking this job.',
+    'work.pallet_in_use': 'Hand the pallet job back before receiving more onto it.',
+    'work.receipt_key_conflict': 'That receipt key belongs to a different request.',
+    'work.receipt_invalid': 'The receipt information is invalid.',
     'work.task_not_yours': 'That job is assigned to somebody else.',
     'work.task_not_open': 'That job has already been completed or cancelled.',
     'work.task_already_completed': 'That job has already been confirmed.',
@@ -1383,6 +1424,14 @@ export const en = {
       'That pick carries no reservation, so confirming it would take stock nobody had claimed.',
 
     // Outbound.
+    'outbound.order_line_not_found': "That order has no such line.",
+    'outbound.repair_reason_required': "Enter a repair reason of 1 to 500 characters.",
+    'outbound.repair_in_progress': "Resume the pending commitment repair before changing this order.",
+    'outbound.no_stranded_commitment': "This line has no stranded commitment to repair.",
+    'outbound.idempotency_key_reused': "That retry key belongs to a different repair request.",
+    'outbound.repair_key_invalid': "The repair retry key is invalid.",
+    'outbound.repair_task_missing': "A commitment has no resolvable pick. Ask an administrator to investigate.",
+    'outbound.repair_storage_unavailable': "This browser cannot save the retry request. Enable session storage before starting a repair.",
     'outbound.order_not_found': 'No order with that reference.',
     'outbound.item_not_found': 'No item with that SKU.',
     'outbound.location_not_found': 'No location with that code.',

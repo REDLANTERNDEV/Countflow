@@ -1,0 +1,51 @@
+# Dokploy Compose Path: compose.dokploy.yaml (Docker Compose, not Stack).
+# Domains: route the hostname to web, port 80, with HTTPS enabled.
+# Enable Isolated Deployments to retain internal service connectivity.
+name: countflow-demo
+services:
+  postgres:
+    extends:
+      file: compose.demo.yaml
+      service: postgres
+  seq:
+    extends:
+      file: compose.demo.yaml
+      service: seq
+  migrator:
+    extends:
+      file: compose.demo.yaml
+      service: migrator
+  api:
+    extends:
+      file: compose.demo.yaml
+      service: api
+  simulator:
+    extends:
+      file: compose.demo.yaml
+      service: simulator
+  web:
+    # Inherit the unbound gateway: the standalone demo's ports belong to Caddy,
+    # whereas Dokploy owns those host ports and terminates TLS itself.
+    extends:
+      file: compose.yaml
+      service: web
+    build:
+      args:
+        VITE_DEMO_ACCOUNTS: "admin:${DEMO_PASSWORD:?DEMO_PASSWORD must be set},supervisor:${DEMO_PASSWORD},operator:${DEMO_PASSWORD}"
+    expose:
+      - "80"
+    environment:
+      CADDY_SITE_ADDRESS: ":80"
+      API_UPSTREAM: api:8080
+    volumes:
+      - caddy-data:/data
+      - caddy-config:/config
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+    labels:
+      countflow.demo: "true"
+  seq-data:
+  caddy-data:
+  caddy-config:

@@ -40,15 +40,21 @@ public static class CompleteWorkTask
                 [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey,
                 WorkDbContext dbContext,
                 WorkTaskDescriber describe,
+                PutawayCompletions completions,
                 IStockPosting posting,
                 IBlindBinCounting binCounting,
                 ILocationDirectory locations,
                 TimeProvider clock,
                 ILogger<WorkTask> logger,
                 CancellationToken cancellationToken) =>
-                    (await dbContext.Database.CreateExecutionStrategy().ExecuteAsync(() => HandleAsync(
-                        id, request, user, idempotencyKey, dbContext, describe,
-                        posting, binCounting, locations, clock, logger, cancellationToken)))
+                    (await dbContext.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+                    {
+                        if (await dbContext.WorkTasks.AsNoTracking().AnyAsync(task => task.Id == id
+                            && task.Kind == WorkTaskKind.Putaway && task.LicensePlateId != null, cancellationToken))
+                            return await completions.CompleteAsync(id, request, user, idempotencyKey, cancellationToken);
+                        return await HandleAsync(id, request, user, idempotencyKey, dbContext, describe,
+                            posting, binCounting, locations, clock, logger, cancellationToken);
+                    }))
                         .ToHttpResult())
             .RequireAuthorization()
             .WithTags("Work")
@@ -89,6 +95,12 @@ public static class CompleteWorkTask
             $"SELECT * FROM work.\"WorkTasks\" WHERE \"Id\" = {id} FOR UPDATE")
             .ToListAsync(cancellationToken)).SingleOrDefault();
         if (task is null) return Result.Failure<CompleteWorkTaskResponse>(WorkErrors.TaskNotFound);
+        if (task.PendingReceiptCount > 0) return Result.Failure<CompleteWorkTaskResponse>(WorkErrors.ReceiptPending);
+        if (task.Status != WorkTaskStatus.Completed && task.PutawayAdviceStale)
+            return Result.Failure<CompleteWorkTaskResponse>(WorkErrors.PutawayContentsChanged);
+        if (task.Status != WorkTaskStatus.Completed && task.PutawayRevision > 0
+            && request.ExpectedDecisionTraceId != task.DecisionTraceId)
+            return Result.Failure<CompleteWorkTaskResponse>(WorkErrors.PutawayDecisionChanged);
 
         if (task.Kind == WorkTaskKind.BinCount)
         {
@@ -344,26 +356,6 @@ public static class CompleteWorkTask
             return picked.IsFailure
                 ? Result.Failure<Confirmation>(picked.Error)
                 : new Confirmation([picked.Value]);
-        }
-
-        if (task.LicensePlateId is { } plateId)
-        {
-            var plate = await posting.PutawayLicensePlateAsync(
-                new PlatePutawayInstruction
-                {
-                    LicensePlateId = plateId,
-                    FromLocationId = task.FromLocationId,
-                    ToLocationId = destinationId,
-                    IdempotencyKey = idempotencyKey,
-                    Actor = actor,
-                    TaskId = task.Id,
-                    DecisionTraceId = decisionTraceId
-                },
-                cancellationToken);
-
-            return plate.IsFailure
-                ? Result.Failure<Confirmation>(plate.Error)
-                : new Confirmation(plate.Value);
         }
 
         var single = await posting.PutawayAsync(

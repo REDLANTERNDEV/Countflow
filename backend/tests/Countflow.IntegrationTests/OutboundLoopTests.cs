@@ -25,7 +25,7 @@ namespace Countflow.IntegrationTests;
 /// times a scanner retries, and that a cancellation gives the stock back.
 /// </para>
 /// </summary>
-public sealed class OutboundLoopTests(CountflowApiFixture fixture)
+public sealed partial class OutboundLoopTests(CountflowApiFixture fixture)
     : IClassFixture<CountflowApiFixture>, IAsyncLifetime
 {
     private const string Secret = "Countflow#2026";
@@ -1014,6 +1014,7 @@ public sealed class OutboundLoopTests(CountflowApiFixture fixture)
         string? PickedAtLocationCode);
 
     private sealed record OrderLineBody(
+        Guid Id,
         int LineNumber,
         string Sku,
         decimal OrderedQuantity,

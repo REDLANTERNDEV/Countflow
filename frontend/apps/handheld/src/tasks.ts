@@ -1,6 +1,7 @@
 import type { components } from '@countflow/api-client';
 import { staleTaskIds, taskIdsAwaitingConfirmation } from './lib/outbox/outbox.js';
 import { outbox } from './outbox.js';
+import { mergeTaskDecision } from './lib/task-decision.js';
 
 export type TaskDetail = components['schemas']['WorkTaskDetailResponse'];
 
@@ -26,10 +27,7 @@ export async function rememberTask(detail: TaskDetail, ownerUserId: string): Pro
   // would be an odd way to keep ADR 0004's promise.
   const existing = (await outbox.store.readTask(detail.task.id))?.detail as TaskDetail | undefined;
 
-  const merged: TaskDetail =
-    detail.decision === null && existing?.decision
-      ? { ...detail, decision: existing.decision }
-      : detail;
+  const merged = mergeTaskDecision(detail, existing);
 
   await outbox.store.cacheTask({
     id: detail.task.id,

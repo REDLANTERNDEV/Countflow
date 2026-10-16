@@ -48,6 +48,7 @@ public sealed class InventoryModule : ICountflowModule
         // part of it: a reserved quantity is a claim on stock, not a movement of
         // it (see StockReservation).
         services.AddScoped<ReservationLedger>();
+        services.AddScoped<StrandedReservations>();
 
         // Phase 5's, and a sibling for the same reason: a count is an observation
         // about the record rather than a change to it, and most counts post nothing
@@ -65,6 +66,7 @@ public sealed class InventoryModule : ICountflowModule
         // The published boundary (ADR 0002). Inbound, Work and Outbound move stock
         // through these and cannot name StockLedger, so the single posting path
         // stays single no matter how many modules come to depend on it.
+        services.AddScoped<PlatePutawayCommands>();
         services.AddScoped<IStockPosting, StockPosting>();
         services.AddScoped<IStockQuery, StockQuery>();
         services.AddScoped<ILicensePlateRegistry, LicensePlateRegistry>();

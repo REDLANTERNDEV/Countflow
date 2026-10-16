@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Countflow.SharedKernel.Modules;
 
@@ -23,12 +24,13 @@ public static class ModuleExtensions
         string schema)
         where TContext : DbContext, IModuleDbContext
     {
+        services.TryAddScoped<ModuleSession>();
         services.AddDbContext<TContext>(options =>
         {
             options.UseNpgsql(connectionString, npgsql =>
             {
                 npgsql.MigrationsHistoryTable(HistoryRepository.DefaultTableName, schema);
-                npgsql.EnableRetryOnFailure(maxRetryCount: 5, maxRetryDelay: TimeSpan.FromSeconds(10), errorCodesToAdd: null);
+                npgsql.ExecutionStrategy(ModuleSession.CreateStrategy);
             });
         });
 

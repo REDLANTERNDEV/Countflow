@@ -140,6 +140,36 @@ namespace Countflow.Modules.Inventory.Persistence.Migrations
                     b.ToTable("Lots", "inventory");
                 });
 
+            modelBuilder.Entity("Countflow.Modules.Inventory.Domain.PlatePutawayCommand", b =>
+                {
+                    b.Property<string>("IdempotencyKey")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("Fingerprint")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid>("LicensePlateId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("OutcomeJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTimeOffset>("PreparedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("WorkTaskId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("IdempotencyKey");
+
+                    b.HasIndex("WorkTaskId");
+
+                    b.ToTable("PlatePutawayCommands", "inventory");
+                });
+
             modelBuilder.Entity("Countflow.Modules.Inventory.Domain.ReceiptAgeProjectionState", b =>
                 {
                     b.Property<int>("Id")

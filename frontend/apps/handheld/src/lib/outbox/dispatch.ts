@@ -47,6 +47,7 @@ function call(api: CountflowClient, command: QueuedCommand) {
       body: {
         toLocationCode: request.toLocationCode,
         ...(request.pickTourId ? { pickTourId: request.pickTourId } : {}),
+        ...(request.expectedDecisionTraceId ? { expectedDecisionTraceId: request.expectedDecisionTraceId } : {}),
         ...(request.overrideReason ? { overrideReason: request.overrideReason } : {}),
         ...(request.countedQuantity !== undefined ? { countedQuantity: request.countedQuantity } : {}),
         ...(request.binCountVersion !== undefined ? { binCountVersion: request.binCountVersion } : {}),

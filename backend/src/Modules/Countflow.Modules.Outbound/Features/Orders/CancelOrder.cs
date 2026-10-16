@@ -46,12 +46,14 @@ public static class CancelOrder
                 OrderDescriber describe,
                 IStockReservations reservations,
                 IWorkQueue work,
+                OrderRelease release,
                 ILogger<SalesOrder> logger,
                 CancellationToken cancellationToken) =>
                     (await HandleAsync(
-                        id, request, user, dbContext, describe, reservations, work, logger, cancellationToken))
+                        id, request, user, dbContext, describe, reservations, work, release, logger, cancellationToken))
                         .ToHttpResult())
             .RequireAuthorization(policy => policy.RequireRole(Roles.Admin, Roles.Supervisor))
+            .AddEndpointFilter<OrderMutationFilter>()
             .WithTags("Outbound")
             .WithName("CancelSalesOrder")
             .WithSummary("Cancel an order, withdraw its picks and release its stock.")
@@ -68,6 +70,7 @@ public static class CancelOrder
         OrderDescriber describe,
         IStockReservations reservations,
         IWorkQueue work,
+        OrderRelease release,
         ILogger logger,
         CancellationToken cancellationToken)
     {
@@ -80,6 +83,8 @@ public static class CancelOrder
             .SingleOrDefaultAsync(o => o.Id == id, cancellationToken);
 
         if (order is null) return Result.Failure<CancelOrderResponse>(OutboundErrors.OrderNotFound);
+        if (await OrderRepair.HasPendingAsync(dbContext, id, cancellationToken))
+            return Result.Failure<CancelOrderResponse>(OutboundErrors.RepairInProgress);
 
         if (order.Status == SalesOrderStatus.Cancelled)
         {
@@ -93,6 +98,12 @@ public static class CancelOrder
                 OutboundErrors.OrderNotCancellable(order.Status.ToString()));
         }
 
+        foreach (var line in order.Lines)
+        {
+            var ensured = await release.EnsurePicksAsync(order, line, cancellationToken);
+            if (ensured.IsFailure) return Result.Failure<CancelOrderResponse>(ensured.Error);
+        }
+        await dbContext.SaveChangesAsync(cancellationToken);
         var allocations = order.Lines.SelectMany(l => l.Allocations).ToList();
 
         var taskIds = allocations

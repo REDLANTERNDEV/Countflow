@@ -26,7 +26,8 @@ public sealed record OrderAllocationResponse(
     Guid? WorkTaskId,
     WorkTaskState? TaskState,
     decimal PickedQuantity,
-    string? PickedAtLocationCode);
+    string? PickedAtLocationCode,
+    Guid? SupersededByRepairId = null);
 
 public sealed record OrderLineResponse(
     Guid Id,
@@ -40,7 +41,8 @@ public sealed record OrderLineResponse(
     decimal PickedQuantity,
     decimal ReturnedQuantity,
     string? RequiredLotNumber,
-    IReadOnlyList<OrderAllocationResponse> Allocations);
+    IReadOnlyList<OrderAllocationResponse> Allocations,
+    IReadOnlyList<OrderLineRepairResponse>? Repairs = null);
 
 public sealed record SalesOrderResponse(
     Guid Id,
@@ -137,3 +139,13 @@ public sealed record ReleaseWaveResponse(
     int OrdersReleased,
     int TasksRaised,
     decimal ShortfallQuantity);
+
+public sealed record RepairOrderLineRequest(string Reason);
+
+public sealed record RepairOrderLineResponse(
+    SalesOrderResponse Order, int ReservationsReleased, int TasksCancelled,
+    int AllocationsRaised, int TasksRaised, decimal ShortfallQuantity, bool WasAlreadyRepaired);
+
+public sealed record OrderLineRepairResponse(
+    Guid Id, string IdempotencyKey, string Reason, string RequestedByUserName,
+    DateTimeOffset CreatedAt, DateTimeOffset? CompletedAt, decimal? ShortfallQuantity);

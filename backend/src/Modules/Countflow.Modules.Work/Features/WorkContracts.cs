@@ -44,7 +44,11 @@ public sealed record WorkTaskResponse(
     Guid? PickTourId,
     int? TourSequence,
     long? BinCountVersion = null,
-    Guid? BinCountClaimId = null);
+    Guid? BinCountClaimId = null,
+    int PendingReceiptCount = 0,
+    long PutawayRevision = 0,
+    bool PutawayAdviceStale = false,
+    bool CompletionPending = false);
 
 /// <summary>
 /// A task together with the reasoning behind its suggestion.
@@ -54,7 +58,8 @@ public sealed record WorkTaskResponse(
 /// drops in the racking, and a second round trip is the one most likely to fail.
 /// </para>
 /// </summary>
-public sealed record WorkTaskDetailResponse(WorkTaskResponse Task, DecisionTraceView? Decision);
+public sealed record WorkTaskDetailResponse(WorkTaskResponse Task, DecisionTraceView? Decision,
+    IReadOnlyList<PutawayDecisionRevisionResponse>? PutawayHistory = null);
 
 public sealed record WorkTaskPage(IReadOnlyList<WorkTaskResponse> Items, int Total, int Page, int PageSize);
 
@@ -77,7 +82,8 @@ public sealed record CompleteWorkTaskRequest(
     Guid? PickTourId = null,
     long? BinCountVersion = null,
     Guid? BinCountClaimId = null,
-    IReadOnlyList<BinCountObservation>? Observed = null);
+    IReadOnlyList<BinCountObservation>? Observed = null,
+    Guid? ExpectedDecisionTraceId = null);
 
 /// <param name="Movements">
 /// One entry per ledger line posted. A whole-pallet putaway carrying three SKUs

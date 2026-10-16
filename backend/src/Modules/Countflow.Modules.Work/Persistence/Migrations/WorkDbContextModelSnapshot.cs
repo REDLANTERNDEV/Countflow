@@ -120,6 +120,158 @@ namespace Countflow.Modules.Work.Persistence.Migrations
                     b.ToTable("PickTourSegments", "work");
                 });
 
+            modelBuilder.Entity("Countflow.Modules.Work.Domain.PutawayCompletionIntent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ErrorJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("Fingerprint")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("IdempotencyKey")
+                        .IsRequired()
+                        .HasMaxLength(124)
+                        .HasColumnType("character varying(124)");
+
+                    b.Property<DateTimeOffset>("PreparedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("SettledAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("SnapshotJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<int>("State")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("WorkTaskId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WorkTaskId", "IdempotencyKey")
+                        .IsUnique();
+
+                    b.ToTable("PutawayCompletionIntents", "work");
+                });
+
+            modelBuilder.Entity("Countflow.Modules.Work.Domain.PutawayDecisionRevision", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ContentsJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTimeOffset>("DecidedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("DecisionTraceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("IdempotencyKey")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<Guid?>("PreviousDecisionTraceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<long>("Revision")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid?>("SuggestedLocationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("UserName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<Guid>("WorkTaskId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WorkTaskId", "IdempotencyKey")
+                        .IsUnique();
+
+                    b.HasIndex("WorkTaskId", "Revision")
+                        .IsUnique();
+
+                    b.ToTable("PutawayDecisionRevisions", "work");
+                });
+
+            modelBuilder.Entity("Countflow.Modules.Work.Domain.PutawayReceiptIntent", b =>
+                {
+                    b.Property<string>("IdempotencyKey")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<DateTimeOffset?>("AcknowledgedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Fingerprint")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid>("FromLocationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsPending")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset>("PreparedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Sscc")
+                        .IsRequired()
+                        .HasMaxLength(18)
+                        .HasColumnType("character varying(18)");
+
+                    b.Property<Guid>("WarehouseId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("IdempotencyKey");
+
+                    b.HasIndex("Sscc", "FromLocationId", "IsPending");
+
+                    b.ToTable("PutawayReceiptIntents", "work");
+                });
+
+            modelBuilder.Entity("Countflow.Modules.Work.Domain.PutawayReceiptLane", b =>
+                {
+                    b.Property<string>("Sscc")
+                        .HasMaxLength(18)
+                        .HasColumnType("character varying(18)");
+
+                    b.Property<Guid?>("LicensePlateId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Sscc");
+
+                    b.ToTable("PutawayReceiptLanes", "work");
+                });
+
             modelBuilder.Entity("Countflow.Modules.Work.Domain.WorkTask", b =>
                 {
                     b.Property<Guid>("Id")
@@ -195,11 +347,23 @@ namespace Countflow.Modules.Work.Persistence.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
+                    b.Property<Guid?>("PendingPutawayCompletionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("PendingReceiptCount")
+                        .HasColumnType("integer");
+
                     b.Property<Guid?>("PickTourId")
                         .HasColumnType("uuid");
 
                     b.Property<int>("Priority")
                         .HasColumnType("integer");
+
+                    b.Property<bool>("PutawayAdviceStale")
+                        .HasColumnType("boolean");
+
+                    b.Property<long>("PutawayRevision")
+                        .HasColumnType("bigint");
 
                     b.Property<decimal>("Quantity")
                         .HasPrecision(18, 4)
@@ -231,6 +395,8 @@ namespace Countflow.Modules.Work.Persistence.Migrations
 
                     b.HasIndex("DecisionTraceId");
 
+                    b.HasIndex("PendingPutawayCompletionId");
+
                     b.HasIndex("SourceReference");
 
                     b.HasIndex("StockReservationId")
@@ -259,6 +425,8 @@ namespace Countflow.Modules.Work.Persistence.Migrations
                             t.HasCheckConstraint("CK_WorkTasks_CompletedHasLocation", "\"Status\" <> 3\nOR (\"CompletedAtLocationId\" IS NOT NULL AND \"CompletedAt\" IS NOT NULL)");
 
                             t.HasCheckConstraint("CK_WorkTasks_CountedQuantityBelongsToCounts", "(\"Kind\" = 4\n OR \"CountedQuantity\" IS NULL)\nAND (\"Kind\" <> 4\n     OR \"Status\" <> 3\n     OR \"CountedQuantity\" IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_WorkTasks_PendingReceiptCount", "\"PendingReceiptCount\" >= 0");
 
                             t.HasCheckConstraint("CK_WorkTasks_PositiveQuantity", "\"Kind\" = 6 AND \"Quantity\" = 0 AND \"ItemId\" IS NULL AND \"LotId\" IS NULL AND \"LicensePlateId\" IS NULL OR \"Kind\" <> 6 AND \"Quantity\" > 0 AND \"ItemId\" IS NOT NULL");
 
@@ -308,8 +476,40 @@ namespace Countflow.Modules.Work.Persistence.Migrations
                     b.Navigation("Tour");
                 });
 
+            modelBuilder.Entity("Countflow.Modules.Work.Domain.PutawayCompletionIntent", b =>
+                {
+                    b.HasOne("Countflow.Modules.Work.Domain.WorkTask", null)
+                        .WithMany()
+                        .HasForeignKey("WorkTaskId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Countflow.Modules.Work.Domain.PutawayDecisionRevision", b =>
+                {
+                    b.HasOne("Countflow.Modules.Work.Domain.WorkTask", null)
+                        .WithMany()
+                        .HasForeignKey("WorkTaskId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Countflow.Modules.Work.Domain.PutawayReceiptIntent", b =>
+                {
+                    b.HasOne("Countflow.Modules.Work.Domain.PutawayReceiptLane", null)
+                        .WithMany()
+                        .HasForeignKey("Sscc")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Countflow.Modules.Work.Domain.WorkTask", b =>
                 {
+                    b.HasOne("Countflow.Modules.Work.Domain.PutawayCompletionIntent", null)
+                        .WithMany()
+                        .HasForeignKey("PendingPutawayCompletionId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Countflow.Modules.Work.Domain.PickTour", "Tour")
                         .WithMany("Tasks")
                         .HasForeignKey("PickTourId")

@@ -10,10 +10,46 @@ features is in [docs/history.md](docs/history.md).
 
 ### Fixed
 
+- Pallet confirmations survive process and database-session loss. Work retains
+  the original instruction before Inventory posting, blocks competing mutations
+  while pending, and settles retries with the original actor and override reason.
+  Console and handheld show pending recovery without offering another target.
+
+- Whole-pallet Inventory commands retain terminal successes and refusals. A late
+  retry cannot turn a refused confirmation into a stock movement after contents
+  change; corrected operations use a new key, and legacy movement replay remains
+  compatible without accepting a conflicting retry body.
+
+- Merged pallet receipts and receipt retries return the Work task's effective
+  explanation and revision. Growing a revised pallet suppresses its stale
+  destination and asks the handheld operator for a supervisor re-slot.
+
+- Whole-pallet contents are read and moved under one Inventory writer lock.
+  Revised tasks refuse changed item, lot, condition or quantity holdings before
+  moving stock, including new balance rows created outside the receipt workflow.
+
+- Pallet receipts register a durable handoff before stock posting, preventing
+  claim or completion while a receipt is awaiting its task acknowledgement.
+  Pending receipts are visible in the console and handheld. Receiving more onto
+  an assigned pallet now requires handing its task back first.
+
 - Background job timestamps retain the same microsecond precision in memory and
   PostgreSQL, keeping scheduled run records stable across failures and restarts.
 
 ### Added
+
+- Dokploy demo deployment through a standalone Compose file with internal web
+  routing and platform-owned HTTPS. Guarded demo resets replace only a marked
+  database volume, retaining TLS state and leaving Dokploy in charge of redeploys.
+
+- Supervisor re-slotting of Ready pallet tasks evaluates the full load and keeps
+  the original explanation plus revision history. Lost-response retries preserve
+  their request; later receipts require a fresh revision, and offline confirmations
+  of revised tasks must acknowledge the explanation originally shown.
+
+- Supervisor repair of a single order line's stranded commitments, with guarded
+  pick withdrawal, traced replacement allocation, resumable retries, explicit
+  shortfalls and preserved allocation history.
 
 - Blind bin counts: supervisor-raised location audits discover unrecorded stock,
   reconcile the entire bin atomically, and support durable offline handheld

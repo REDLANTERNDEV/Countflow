@@ -7,6 +7,21 @@ public static class OutboundErrors
     public static readonly Error OrderNotFound =
         Error.NotFound("outbound.order_not_found", "No order with that identifier or reference.");
 
+    public static readonly Error OrderLineNotFound =
+        Error.NotFound("outbound.order_line_not_found", "That order has no such line.");
+    public static readonly Error RepairReasonRequired =
+        Error.Validation("outbound.repair_reason_required", "Repair requires a reason of 1 to 500 characters.");
+    public static readonly Error RepairInProgress =
+        Error.Conflict("outbound.repair_in_progress", "Resume the pending commitment repair before changing this order.");
+    public static readonly Error NoStrandedCommitment =
+        Error.Conflict("outbound.no_stranded_commitment", "This line has no stranded commitment to repair.");
+    public static readonly Error IdempotencyKeyReused =
+        Error.Conflict("outbound.idempotency_key_reused", "That key already names a different repair request.");
+    public static readonly Error RepairTaskMissing =
+        Error.Conflict("outbound.repair_task_missing", "A commitment has no resolvable pick. Investigate before repairing it.");
+    public static readonly Error RepairKeyInvalid =
+        Error.Validation("outbound.repair_key_invalid", "A repair idempotency key must contain 1 to 128 characters.");
+
     public static readonly Error ItemNotFound =
         Error.NotFound("outbound.item_not_found", "No item with that SKU.");
 

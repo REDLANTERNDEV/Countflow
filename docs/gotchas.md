@@ -373,3 +373,14 @@ see an empty video ref, return, and never run again even though the video later
 appears. The seeded camera-video test exposed a blank preview with no stream and
 no error. Camera setup belongs to a component inside the portal, whose mounted
 video it owns; cleanup there also handles dismissal and late permission grants.
+
+### Cached EF execution strategies cannot capture a request's lease state
+
+EF caches provider options/services, and query contexts can obtain their execution
+strategy before an order pins the module session. Choosing a strategy once from a
+captured scoped flag leaves later queries using the first request's retry policy.
+Looking up `Database.GetDbConnection()` while constructing the strategy can also
+re-enter database-facade initialization. `ModuleExecutionStrategy` chooses at
+execution time using the current DbContext's registered pin. Pinned requests fail
+closed; unpinned requests keep the existing Npgsql retry policy. The regression
+terminates the actual lock session between Outbound allocation and Work enqueue.

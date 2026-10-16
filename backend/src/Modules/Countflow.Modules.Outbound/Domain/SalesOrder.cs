@@ -221,5 +221,8 @@ public sealed class OrderLineAllocation
 
     public required DateTimeOffset AllocatedAt { get; init; }
 
+    /// <summary>Explicitly superseded by a repair; original quantity, source and trace stay unchanged.</summary>
+    public Guid? SupersededByRepairId { get; set; }
+
     public SalesOrderLine? Line { get; init; }
 }

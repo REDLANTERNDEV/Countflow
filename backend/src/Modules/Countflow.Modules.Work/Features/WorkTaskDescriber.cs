@@ -80,7 +80,11 @@ public sealed class WorkTaskDescriber(
                     task.PickTourId,
                     task.TourSequence,
                     task.BinCountVersion,
-                    task.BinCountClaimId);
+                    task.BinCountClaimId,
+                    task.PendingReceiptCount,
+                    task.PutawayRevision,
+                    task.PutawayAdviceStale,
+                    task.PendingPutawayCompletionId != null);
             })
         ];
     }

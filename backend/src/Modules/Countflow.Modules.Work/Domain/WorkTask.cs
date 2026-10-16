@@ -80,10 +80,16 @@ public sealed class WorkTask
     /// </summary>
     public decimal Quantity { get; set; }
 
+    /// <summary>Receipts not yet acknowledged as task sources; prevents taking a growing load.</summary>
+    public int PendingReceiptCount { get; set; }
+    public long PutawayRevision { get; set; }
+    public bool PutawayAdviceStale { get; set; }
+    public Guid? PendingPutawayCompletionId { get; set; }
+
     public required Guid FromLocationId { get; init; }
 
     /// <summary>Where the rules said it should go. Null when nothing was admissible.</summary>
-    public Guid? SuggestedLocationId { get; init; }
+    public Guid? SuggestedLocationId { get; set; }
 
     public Guid? LicensePlateId { get; init; }
 
@@ -92,7 +98,7 @@ public sealed class WorkTask
     /// no location was suggested — "nothing fitted, and here is why each candidate
     /// failed" is the most useful trace of all.
     /// </summary>
-    public Guid? DecisionTraceId { get; init; }
+    public Guid? DecisionTraceId { get; set; }
 
     /// <summary>
     /// The commitment a pick discharges. Carried, never interpreted — this module

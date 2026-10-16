@@ -14,6 +14,7 @@
 # renews the certificate on its own. See docs/api/hosting.md.
 
 set -euo pipefail
+umask 077
 
 cd "$(dirname "$0")/.."
 
@@ -45,6 +46,7 @@ CADDY_SITE_ADDRESS=:80
 POSTGRES_PASSWORD=$(secret)
 JWT_SIGNING_KEY=$(secret)
 SEQ_ADMIN_PASSWORD=$(secret)
+WEBHOOKS_ENCRYPTION_KEY=$(openssl rand -base64 32)
 
 # Shown on the demo's login screen, so it is deliberately memorable rather than
 # random. It is the credential for three accounts that can change a public
@@ -71,6 +73,6 @@ fi
 # --env-file, and both compose files named explicitly. Naming them is what skips
 # compose.override.yaml; without that, the development overlay would publish the
 # database port on a public host.
-exec docker compose --env-file "$ENV_FILE" \
+exec docker compose --project-name countflow-demo --env-file "$ENV_FILE" \
   -f compose.yaml -f compose.demo.yaml \
   up -d --build "$@"
