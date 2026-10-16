@@ -16,6 +16,7 @@ public sealed class InventoryDbContext(DbContextOptions<InventoryDbContext> opti
     public DbSet<StockBalance> StockBalances => Set<StockBalance>();
     public DbSet<ReceiptAgeProjectionState> ReceiptAgeProjectionStates => Set<ReceiptAgeProjectionState>();
     public DbSet<BinCountRecord> BinCounts => Set<BinCountRecord>();
+    public DbSet<PlatePutawayCommand> PlatePutawayCommands => Set<PlatePutawayCommand>();
 
     /// <summary>
     /// Claims against the projection. Not part of the ledger and not derived from
@@ -90,6 +91,15 @@ public sealed class InventoryDbContext(DbContextOptions<InventoryDbContext> opti
         base.OnModelCreating(builder);
 
         builder.HasDefaultSchema(SchemaName);
+        builder.Entity<PlatePutawayCommand>(command =>
+        {
+            command.HasKey(row => row.IdempotencyKey);
+            command.Property(row => row.IdempotencyKey).HasMaxLength(128);
+            command.Property(row => row.Fingerprint).HasMaxLength(64).IsRequired();
+            command.Property(row => row.OutcomeJson).HasColumnType("jsonb");
+            command.HasIndex(row => row.WorkTaskId);
+        });
+
         builder.Entity<BinCountRecord>(count =>
         {
             count.HasKey(c => c.TaskId);

@@ -100,7 +100,8 @@ public static class GetWorkTask
                     : null;
 
                 return Results.Ok(new WorkTaskDetailResponse(
-                    await describe.DescribeAsync(task, cancellationToken), decision));
+                    await describe.DescribeAsync(task, cancellationToken), decision,
+                    await ReslotPutaway.HistoryAsync(dbContext, id, task.PutawayRevision, cancellationToken)));
             })
             .RequireAuthorization()
             .WithTags("Work")

@@ -738,6 +738,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/work/tasks/{id}/reslot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Re-evaluate an unclaimed pallet and append its new explanation. */
+        post: operations["ReslotPutaway"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/work/tasks/claim-next": {
         parameters: {
             query?: never;
@@ -1006,6 +1023,23 @@ export interface paths {
         put?: never;
         /** Allocate stock by rule and raise the picks. */
         post: operations["ReleaseSalesOrder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/outbound/orders/{id}/lines/{lineId}/repair": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Withdraw an unclaimed stranded commitment and reallocate that order line by rule. */
+        post: operations["RepairSalesOrderLine"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1826,6 +1860,8 @@ export interface components {
             /** Format: uuid */
             binCountClaimId?: null | string;
             observed?: null | components["schemas"]["BinCountObservation"][];
+            /** Format: uuid */
+            expectedDecisionTraceId?: null | string;
         };
         CompleteWorkTaskResponse: {
             task: components["schemas"]["WorkTaskResponse"];
@@ -2182,6 +2218,15 @@ export interface components {
             /** Format: int32 */
             admissibleCount: number;
             asnLine: null | components["schemas"]["AsnLineProgress"];
+            /** @default false */
+            putawayAdviceStale: boolean;
+            /**
+             * Format: int64
+             * @default 0
+             */
+            putawayRevision: number;
+            /** @default false */
+            completionPending: boolean;
         };
         ImportIssue: {
             /** Format: int32 */
@@ -2459,6 +2504,21 @@ export interface components {
             /** Format: double */
             pickedQuantity: number;
             pickedAtLocationCode: null | string;
+            /** Format: uuid */
+            supersededByRepairId?: null | string;
+        };
+        OrderLineRepairResponse: {
+            /** Format: uuid */
+            id: string;
+            idempotencyKey: string;
+            reason: string;
+            requestedByUserName: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            completedAt: null | string;
+            /** Format: double */
+            shortfallQuantity: null | number;
         };
         OrderLineResponse: {
             /** Format: uuid */
@@ -2480,6 +2540,7 @@ export interface components {
             returnedQuantity: number;
             requiredLotNumber: null | string;
             allocations: components["schemas"]["OrderAllocationResponse"][];
+            repairs?: null | components["schemas"]["OrderLineRepairResponse"][];
         };
         PackConfigurationResponse: {
             level: string;
@@ -2610,6 +2671,15 @@ export interface components {
             fellBackBecause: null | string;
             /** Format: int32 */
             stops: number;
+        };
+        PlateLine: {
+            /** Format: uuid */
+            itemId: string;
+            /** Format: uuid */
+            lotId: null | string;
+            condition: components["schemas"]["StockCondition"];
+            /** Format: double */
+            quantity: number;
         };
         PostedMovement: {
             /** Format: uuid */
@@ -2772,6 +2842,24 @@ export interface components {
             detail?: null | string;
             instance?: null | string;
         };
+        PutawayDecisionRevisionResponse: {
+            /** Format: int64 */
+            revision: number;
+            idempotencyKey: string;
+            reason: string;
+            /** Format: uuid */
+            previousDecisionTraceId: null | string;
+            /** Format: uuid */
+            decisionTraceId: string;
+            /** Format: uuid */
+            suggestedLocationId: null | string;
+            /** Format: date-time */
+            decidedAt: string;
+            /** Format: uuid */
+            userId: string;
+            userName: string;
+            contents: components["schemas"]["PlateLine"][];
+        };
         ReceiveStockRequest: {
             sku: string;
             /** Format: double */
@@ -2859,6 +2947,23 @@ export interface components {
             tasksRaised: number;
             /** Format: double */
             shortfallQuantity: number;
+        };
+        RepairOrderLineRequest: {
+            reason: string;
+        };
+        RepairOrderLineResponse: {
+            order: components["schemas"]["SalesOrderResponse"];
+            /** Format: int32 */
+            reservationsReleased: number;
+            /** Format: int32 */
+            tasksCancelled: number;
+            /** Format: int32 */
+            allocationsRaised: number;
+            /** Format: int32 */
+            tasksRaised: number;
+            /** Format: double */
+            shortfallQuantity: number;
+            wasAlreadyRepaired: boolean;
         };
         ReplaceLabelTemplateRequest: {
             elements: components["schemas"]["LabelElementRequest"][];
@@ -2993,6 +3098,14 @@ export interface components {
         };
         /** @enum {string} */
         ReplenishmentPlanStatus: "Open" | "Finished" | "Cancelled";
+        ReslotPutawayRequest: {
+            reason: string;
+        };
+        ReslotPutawayResponse: {
+            current: components["schemas"]["WorkTaskDetailResponse"];
+            appliedRevision: components["schemas"]["PutawayDecisionRevisionResponse"];
+            wasAlreadyApplied: boolean;
+        };
         ResolveScanRequest: {
             barcode: string;
         };
@@ -3480,6 +3593,7 @@ export interface components {
         WorkTaskDetailResponse: {
             task: components["schemas"]["WorkTaskResponse"];
             decision: null | components["schemas"]["DecisionTraceView"];
+            putawayHistory?: null | components["schemas"]["PutawayDecisionRevisionResponse"][];
         };
         /** @enum {string} */
         WorkTaskKind: "Putaway" | "Replenishment" | "Pick" | "CycleCount" | "Inspection" | "BinCount";
@@ -3532,6 +3646,20 @@ export interface components {
             binCountVersion?: null | number;
             /** Format: uuid */
             binCountClaimId?: null | string;
+            /**
+             * Format: int32
+             * @default 0
+             */
+            pendingReceiptCount: number;
+            /**
+             * Format: int64
+             * @default 0
+             */
+            putawayRevision: number;
+            /** @default false */
+            putawayAdviceStale: boolean;
+            /** @default false */
+            completionPending: boolean;
         };
         /** @enum {string} */
         WorkTaskState: "Ready" | "Assigned" | "Completed" | "Cancelled";
@@ -5439,6 +5567,61 @@ export interface operations {
             };
         };
     };
+    ReslotPutaway: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReslotPutawayRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReslotPutawayResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
     ClaimNextTask: {
         parameters: {
             query?: never;
@@ -6105,6 +6288,62 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReleaseOrderResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
+        };
+    };
+    RepairSalesOrderLine: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string;
+            };
+            path: {
+                id: string;
+                lineId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RepairOrderLineRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RepairOrderLineResponse"];
                 };
             };
             /** @description Bad Request */

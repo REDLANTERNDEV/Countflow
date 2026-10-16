@@ -1,5 +1,77 @@
 # Hosting: the demo stack, and pointing it at a domain
 
+## Dokploy
+
+Use **Docker Compose**, with the repository root as build context and
+`compose.dokploy.yaml` as the Compose Path. This file imports the existing demo
+services through Compose `extends`; it is independently deployable and does not
+load the development overlay. Docker Stack is unsuitable because this deployment
+builds images and uses `extends`.
+
+In Dokploy's Environment tab, supply these settings before deployment:
+
+| Setting | Value |
+|---|---|
+| `POSTGRES_PASSWORD`, `JWT_SIGNING_KEY`, `SEQ_ADMIN_PASSWORD` | Separate random secrets, at least 32 bytes each. |
+| `WEBHOOKS_ENCRYPTION_KEY` | A separate base64-encoded 32-byte key (`openssl rand -base64 32`). Keep it stable across deployments. |
+| `DEMO_ADMIN_API_KEY`, `DEMO_SUPERVISOR_API_KEY`, `DEMO_OPERATOR_API_KEY` | Three separate random machine keys, each prefixed `cfk_`. Keep these private. |
+| `DEMO_PASSWORD` | Public sign-in secret for `admin`, `supervisor` and `operator`, for example `Countflow#2026`. It appears in the demo bundles. |
+| `CADDY_SITE_ADDRESS` | `:80`. Dokploy terminates HTTPS; Caddy serves HTTP internally. |
+| `DEMO_WAREHOUSE`, `DEMO_DAYS`, `DEMO_SEED` | Optional; defaults are `WH1`, `4`, `20260812`. |
+
+For the other random secrets, use a fresh invocation of
+`openssl rand -base64 32 | tr '+/' '-_' | tr -d '=\n'` for each value. Prefix
+each machine key with `cfk_`. Never reuse credentials from another deployment.
+
+Enable **Isolated Deployments**. Add the desired hostname in the Domains tab,
+select service **web**, container port **80**, path `/`, and enable HTTPS. Point
+DNS at the Dokploy server. Preview Compose before deploying: all six services
+must remain connected, only `web` should receive domain routing, and no service
+should bind a host port. Caddy must remain on `:80` to avoid a second TLS redirect
+behind Dokploy's proxy.
+
+Deploy the committed revision containing this setup. The migrator must exit
+successfully before the API becomes healthy; the simulator then builds the
+warehouse through its public APIs. Wait for its successful exit before sharing
+the demo. A later deployment can rerun it and add more activity.
+
+Verify the public hostname after deployment: HTTPS and its HTTP redirect,
+`/health/ready`, console sign-in for each demo role, handheld sign-in at
+`/handheld/`, visible stock and completed work, and a normal receipt/putaway.
+Confirm the database, API and Seq have no published ports. Local Compose tests
+do not prove public DNS, certificates or Dokploy's injected routing.
+
+This follows Dokploy's [Compose configuration](https://docs.dokploy.com/docs/core/docker-compose)
+and [domain routing](https://docs.dokploy.com/docs/core/docker-compose/domains)
+guidance. Domain labels and network wiring remain owned by Dokploy.
+
+### Demo reset policy
+
+The demo is shared, disposable warehouse data. Initially, resets are explicit
+operator actions, with no automatic destructive schedule. Visitors can change
+what everyone sees; no real business data belongs here. Keep the public sign-in
+secret separate from the private infrastructure and machine credentials.
+
+`scripts/demo-reset.sh` requires `--confirm-demo-reset` and identifies the database
+using both its Compose project labels and the `countflow.demo=true` volume marker.
+It refuses an unmarked or ambiguous database. It stops the demo, removes only that
+database volume, and preserves Caddy's TLS state and Seq logs.
+
+For a standalone demo, pass the same configuration options used at startup:
+`scripts/demo-reset.sh --confirm-demo-reset --env-file YOUR_DEMO_SETTINGS`.
+The script explicitly selects the base and demo files, then rebuilds the stack.
+
+For Dokploy, set `DEMO_PROJECT_NAME` to the exact project name shown in Preview
+Compose and run the reset from the deployment checkout with
+`scripts/demo-reset.sh --confirm-demo-reset --dokploy` and the same configuration
+settings. This mode deliberately leaves the stack stopped. **Redeploy through
+Dokploy** to rebuild the warehouse with its domain labels and network wiring;
+starting the raw file directly would lose those generated settings. Expect an
+outage during reset and discard old demo sessions and queued handheld commands.
+
+Existing volumes created before the demo marker was added are refused; inspect
+and handle those manually rather than treating an unmarked database as disposable.
+
 ## One command
 
 ```bash
@@ -7,7 +79,7 @@
 ```
 
 On first run it generates `.env.demo` — a Postgres password, a JWT signing key, a
-Seq password and three API keys, all from `openssl rand` — and then brings the
+Seq password, a webhook encryption key and three API keys, all from `openssl rand` — and then brings the
 stack up. On every run after that it reuses them, so the database, the sessions
 and the credentials survive a restart.
 
@@ -147,16 +219,12 @@ reachable. Both are exempt from the rate limiter.
 runs and exits, and the API starts only once it has exited successfully. A
 deployment that skips it starts an API against a schema it does not match.
 
-**Starting over.**
+**Starting over.** Use the guarded reset described in [Demo reset policy](#demo-reset-policy).
+It replaces only the explicitly marked demo database and preserves TLS state.
 
-```bash
-docker compose --env-file .env.demo -f compose.yaml -f compose.demo.yaml down -v
-```
-
-Drops the demo's volumes — and only the demo's, because it is its own project.
-That includes `caddy-data`, so you will re-issue certificates on the next run;
-mind Let's Encrypt's rate limits if you do it often. Keep `.env.demo` and the next
-run rebuilds the same warehouse.
+For settings generated by an older launcher, add `WEBHOOKS_ENCRYPTION_KEY`
+manually before the next startup; do not replace the database password or signing
+key. New launcher runs generate the dedicated key with the other credentials.
 
 **On "the same warehouse".** The seed fixes the simulator's *decisions*, not the
 building they are made in. From an empty database the same seed gives the same

@@ -307,6 +307,10 @@ public sealed class ShadowReplay(
         RuleSet candidateSet,
         CancellationToken cancellationToken)
     {
+        if (inputs.PalletContents is { } contents)
+            return await RebuildPalletPutawayAsync(inputs, contents, snapshot, storage,
+                route, lookups, baselineSet, candidateSet, cancellationToken);
+
         var itemsById = await lookups.ItemsAsync(
             snapshot.Holdings.Select(h => h.ItemId).Append(inputs.ItemId), cancellationToken);
 
@@ -347,6 +351,38 @@ public sealed class ShadowReplay(
             Run(DecisionKind.Putaway, candidate.Value.Stamp, storage, context,
                 candidate.Value.Constraints, candidate.Value.Preferences),
             null);
+    }
+
+    private async Task<Result<Comparison>> RebuildPalletPutawayAsync(
+        PutawayInputs inputs,
+        IReadOnlyList<PlateLine> contents,
+        WarehouseAsOf snapshot,
+        IReadOnlyList<StorageLocationSnapshot> storage,
+        RouteScale route,
+        ReplayLookups lookups,
+        RuleSet baselineSet,
+        RuleSet candidateSet,
+        CancellationToken cancellationToken)
+    {
+        var itemsById = await lookups.ItemsAsync(snapshot.Holdings.Select(holding => holding.ItemId)
+            .Concat(contents.Select(line => line.ItemId)), cancellationToken);
+        var holdings = snapshot.Holdings.Where(holding => holding.Quantity > 0m)
+            .Select(holding => new OccupancyLine(holding.LocationId, holding.ItemId, holding.LotId, holding.Quantity))
+            .ToArray();
+        var occupancy = contents.Select(line => new StockSubject(line.ItemId, line.LotId)).Distinct()
+            .ToDictionary(subject => subject, subject => LocationOccupancy.Summarise(
+                holdings, itemsById, subject.ItemId, subject.LotId));
+        var context = PalletPutawayContext.Create(contents, inputs.FromLocationId, itemsById, occupancy, route);
+        if (context.IsFailure) return Result.Failure<Comparison>(context.Error);
+        var baseline = PalletPutawayRuleCatalogue.Build(baselineSet);
+        if (baseline.IsFailure) return Result.Failure<Comparison>(baseline.Error);
+        var candidate = PalletPutawayRuleCatalogue.Build(candidateSet);
+        if (candidate.IsFailure) return Result.Failure<Comparison>(candidate.Error);
+        return new Comparison(
+            Run(DecisionKind.Putaway, baseline.Value.Stamp, storage, context.Value,
+                baseline.Value.Constraints, baseline.Value.Preferences),
+            Run(DecisionKind.Putaway, candidate.Value.Stamp, storage, context.Value,
+                candidate.Value.Constraints, candidate.Value.Preferences), null);
     }
 
     /// <summary>
@@ -778,6 +814,7 @@ public sealed class ShadowReplay(
     /// <summary>What the decision was about, in a form a person scanning a list reads.</summary>
     private static string Describe(object inputs) => inputs switch
     {
+        PutawayInputs { PalletContents: { } contents } => $"{contents.Select(line => line.ItemId).Distinct().Count()} SKUs on a pallet",
         PutawayInputs putaway => $"{putaway.Sku} ×{putaway.Quantity:0.###}",
         AllocationInputs allocation => $"{allocation.Sku} ×{allocation.Quantity:0.###}",
         CountPolicyInputs counting => $"up to {counting.MaxTasks} counts",

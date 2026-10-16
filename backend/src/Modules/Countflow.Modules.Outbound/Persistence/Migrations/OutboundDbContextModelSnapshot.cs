@@ -68,6 +68,9 @@ namespace Countflow.Modules.Outbound.Persistence.Migrations
                     b.Property<Guid>("StockReservationId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("SupersededByRepairId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid?>("WorkTaskId")
                         .HasColumnType("uuid");
 
@@ -84,6 +87,90 @@ namespace Countflow.Modules.Outbound.Persistence.Migrations
                         {
                             t.HasCheckConstraint("CK_OrderLineAllocations_PositiveQuantity", "\"Quantity\" > 0");
                         });
+                });
+
+            modelBuilder.Entity("Countflow.Modules.Outbound.Domain.OrderLineRepair", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.PrimitiveCollection<Guid[]>("AllocationIds")
+                        .IsRequired()
+                        .HasColumnType("uuid[]");
+
+                    b.Property<string>("AllocationPlanJson")
+                        .HasColumnType("text");
+
+                    b.Property<int>("AllocationsRaised")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("IdempotencyKey")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid>("RequestedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("RequestedByUserName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<int>("ReservationsReleased")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("SalesOrderLineId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("ShortfallQuantity")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<int>("TasksCancelled")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("TasksRaised")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("WithdrawalComplete")
+                        .HasColumnType("boolean");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IdempotencyKey")
+                        .IsUnique();
+
+                    b.HasIndex("SalesOrderLineId");
+
+                    b.ToTable("OrderLineRepairs", "outbound");
+                });
+
+            modelBuilder.Entity("Countflow.Modules.Outbound.Domain.OrderMutationFence", b =>
+                {
+                    b.Property<Guid>("OrderId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid");
+
+                    b.HasKey("OrderId");
+
+                    b.ToTable("OrderMutationFences", "outbound");
                 });
 
             modelBuilder.Entity("Countflow.Modules.Outbound.Domain.Return", b =>
@@ -442,6 +529,15 @@ namespace Countflow.Modules.Outbound.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("Line");
+                });
+
+            modelBuilder.Entity("Countflow.Modules.Outbound.Domain.OrderLineRepair", b =>
+                {
+                    b.HasOne("Countflow.Modules.Outbound.Domain.SalesOrderLine", null)
+                        .WithMany()
+                        .HasForeignKey("SalesOrderLineId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Countflow.Modules.Outbound.Domain.ReturnLine", b =>

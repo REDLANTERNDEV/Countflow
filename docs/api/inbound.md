@@ -13,6 +13,14 @@ POST /work/tasks/{id}/complete  the pallet lands and the ledger closes
 
 Roles: `Supervisor` for the first two, `Operator` for the rest.
 
+An SSCC receipt registers a durable handoff before posting stock. Until its task
+source is acknowledged, the job reports `pendingReceiptCount > 0` and cannot be
+claimed or completed. Retry an interrupted receipt with its original key and
+body. Hand an assigned pallet task back before receiving more onto that pallet;
+otherwise receiving returns `work.pallet_in_use` before adding stock. See
+[the receipt invariant](../invariants.md#the-rules-engine) and
+[decision 27](../decisions.md#27-a-receipt-reserves-its-handoff-before-it-posts-stock).
+
 ## 1 · Tell the system what is coming
 
 An advice note is optional. Skipping it gives a **blind receipt**, which is a real
@@ -187,8 +195,67 @@ told. `overrideReason` is worth sending when you have one.
 three entries — one idempotency key family, one transaction. A pallet that is half
 moved is worse than one that is not moved at all.
 
-Retrying with the same key returns the same result. Confirming a second time under
-a *new* key is refused with `work.task_already_completed`.
+Retrying with the same key returns the same result. Whole-pallet Inventory
+commands also retain terminal refusals: correcting the physical contents does not
+make an earlier refused key eligible to move stock. Refresh/re-slot as needed and
+submit a new confirmation key. A retry with a changed task, actor identity,
+explanation, destination, notes or expected holdings is refused as key reuse.
+Confirming completed work under a *new* key returns `work.task_already_completed`.
+Composite keys must fit the ledger's 128-character per-movement limit (root at
+most 124 characters, with additional room needed above 1000 holdings); notes are
+limited to 1000 characters. Handheld keys are UUIDs.
+
+## Receipt advice follows the task
+
+`decisionTraceId`, `consideredCount` and `admissibleCount` describe the effective
+putaway task after the receipt is acknowledged. When receipts merge onto a pallet,
+these fields preserve the task's existing explanation rather than reporting the
+incoming line's separate evaluation. Retrying an old receipt returns the current
+task revision and its advice; it does not post stock again.
+
+The additive fields `putawayRevision` (zero before an explicit re-slot) and
+`putawayAdviceStale` identify that snapshot. A receipt growing a revised pallet
+returns `putawayAdviceStale: true` and `suggestedLocationCode: null`. Its trace
+remains available as evidence, but the handheld asks for a supervisor re-slot
+before work proceeds. Stale advice is distinct from an evaluation with no
+admissible location. Always open the task for current state before acting.
+
+## Re-slot a pallet before taking the job
+
+An Admin or Supervisor can `POST /work/tasks/{id}/reslot` with an
+`Idempotency-Key` and `{ "reason": "Delivery contents changed" }`. The task must
+be Ready, have a pallet with contents at its origin, and have no pending receipt.
+Hand assigned work back first. Evaluation considers every item and lot, saves
+immutable revision history and makes the new trace the task's current advice.
+Task quantity is refreshed from those contents; receipt source history is retained.
+
+The response contains `current` task detail, `appliedRevision` (including its
+frozen contents and previous/new trace IDs), and `wasAlreadyApplied`. Reusing the
+same task/key/reason returns the original revision alongside current task state;
+a changed reason with that key is refused. GET task detail includes
+`putawayHistory`. The console exposes both original and revised explanations.
+
+For a revised task, completion must include `expectedDecisionTraceId` with the
+trace shown to the operator. An old or absent value returns
+`work.putaway_decision_changed` before movement. Handheld retains that ID in its
+offline command. A later acknowledged receipt sets `putawayAdviceStale`; claim
+and completion are blocked until another re-slot. Inventory also compares the
+revision's saved item/lot/condition/quantity contents under its writer lock before
+posting. A difference, including one introduced outside Inbound, returns
+`inventory.pallet_contents_changed` without moving stock; request a new re-slot.
+Whole-pallet completion saves its request before calling Inventory. While
+`completionPending` is true, resume the original device command with the same
+`Idempotency-Key` and body. Claims, handback, cancellation, new receipts and new
+re-slots return `work.completion_pending`; acknowledged receipt and re-slot
+replays remain available. Receipt replies also expose `completionPending` and
+suppress the destination until settlement. A changed body under the same task/key
+returns `work.completion_key_conflict`; another key cannot displace pending work.
+Exceptions keep recovery pending. A definite refusal releases the fence and
+retains the error; correcting it requires a new key (and a fresh re-slot for
+changed contents). A successful retry returns the completed task without another
+stock batch. Keys support up to 124 characters and override reasons up to 500.
+Legacy Inventory key-ownership rejection discards the provisional Work attempt
+so the correct original request can still recover.
 
 ## Where the goods are now
 

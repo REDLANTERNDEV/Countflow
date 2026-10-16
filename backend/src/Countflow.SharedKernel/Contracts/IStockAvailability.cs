@@ -142,6 +142,19 @@ public sealed record ReservedStock(
     bool WasAlreadyReserved);
 
 /// <summary>
+/// An open claim on a holding whose total open claims exceed its on-hand stock.
+/// The shortfall belongs to the holding, not just this owner. This snapshot is
+/// diagnostic; a repair must revalidate before withdrawing any work or claim.
+/// </summary>
+public sealed record StrandedStock(
+    ReservedStock Reservation,
+    decimal OnHandQuantity,
+    decimal TotalReserved)
+{
+    public decimal Shortfall => TotalReserved - OnHandQuantity;
+}
+
+/// <summary>
 /// Inventory's published write surface for commitments.
 /// <para>
 /// Reservations live in Inventory, beside the ledger and inside the same schema,
@@ -174,6 +187,16 @@ public interface IStockReservations
     Task<Result<int>> ReleaseAsync(
         IReadOnlyCollection<Guid> reservationIds,
         string reason,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// This owner's open claims on overcommitted holdings. Availability includes
+    /// every owner's open claims, so individually covered claims still appear
+    /// when the holding cannot meet all of its promises. Returns observations,
+    /// never a decision about which owner's goods should be taken away.
+    /// </summary>
+    Task<IReadOnlyList<StrandedStock>> FindStrandedByOwnerAsync(
+        Guid ownerId,
         CancellationToken cancellationToken);
 
     /// <summary>

@@ -34,12 +34,15 @@ public sealed class WorkModule : ICountflowModule
         services.AddModuleDbContext<WorkDbContext>(connectionString, Schema);
 
         services.AddScoped<WorkTaskDescriber>();
+        services.AddScoped<PutawayCompletions>();
 
         // The published boundary (ADR 0002): other modules may add to the queue
         // and nothing else. Claiming and completing are operator actions, and a
         // contract that exposed them would let another module move stock without
         // an operator ever confirming anything.
         services.AddScoped<IWorkQueue, WorkQueue>();
+        services.AddScoped<PutawayReceipts>();
+        services.AddScoped<IPutawayReceipts>(provider => provider.GetRequiredService<PutawayReceipts>());
 
         services.TryAddSingleton(TimeProvider.System);
 
@@ -52,6 +55,7 @@ public sealed class WorkModule : ICountflowModule
         GetWorkTasks.Map(endpoints);
         BlindBinCounts.Map(endpoints);
         GetWorkTask.Map(endpoints);
+        ReslotPutaway.Map(endpoints);
         ClaimNextTask.Map(endpoints);
         ClaimTask.Map(endpoints);
         ReleaseTask.Map(endpoints);

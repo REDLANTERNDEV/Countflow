@@ -240,3 +240,24 @@ settings together. Available codes are `route.sequence_ordinal`, `route.s_shape`
 `route.return`, and `route.midpoint`. S-Shape/Midpoint require a rear cross-aisle;
 all geometric strategies require aisle and bay data. Existing zones default to
 sequence order with no assumed cross-aisle.
+
+## Repair a stranded commitment
+
+`POST /outbound/orders/{id}/lines/{lineId}/repair` requires a supervisor or admin,
+`Idempotency-Key` (1–128 characters), and `{ "reason": "Stock moved to another bay" }`
+(1–500 characters). It withdraws only that line's stranded unclaimed picks,
+releases their reservations and runs the usual allocation rules for that line.
+Completed picks, valid claims and other lines remain. No stock movement is posted.
+
+The response contains the order, counts of released reservations/withdrawn and
+replacement work, `shortfallQuantity` and `wasAlreadyRepaired`. A shortage is a
+successful repair with less replacement supply; release the order later to chase
+it. Original allocations remain in the order's history with `supersededByRepairId`.
+Line `repairs` records publish the reason, initiating user, dates and retry key;
+an unfinished record can be resumed by another supervisor with that key/reason.
+
+Retain the key and reason after any ambiguous response. The journal freezes the
+replacement plan before reserving, so a retry recovers the same claims and tasks.
+A different line/reason under a used key returns 409. Pending repairs block other
+order changes; resume them first. An assigned pick must be handed back before
+repair. Original completed repair receipts replay even if the order later ships.

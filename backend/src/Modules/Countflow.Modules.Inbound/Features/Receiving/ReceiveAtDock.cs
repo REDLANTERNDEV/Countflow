@@ -1,4 +1,7 @@
 using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
 using Countflow.Modules.Inbound.Domain;
 using Countflow.Modules.Inbound.Persistence;
 using Countflow.SharedKernel.Contracts;
@@ -67,7 +70,10 @@ public sealed record DockReceiptResponse(
     Guid DecisionTraceId,
     int ConsideredCount,
     int AdmissibleCount,
-    AsnLineProgress? AsnLine);
+    AsnLineProgress? AsnLine,
+    bool PutawayAdviceStale = false,
+    long PutawayRevision = 0,
+    bool CompletionPending = false);
 
 /// <summary>
 /// Books goods off a truck and puts the resulting work in somebody's queue.
@@ -98,16 +104,19 @@ public static class ReceiveAtDock
                 [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey,
                 InboundDbContext dbContext,
                 IStockPosting posting,
+                IStockQuery stock,
+                IPutawayReceipts receipts,
                 IPutawayAdvisor advisor,
                 IWorkQueue work,
+                IDecisionTraceReader traces,
                 IItemDirectory items,
                 ILocationDirectory locations,
                 TimeProvider clock,
                 ILogger<Asn> logger,
                 CancellationToken cancellationToken) =>
                     (await HandleAsync(
-                        request, user, idempotencyKey, dbContext, posting, advisor,
-                        work, items, locations, clock, logger, cancellationToken))
+                        request, user, idempotencyKey, dbContext, posting, stock, receipts, advisor,
+                        work, traces, items, locations, clock, logger, cancellationToken))
                         .ToHttpResult())
             .RequireAuthorization()
             .WithTags("Inbound")
@@ -125,8 +134,11 @@ public static class ReceiveAtDock
         string? idempotencyKey,
         InboundDbContext dbContext,
         IStockPosting posting,
+        IStockQuery stock,
+        IPutawayReceipts receipts,
         IPutawayAdvisor advisor,
         IWorkQueue work,
+        IDecisionTraceReader traces,
         IItemDirectory items,
         ILocationDirectory locations,
         TimeProvider clock,
@@ -167,6 +179,19 @@ public static class ReceiveAtDock
         // Every write in this handler derives its key from the caller's, so a
         // retry re-runs the whole loop and each step recognises its own earlier
         // attempt independently.
+        var receiptIntentKey = $"{idempotencyKey}:putaway";
+        var prepared = !string.IsNullOrWhiteSpace(request.Sscc);
+        if (prepared)
+        {
+            var sscc = request.Sscc!.Trim();
+            var fingerprint = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(
+                JsonSerializer.Serialize(new { request, actor = actor.Value.UserId }))));
+            var intent = await receipts.PrepareAsync(new PutawayReceiptPreparation(receiptIntentKey,
+                fingerprint, sscc, dock.WarehouseId, dock.Id,
+                await stock.FindLicensePlateAsync(sscc, cancellationToken)), cancellationToken);
+            if (intent.IsFailure) return Result.Failure<DockReceiptResponse>(intent.Error);
+        }
+
         var receipt = await posting.ReceiveAsync(
             new ReceiptInstruction
             {
@@ -185,7 +210,11 @@ public static class ReceiveAtDock
             },
             cancellationToken);
 
-        if (receipt.IsFailure) return Result.Failure<DockReceiptResponse>(receipt.Error);
+        if (receipt.IsFailure)
+        {
+            if (prepared) await receipts.AbortAsync(receiptIntentKey, cancellationToken);
+            return Result.Failure<DockReceiptResponse>(receipt.Error);
+        }
 
         var progress = line.Value is null
             ? null
@@ -229,7 +258,25 @@ public static class ReceiveAtDock
 
         if (task.IsFailure) return Result.Failure<DockReceiptResponse>(task.Error);
 
-        if (advice.Value.LocationId is null)
+        var current = (await work.FindManyAsync([task.Value], cancellationToken)).GetValueOrDefault(task.Value)
+            ?? throw new InvalidOperationException("The receipt's putaway task disappeared after enqueue.");
+        var traceId = current.DecisionTraceId
+            ?? throw new InvalidOperationException("The receipt's putaway task has no decision.");
+        var considered = advice.Value.ConsideredCount;
+        var admissible = advice.Value.AdmissibleCount;
+        if (traceId != advice.Value.DecisionTraceId)
+        {
+            var trace = await traces.FindAsync(traceId, cancellationToken)
+                ?? throw new InvalidOperationException("The receipt's effective putaway trace is missing.");
+            considered = trace.ConsideredCount;
+            admissible = trace.AdmissibleCount;
+        }
+        // These fields describe one Work snapshot. A stale trace is still useful
+        // evidence, but its destination is not permission to move the grown load.
+        var locationCode = !current.CompletionPending && !current.PutawayAdviceStale && current.SuggestedLocationId is { } locationId
+            ? (await locations.FindAsync(locationId, cancellationToken))?.Code : null;
+
+        if (!current.CompletionPending && !current.PutawayAdviceStale && current.SuggestedLocationId is null)
         {
             // Worth a warning on its own: a receipt the rules cannot place means
             // the warehouse is full, misconfigured, or the item's master data is
@@ -239,7 +286,7 @@ public static class ReceiveAtDock
                 item.Sku,
                 dock.Code,
                 task.Value,
-                advice.Value.DecisionTraceId);
+                traceId);
         }
 
         return new DockReceiptResponse(
@@ -250,11 +297,14 @@ public static class ReceiveAtDock
             request.LotNumber ?? line.Value?.ExpectedLotNumber,
             request.Sscc,
             task.Value,
-            advice.Value.LocationCode,
-            advice.Value.DecisionTraceId,
-            advice.Value.ConsideredCount,
-            advice.Value.AdmissibleCount,
-            progress);
+            locationCode,
+            traceId,
+            considered,
+            admissible,
+            progress,
+            current.PutawayAdviceStale,
+            current.PutawayRevision,
+            current.CompletionPending);
     }
 
     private static async Task<Result<AsnLine?>> ResolveAsnLineAsync(

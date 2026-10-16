@@ -13,10 +13,10 @@ namespace Countflow.Modules.Inventory.Integration;
 /// Inventory's published write surface (ADR 0002) — how the inbound loop and the
 /// work queue move stock without being able to reach the ledger.
 /// <para>
-/// An adapter, and nothing more. Every method here translates an operation into
-/// a <see cref="PostingCommand"/> and hands it to <see cref="StockLedger"/>. It
-/// holds no invariant of its own, because a second place that enforced them is a
-/// second place that can stop enforcing them.
+/// Every movement is translated into a <see cref="PostingCommand"/> and handed
+/// to <see cref="StockLedger"/>, which owns movement and balance invariants.
+/// Whole-pallet orchestration also owns the transaction around its contents
+/// read, expected-contents comparison and ledger call.
 /// </para>
 /// <para>
 /// What it does own is the ledger vocabulary: the caller says "put this away" and
@@ -28,6 +28,7 @@ namespace Countflow.Modules.Inventory.Integration;
 public sealed class StockPosting(
     InventoryDbContext dbContext,
     StockLedger ledger,
+    PlatePutawayCommands commands,
     ReservationLedger reservations,
     StockCounting counting,
     StockReferenceResolver resolve,
@@ -133,9 +134,34 @@ public sealed class StockPosting(
             : Describe(posted.Value, instruction.LotId, instruction.LicensePlateId);
     }
 
-    public async Task<Result<IReadOnlyList<PostedMovement>>> PutawayLicensePlateAsync(
+    public Task<Result<IReadOnlyList<PostedMovement>>> PutawayLicensePlateAsync(
         PlatePutawayInstruction instruction,
         CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(instruction.IdempotencyKey) || instruction.IdempotencyKey.Length > 124
+            || instruction.Notes?.Length > 1000)
+            return Task.FromResult(Result.Failure<IReadOnlyList<PostedMovement>>(InventoryErrors.PalletCommandInvalid));
+        var frozen = instruction with { ExpectedContents = instruction.ExpectedContents?.ToArray() };
+        return dbContext.Database.CreateExecutionStrategy().ExecuteAsync(async () =>
+        {
+            dbContext.ChangeTracker.Clear();
+            await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+            await ledger.LockLicensePlatesAsync([frozen.LicensePlateId], cancellationToken);
+            var prepared = await commands.PrepareAsync(frozen, cancellationToken);
+            if (prepared.IsFailure) return Result.Failure<IReadOnlyList<PostedMovement>>(prepared.Error);
+            if (PlatePutawayCommands.Replay(prepared.Value) is { } replay) return replay;
+            var result = await PutawayLockedPlateAsync(frozen, cancellationToken);
+            // A conflicting legacy movement family must not poison the correct
+            // historical command with a new fingerprint or refusal record.
+            if (result.IsFailure && result.Error.Code == InventoryErrors.IdempotencyKeyReused.Code) return result;
+            await commands.SettleAsync(prepared.Value, result, cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return result;
+        });
+    }
+
+    private async Task<Result<IReadOnlyList<PostedMovement>>> PutawayLockedPlateAsync(
+        PlatePutawayInstruction instruction, CancellationToken cancellationToken)
     {
         var prefix = instruction.IdempotencyKey + ":";
 
@@ -152,6 +178,24 @@ public sealed class StockPosting(
 
         if (already.Count > 0)
         {
+            var keys = already.Select(movement => movement.IdempotencyKey).ToHashSet(StringComparer.Ordinal);
+            if (Enumerable.Range(0, already.Count).Any(index => !keys.Contains($"{prefix}{index:D3}"))
+                || already.Any(movement => movement.Type != MovementType.Putaway
+                    || movement.Reason != MovementReason.PutawayComplete
+                    || movement.FromLocationId != instruction.FromLocationId
+                    || movement.ToLocationId != instruction.ToLocationId
+                    || movement.FromLicensePlateId != instruction.LicensePlateId
+                    || movement.ToLicensePlateId != instruction.LicensePlateId
+                    || movement.FromStatus != movement.ToStatus
+                    || movement.TaskId != instruction.TaskId
+                    || movement.DecisionTraceId != instruction.DecisionTraceId
+                    || movement.UserId != instruction.Actor.UserId
+                    || movement.Notes != instruction.Notes)
+                || instruction.ExpectedContents is { } replayContents && !SameContents(replayContents,
+                    already.Select(movement => new PlateLine(movement.ItemId, movement.LotId,
+                        (StockCondition)movement.FromStatus, movement.Quantity))))
+                return Result.Failure<IReadOnlyList<PostedMovement>>(InventoryErrors.IdempotencyKeyReused);
+
             return Result.Success<IReadOnlyList<PostedMovement>>(
             [
                 .. already.Select(m => new PostedMovement(
@@ -174,10 +218,17 @@ public sealed class StockPosting(
             .Select(b => new { b.ItemId, b.LotId, b.Status, b.Quantity })
             .ToListAsync(cancellationToken);
 
+        if (instruction.ExpectedContents is { } expected && !SameContents(expected,
+            lines.Select(line => new PlateLine(line.ItemId, line.LotId, (StockCondition)line.Status, line.Quantity))))
+            return Result.Failure<IReadOnlyList<PostedMovement>>(InventoryErrors.PalletContentsChanged);
+
         if (lines.Count == 0)
         {
             return Result.Failure<IReadOnlyList<PostedMovement>>(InventoryErrors.LicensePlateEmpty);
         }
+
+        if (prefix.Length + (lines.Count - 1).ToString("D3", System.Globalization.CultureInfo.InvariantCulture).Length > 128)
+            return Result.Failure<IReadOnlyList<PostedMovement>>(InventoryErrors.PalletCommandInvalid);
 
         var commands = lines.Select((line, index) => new PostingCommand
         {
@@ -207,6 +258,10 @@ public sealed class StockPosting(
                 Describe(receipt, commands[index].LotId, instruction.LicensePlateId))
         ]);
     }
+
+    private static bool SameContents(IEnumerable<PlateLine> expected, IEnumerable<PlateLine> actual) =>
+        expected.OrderBy(line => line.ItemId).ThenBy(line => line.LotId).ThenBy(line => line.Condition)
+            .SequenceEqual(actual.OrderBy(line => line.ItemId).ThenBy(line => line.LotId).ThenBy(line => line.Condition));
 
     /// <summary>
     /// Takes the reserved stock to the bench, and closes the claim that was

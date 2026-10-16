@@ -173,6 +173,9 @@ public sealed record PlatePutawayInstruction
 
     public required Guid DecisionTraceId { get; init; }
 
+    /// <summary>The decision's frozen holdings; when supplied, posting refuses any difference.</summary>
+    public IReadOnlyList<PlateLine>? ExpectedContents { get; init; }
+
     public string? Notes { get; init; }
 }
 

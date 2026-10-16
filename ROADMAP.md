@@ -24,14 +24,13 @@ the same shape and come after it.
 
 ### 2. Re-slotting a mixed pallet
 
-A trailer unloaded SKU by SKU onto one pallet is one putaway job, and the
-suggestion is made when the first SKU lands. Re-deciding as the pallet grows
-means a decision context over a pallet's *whole contents* — a fourth decision
-context — and it would rewrite an explanation an operator may already have been
-shown.
-
-Deferred out of three phases as "belongs to the next one", then explicitly
-declared standalone work rather than a detour off something else.
+Implemented: supervisors explicitly re-slot Ready pallets against their whole
+contents. Immutable revisions preserve the original explanation and the reason
+for each replacement. Later receipts require a fresh revision; handheld commands
+retain the trace they acknowledged, and Inventory checks the recorded load under
+its physical writer lock. Durable completion intents survive process and session
+loss without repeating stock movements. See [the operation](docs/api/inbound.md)
+and [decision 30](docs/decisions.md#30-pallet-confirmation-survives-the-work-lock-session).
 
 ### 3. Webhooks over the change feed
 
@@ -47,13 +46,17 @@ Every `{{count}}` string in both catalogues reads "1 scans", "1 need you",
 remaining roughness in text an operator reads every shift. **The best first
 contribution on this list.**
 
-### 5. Nothing repairs a stranded commitment
+### 5. Repairing a stranded commitment
 
-An ad-hoc transfer out of reserved stock leaves the claim standing against a bin
-that no longer holds the goods. The failure is loud and correct — the alternative
-is silently re-allocating somebody's order — and a supervisor screen surfaces
-them, but the repair is still "cancel the order and release it again". A targeted
-re-home needs allocation to run for a single line.
+Implemented: a supervisor can repair one released order line without cancelling
+its order. Only stranded, unclaimed picks are withdrawn; replacement supply is
+chosen by the existing allocation rules. Original allocations and decision traces
+remain in history, retries resume a durable repair, and unavailable replacement
+stock remains an explicit shortfall. See [the operation](docs/api/outbound.md#repair-a-stranded-commitment)
+and [decision 25](docs/decisions.md#25-a-repair-replaces-a-promise-and-its-writes-keep-the-lock-session).
+
+The pick still fails loudly if its promised stock has moved. Repair is a separate
+supervisor decision, never a silent reallocation under an operator.
 
 ### 6. The blind bin count
 

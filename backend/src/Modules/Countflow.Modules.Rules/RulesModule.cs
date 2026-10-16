@@ -54,6 +54,7 @@ public sealed class RulesModule : ICountflowModule
         // rules a hypothetical is not something another module should be able to
         // record traces with.
         services.AddScoped<IPutawayAdvisor>(sp => sp.GetRequiredService<PutawayAdvisor>());
+        services.AddScoped<IPalletPutawayAdvisor, PalletPutawayAdvisor>();
         services.AddScoped<IAllocationAdvisor>(sp => sp.GetRequiredService<AllocationAdvisor>());
         services.AddScoped<ICountPolicy>(sp => sp.GetRequiredService<CountPolicyAdvisor>());
         services.AddScoped<IDispositionAdvisor>(sp => sp.GetRequiredService<DispositionAdvisor>());

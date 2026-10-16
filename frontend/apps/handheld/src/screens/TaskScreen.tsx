@@ -197,6 +197,7 @@ export function TaskScreen({ taskId, ownerUserId, onDone }: TaskScreenProps) {
       request: {
         taskId,
         ...(task.pickTourId ? { pickTourId: task.pickTourId } : {}),
+        ...(task.kind === 'Putaway' && task.decisionTraceId ? { expectedDecisionTraceId: task.decisionTraceId } : {}),
         toLocationCode: at,
         ...(reason ? { overrideReason: reason } : {}),
         ...(isCount && found ? { countedQuantity: Number(found) } : {}),
@@ -466,12 +467,22 @@ export function TaskScreen({ taskId, ownerUserId, onDone }: TaskScreenProps) {
       ) : null}
 
       {task.status === 'Ready' ? (
-        <Button onClick={() => void claim()}>{t('work.claim')}</Button>
+        <Button disabled={task.completionPending || (task.pendingReceiptCount ?? 0) > 0 || task.putawayAdviceStale} onClick={() => void claim()}>{t('work.claim')}</Button>
+      ) : null}
+
+      {task.completionPending ? (
+        <p role="status" className="m-0 text-[var(--color-warning)]">{t('errors.work.completion_pending')}</p>
+      ) : null}
+      {(task.pendingReceiptCount ?? 0) > 0 ? (
+        <p role="status" className="m-0 text-[var(--color-warning)]">{t('errors.work.receipt_pending')}</p>
+      ) : null}
+      {task.putawayAdviceStale ? (
+        <p role="status" className="m-0 text-[var(--color-warning)]">{t('errors.work.putaway_contents_changed')}</p>
       ) : null}
 
       <Button
         variant="primary"
-        disabled={!canConfirm || submitting}
+        disabled={!canConfirm || submitting || task.completionPending || (task.pendingReceiptCount ?? 0) > 0 || task.putawayAdviceStale}
         onClick={() => void complete()}
       >
         {submitting ? <Spinner label={t('work.confirming')} /> : t('work.confirm')}

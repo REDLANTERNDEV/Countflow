@@ -1,5 +1,11 @@
 # Invariants
 
+- **Demo data is explicitly disposable; deployment identity is not.** Demo resets
+  require confirmation, Compose project ownership and the database volume's
+  `countflow.demo=true` marker. Only that database volume is removed; TLS state
+  and logs remain. Dokploy owns its domain labels and networks, so a Dokploy reset
+  must redeploy through the platform rather than restart the raw Compose file.
+
 **Read this before changing anything.** Each rule prevents a class of bug that is
 silent, expensive, or both, and most are enforced by a type, a database
 constraint or a compile error rather than by review — where they are, it says so.
@@ -209,6 +215,66 @@ expensive way.
   failure, so the reason shown is the one the rule author ranked highest. The
   same candidate under a different order gives a different (equally true)
   explanation; there is a test for exactly that.
+- **Whole-pallet rules evaluate one load, not its first SKU.** The typed
+  `PalletPutawayContext` applies temperature and existing-lot checks to every
+  item, rejects incompatible incoming lots, counts the union of incoming and
+  existing SKUs, and sums the load's cube and weight once. One missing incoming
+  dimension makes that total unknown, preserving the existing capacity policy.
+  Consolidation and velocity give each SKU equal influence and weight lots by
+  units within that SKU; travel and cube score the load once. The configured
+  rule order, weights, parameters and enablement remain the existing putaway
+  vocabulary. Explicit supervisor re-slotting uses this evaluator; initial
+  receipts retain their single-item advice until that action is requested.
+- **A pallet ID does not redefine an old putaway trace.** The optional
+  `PutawayInputs.PalletContents` list explicitly identifies a whole-load
+  question. Null or absent retains the original single-item meaning, even when
+  `LicensePlateId` is set. `IPalletPutawayAdvisor` copies the caller's contents
+  before awaiting, records those inputs before returning, and reads every
+  item's occupancy perspective from one Inventory holdings query. Replay uses
+  those recorded contents and historical destination occupancy through the same
+  context builder. It never substitutes today's plate contents. Freshness and
+  task revision coordination belong to the calling workflow, not the advisor.
+- **A pallet receipt is pending until Work acknowledges its source.** Inbound
+  registers an idempotent, body-bound Work intent before posting SSCC stock.
+  Only a definite Inventory refusal aborts it; exceptions and later-stage failures
+  leave it pending for the original retry. The source append, quantity projection,
+  intent acknowledgement and pending-count projection commit together in Work.
+  Pending receipts block claim, completion and withdrawal. An assigned pallet
+  refuses new receipts before posting stock; retrying its already-acknowledged
+  receipt still replays normally. The scalar pending count is updated under the
+  task row lock, so claim's atomic update rechecks it after waiting. A child-table
+  existence check alone would retain its earlier statement snapshot. SSCC lane
+  locks precede task locks and correlate simultaneous first receipts before the
+  plate has an Inventory identity. Module transactions remain separate.
+- **Receipt guidance describes the effective Work task.** After enqueue or source
+  replay, Inbound reads one task summary and returns its trace, revision and stale
+  flag; counts come from that immutable trace. A newly evaluated incoming line
+  does not replace the task's existing explanation in the response. Stale advice
+  keeps its trace as evidence but suppresses the destination, and the handheld
+  asks for re-slotting. This is a task snapshot at response time, not a frozen
+  historical answer to a receipt retry; confirmation still validates freshness.
+- **Re-slotting appends a decision; it never rewrites one.** A supervisor or admin
+  can re-slot a Ready pallet task only with no pending receipt. Work locks the
+  task, saves the full item/lot contents, reason, actor and previous/new trace
+  IDs in an immutable revision, then replaces the task's current suggestion
+  and projects its quantity from those evaluated holdings. Receipt sources remain
+  unchanged audit history.
+  A task-scoped retry key binds the reason and replays its original revision
+  even after assignment or completion. New acknowledged receipt sources mark a
+  revised task stale; claims and confirmations require another re-slot first.
+  Confirmation of revised work must name the trace the operator saw, including
+  when queued offline. Cached explanations survive list refreshes only while
+  that trace ID still matches. Inventory validates these recorded contents atomically at posting (see the
+  ledger rules below). Durable Work intent preserves that instruction across a lost
+  lock session (see decision 30).
+- **A pending pallet confirmation outlives its database session.** Work commits
+  its frozen instruction and task pointer before Inventory posting, then settles
+  in another task-locked transaction. Claims, releases, cancellation, fresh
+  receipts and re-slots cannot cross the pointer. Only the owning intent clears
+  it. Exceptions retain it for original-key/body retry; terminal refusals retain
+  their error, and successes retain the original actor and override metadata.
+  Inventory key-ownership rejection removes only the unowned provisional attempt.
+  Task and receipt responses report pending completion; receipts hide the target.
 - **Preferences return `[0, 1]` and the engine clamps.** Normalising is what makes
   weights comparable between rules measuring different things, and clamping is
   what stops one buggy rule silently outvoting the set.
@@ -430,6 +496,35 @@ expensive way.
 - **Releasing an already-released order is the way to chase a shortfall**, not an
   error. Lines that are fully committed are skipped; the rest are re-evaluated
   against a warehouse that has since taken a delivery.
+- **Stranding belongs to a holding, not one order's claim.** A holding is
+  stranded when all its open reservations together exceed its on-hand quantity.
+  Every open claim on that holding is reported, even if each would fit alone;
+  filtering to an owner must happen after calculating the total. The supervisor
+  report and `IStockReservations.FindStrandedByOwnerAsync` share Inventory's
+  query. These are diagnostic snapshots: repair must revalidate work and claims
+  before withdrawing them; reading a shortage never chooses whose promise to break.
+- **A repair replaces promises, never physical facts.** A supervisor selects
+  one released order line and gives a reason. Only its stranded, unclaimed picks
+  may be withdrawn; completed picks, healthy claims and other lines remain.
+  Work cancels under its row locks before Inventory releases the claims. Missing
+  task acknowledgements are recovered with the allocation's original pick key
+  before deciding whether any operator has claimed that work. A pick
+  that completed before cancellation keeps its original allocation.
+- **Repair is a durable intent.** Its targets and replacement allocation plan
+  are recorded before the corresponding external writes. The original allocations
+  retain their source, quantity and trace, with an explicit supersession link;
+  committed quantity sums only active allocations. Same-key retries resume the
+  saved plan and recover existing reservations/tasks. A completed receipt replays
+  even after packing or despatch; a changed line/reason under that key refuses.
+  Partial supply is a shortfall, and a later ordinary release can chase it.
+- **Order mutations serialize before reading state.** Single-order commands and
+  each wave release use the same unpooled PostgreSQL advisory lease. Outbound
+  saves rotate a concurrency fence. During the lease, module contexts share the
+  physical PostgreSQL session that owns the lock, while each module commits its
+  own sequential transaction. Pinned commands never reconnect or retry after
+  session loss; the request fails and resumes under a fresh lease with its
+  original intent keys. Ordinary unpinned module requests retain provider retries. An unfinished repair blocks
+  ordinary release, cancellation, packing and despatch until it is resumed.
 - **Losing a holding between advice and reservation is not a failure.** Another
   order took the last of it in the intervening microseconds; the line goes short,
   which is what happened. Only `insufficient_available_stock` and
@@ -528,12 +623,33 @@ expensive way.
   row the batch touches is locked up front in one global order — the holding key
   extended with item and lot, a *suffix*, so a batch and a single command racing
   each other still agree on the order.
+- **Physical pallet writers lock the plate before its balances.** Inside the
+  Inventory transaction, take compatible `StockBalances` ROW EXCLUSIVE table
+  intent first, then all touched plate rows in sorted ID order using FOR NO KEY
+  UPDATE, then balance locks. This excludes changes to existing balances and
+  inserts of previously unseen item/lot/condition holdings. Table intent must
+  precede plate locks so blind counting, which holds a stronger table lock before
+  calling the ledger, cannot form a cycle with a pallet writer.
+- **Whole-pallet snapshots and moves share that Inventory transaction.** Re-slot
+  completion supplies its revision's exact item/lot/condition/quantity holdings;
+  any difference refuses the entire move. Unrevised putaway still moves the
+  current contents, but now reads them under the same writer lock. Replay is
+  recognized before checking today's origin and validates the original movement
+  family, task, trace, locations, plate and any supplied contents.
 - **Sufficiency is checked against running quantities, not the locked snapshot.**
   Two lines of one pallet move can draw on the same balance row, and the second
   must see what the first took.
 - **A whole-plate move recognises its key family before reading the plate.** The
   retry arrives *after* the pallet moved, so reading the source location would
   find it empty and report an error for work that succeeded.
+- **An accepted whole-pallet command has one terminal result.** Inventory binds
+  its root key to a normalized instruction and commits either movements plus the
+  success outcome, or a refusal outcome without movements. Later requests under
+  that body/key cannot turn a refusal into stock, even if contents change back.
+  A corrected command uses a new key. The root row serializes different-plate
+  attempts too. Legacy movement replay validates actor identity and notes as well
+  as its movement shape; conflicting legacy retries roll back the provisional
+  journal row. Work's separate durable intent owns task settlement.
 - **A pick takes stock off its licence plate.** A putaway moves the pallet, so the
   plate travels; a pick breaks into it, so the destination holding has no plate.
   A whole-pallet pick therefore empties the plate, which is the honest description

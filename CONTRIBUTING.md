@@ -144,7 +144,7 @@ CI runs four jobs and so should you:
 | | |
 |---|---|
 | **Backend** | `dotnet build -c Release` with warnings as errors, then `dotnet test` — 226 tests, real PostgreSQL. NuGet audit runs during restore, so a newly disclosed advisory fails the build. |
-| **Frontend** | `pnpm typecheck`, `pnpm test` (25), `pnpm build`. |
+| **Frontend** | `pnpm typecheck`, `pnpm test`, `pnpm build`; from the repository root, `node --test scripts/test/*.test.cjs` verifies demo isolation with synthetic settings and Docker Compose. |
 | **API contract** | Exports the OpenAPI document from the running host, regenerates the client, and **fails on any diff**. This is what makes the published spec impossible to drift. |
 | **Container images** | Builds the api, migrator and frontend images. |
 

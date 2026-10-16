@@ -25,6 +25,7 @@ export type CommandKind = 'work.complete' | 'inbound.receipt';
 export interface CompleteCommandRequest {
   taskId: string;
   pickTourId?: string;
+  expectedDecisionTraceId?: string;
   toLocationCode: string;
   overrideReason?: string;
   countedQuantity?: number;

@@ -4,6 +4,19 @@ namespace Countflow.Modules.Work;
 
 public static class WorkErrors
 {
+    public static readonly Error CompletionPending = Error.Conflict("work.completion_pending", "Retry the original pending confirmation before changing this pallet task.");
+    public static readonly Error CompletionKeyConflict = Error.Conflict("work.completion_key_conflict", "That confirmation key belongs to a different request.");
+    public static readonly Error CompletionRequestInvalid = Error.Validation("work.completion_request_invalid", "A pallet confirmation needs a key of at most 124 characters, a destination, and an override reason of at most 500 characters.");
+    public static readonly Error ReslotRequestInvalid = Error.Validation("work.reslot_request_invalid", "A re-slot needs a retry key and a reason of 1–500 characters.");
+    public static readonly Error ReslotKeyConflict = Error.Conflict("work.reslot_key_conflict", "That re-slot key belongs to a different reason.");
+    public static readonly Error NotPalletPutaway = Error.Conflict("work.not_pallet_putaway", "Only a whole-pallet putaway can be re-slotted.");
+    public static readonly Error PalletEmpty = Error.Conflict("work.pallet_empty", "This pallet has no stock at the task's origin.");
+    public static readonly Error PutawayDecisionChanged = Error.Conflict("work.putaway_decision_changed", "The pallet decision changed. Refresh the task before confirming.");
+    public static readonly Error PutawayContentsChanged = Error.Conflict("work.putaway_contents_changed", "The pallet contents changed. A supervisor must re-slot it before it can be taken.");
+    public static readonly Error ReceiptPending = Error.Conflict("work.receipt_pending", "Finish or retry the pending pallet receipt before taking this task.");
+    public static readonly Error PalletInUse = Error.Conflict("work.pallet_in_use", "Hand this pallet's task back before receiving more onto it.");
+    public static readonly Error ReceiptKeyConflict = Error.Conflict("work.receipt_key_conflict", "That receipt key belongs to a different request.");
+    public static readonly Error ReceiptInvalid = Error.Validation("work.receipt_invalid", "The receipt handoff information is invalid.");
     public static readonly Error ReplenishmentDestinationMismatch =
         Error.Validation("work.replenishment_destination_mismatch", "Scan the replenishment task's pick face.");
 

@@ -59,14 +59,19 @@ docs/                        this documentation and the API reference
   `IStockPosting`, `IStockQuery`, `IStockAvailability`, `IStockReservations`,
   `IStockCounts`, `IStockChangeFeed`, and `IStockHistory`, which folds the ledger forward
   to hand out the warehouse as it stood at any past instant.
-- `Modules/Rules` — the versioned rule sets, the putaway, allocation **and
-  cycle-count** vocabularies and the persisted decision traces. Publishes
-  `IPutawayAdvisor`, `IAllocationAdvisor`, `ICountPolicy`,
+  The stranded-reservation report and owner-scoped lookup share one Inventory
+  query; see [the outbound invariants](invariants.md#the-outbound-loop).
+- `Modules/Rules` — the versioned rule sets, the putaway (single-item and
+  whole-pallet), allocation, cycle-count and disposition vocabularies and the
+  persisted decision traces. Publishes `IPutawayAdvisor`, `IPalletPutawayAdvisor`,
+  `IAllocationAdvisor`, `ICountPolicy`, `IDispositionAdvisor`,
   `IDecisionTraceReader` and `IShadowReplay`. The rule-set **editor**
   lives here too: drafts, clone-from-active, and promotion.
 - `Modules/Work` — pick tours and the task queue an operator's handheld reads from, and the
   confirmation that turns a job into a ledger entry. Putaways and picks are the
-  same kind of thing to it. Publishes `IWorkQueue`.
+  same kind of thing to it. Publishes `IWorkQueue` and `IPutawayReceipts`; the
+  latter reserves and acknowledges the receipt-to-task handoff before a growing
+  pallet can be claimed. See [decision 27](decisions.md#27-a-receipt-reserves-its-handoff-before-it-posts-stock).
 - `Modules/Inbound` — advice notes and the dock receipt. Publishes nothing: its
   output is stock and work, and both are already somebody else's surface.
 - `Modules/Outbound` — sales orders, waves, and the release that commits stock
@@ -233,3 +238,11 @@ never run on API startup: two replicas booting together would race, and EF's
 history table is not a distributed lock. The API runtime image is **chiseled** —
 no shell, no package manager, non-root — so the Docker health check re-invokes
 the app binary with `--healthcheck` rather than shipping `curl`.
+
+### Order orchestration sessions
+
+Order mutations serialize through an advisory lease. `ModuleSession` pins scoped
+module contexts to its physical connection; module transactions remain separate
+and sequential. Session loss stops the request rather than reconnecting without
+the lock. See [decision 25](decisions.md#25-a-repair-replaces-a-promise-and-its-writes-keep-the-lock-session)
+and [the outbound invariants](invariants.md#the-outbound-loop).

@@ -102,6 +102,8 @@ not a rule they can write code against.
 | `inventory.counterparty_missing` | 500 | A virtual counterparty location is absent. Configuration. |
 | `inventory.invalid_sscc` | 400 | Check digit. |
 | `inventory.license_plate_not_found` | 404 | |
+| `inventory.pallet_command_invalid` | 400 | Pallet confirmation key or notes exceed storage limits. A root key is at most 124 characters, shorter for more than 1000 holdings; notes are at most 1000 characters. |
+| `inventory.pallet_contents_changed` | 409 | The physical pallet no longer matches the recorded decision. Re-slot before confirming; no putaway stock was posted. |
 | `inventory.license_plate_empty` | 409 | |
 | `inventory.license_plate_cycle` | 400 | A plate cannot nest inside itself. |
 | `inventory.status_change_needs_new_status` | 400 | |
@@ -140,6 +142,12 @@ not a rule they can write code against.
 | `outbound.nothing_picked` | 409 | A despatch is built from what was picked. |
 | `outbound.already_despatched` | 409 | |
 | `outbound.order_not_cancellable` | 409 | |
+| `outbound.order_line_not_found` | 404 | The selected line does not belong to this order. |
+| `outbound.repair_reason_required` · `outbound.repair_key_invalid` | 400 | Repair reason is 1–500 characters; retry key is 1–128 characters. |
+| `outbound.idempotency_key_reused` | 409 | The key already names a different line or reason. |
+| `outbound.no_stranded_commitment` | 409 | No unpicked stranded commitment remains on this line. |
+| `outbound.repair_in_progress` | 409 | Resume the line's pending repair before releasing, cancelling, packing or despatching the order. |
+| `outbound.repair_task_missing` | 409 | A commitment names a missing pick; investigate before releasing its stock. |
 | `outbound.picks_in_progress` | 409 | Somebody is holding a pick; a job cannot be cancelled from under them. |
 | `outbound.order_not_waveable` | 409 | |
 | `outbound.wave_not_releasable` | 409 | |
@@ -160,6 +168,19 @@ not a rule they can write code against.
 | `work.task_already_completed` | 409 | A second confirmation under a new key. |
 | `work.task_not_open` | 409 | Cancelled or withdrawn. |
 | `work.enqueue_race_lost` | 409 | Two raisers, one plate. Retry. |
+| `work.reslot_request_invalid` | 400 | Supply a retry key of at most 128 characters and a nonblank reason of at most 500 characters. |
+| `work.reslot_key_conflict` | 409 | The task's re-slot key already belongs to a different reason. |
+| `work.not_pallet_putaway` | 409 | Re-slotting requires a pallet putaway task. |
+| `work.pallet_empty` | 409 | No pallet contents remain at the task origin. |
+| `work.putaway_decision_changed` | 409 | Revised work requires the current trace ID; refresh the explanation before a new confirmation. |
+| `work.putaway_contents_changed` | 409 | A receipt grew the revised pallet. Re-slot before taking or confirming it. |
+| `work.completion_pending` | 409 | A saved pallet confirmation is unresolved. Resume the original device request with its original key and body. |
+| `work.completion_key_conflict` | 409 | This task/key belongs to another confirmation body. Resume the original request. |
+| `work.completion_request_invalid` | 400 | Supply a destination, a key of at most 124 characters and an override reason of at most 500 characters. |
+| `work.receipt_pending` | 409 | A pallet receipt has not been acknowledged as a task source. Retry the original receipt before taking, confirming or withdrawing the task. |
+| `work.pallet_in_use` | 409 | Hand the assigned pallet task back before receiving more onto it. No extra stock was posted. |
+| `work.receipt_key_conflict` | 409 | A prepared receipt's key was reused with a different body or pallet identity. |
+| `work.receipt_invalid` | 400 | Invalid receipt handoff key, fingerprint or SSCC shape. |
 | `work.count_quantity_required` | 400 | A count is confirmed with a number, not a location. |
 | `work.count_location_mismatch` | 400 | A count asks about one holding; a different code is a mis-scan. |
 | `work.task_has_no_reservation` | 500 | A pick with no claim behind it. Report it. |

@@ -44,6 +44,7 @@ public static class PackOrder
                     (await HandleAsync(id, request, user, dbContext, describe, work, clock, cancellationToken))
                         .ToHttpResult())
             .RequireAuthorization()
+            .AddEndpointFilter<OrderMutationFilter>()
             .WithTags("Outbound")
             .WithName("PackSalesOrder")
             .WithSummary("Confirm the order is picked and made up at the bench.")
@@ -71,6 +72,8 @@ public static class PackOrder
             .SingleOrDefaultAsync(o => o.Id == id, cancellationToken);
 
         if (order is null) return Result.Failure<SalesOrderResponse>(OutboundErrors.OrderNotFound);
+        if (await OrderRepair.HasPendingAsync(dbContext, id, cancellationToken))
+            return Result.Failure<SalesOrderResponse>(OutboundErrors.RepairInProgress);
 
         // Packing twice is a person pressing a button twice, not a duplicated
         // shipment, so it is idempotent rather than refused.
@@ -155,6 +158,7 @@ public static class DespatchOrder
                         cancellationToken))
                         .ToHttpResult())
             .RequireAuthorization(policy => policy.RequireRole(Roles.Admin, Roles.Supervisor))
+            .AddEndpointFilter<OrderMutationFilter>()
             .WithTags("Outbound")
             .WithName("DespatchSalesOrder")
             .WithSummary("Post the picked stock out to the Customer counterparty.")
@@ -190,6 +194,8 @@ public static class DespatchOrder
             .SingleOrDefaultAsync(o => o.Id == id, cancellationToken);
 
         if (order is null) return Result.Failure<DespatchOrderResponse>(OutboundErrors.OrderNotFound);
+        if (await OrderRepair.HasPendingAsync(dbContext, id, cancellationToken))
+            return Result.Failure<DespatchOrderResponse>(OutboundErrors.RepairInProgress);
 
         if (order.Status == SalesOrderStatus.Despatched)
         {

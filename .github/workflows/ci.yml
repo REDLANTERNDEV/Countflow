@@ -75,6 +75,9 @@ jobs:
         working-directory: frontend
         run: pnpm test
 
+      - name: Test demo configuration
+        run: node --test scripts/test/*.test.cjs
+
       - name: Build
         working-directory: frontend
         run: pnpm build

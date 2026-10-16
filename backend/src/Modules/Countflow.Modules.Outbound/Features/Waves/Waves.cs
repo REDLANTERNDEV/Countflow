@@ -1,3 +1,4 @@
+using Countflow.SharedKernel.Modules;
 using System.Security.Claims;
 using Countflow.Modules.Outbound.Domain;
 using Countflow.Modules.Outbound.Features.Orders;
@@ -189,12 +190,13 @@ public static class ReleaseWave
                 [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey,
                 OutboundDbContext dbContext,
                 OrderRelease release,
+                ModuleSession session,
                 OrderDescriber describe,
                 ILocationDirectory locations,
                 TimeProvider clock,
                 CancellationToken cancellationToken) =>
                     (await HandleAsync(
-                        id, request, user, idempotencyKey, dbContext, release, describe, locations, clock,
+                        id, request, user, idempotencyKey, dbContext, release, session, describe, locations, clock,
                         cancellationToken))
                         .ToHttpResult())
             .RequireAuthorization(policy => policy.RequireRole(Roles.Admin, Roles.Supervisor))
@@ -214,6 +216,7 @@ public static class ReleaseWave
         string? idempotencyKey,
         OutboundDbContext dbContext,
         OrderRelease release,
+        ModuleSession session,
         OrderDescriber describe,
         ILocationDirectory locations,
         TimeProvider clock,
@@ -247,6 +250,7 @@ public static class ReleaseWave
         }
 
         var orders = await dbContext.SalesOrders
+            .AsNoTracking()
             .Include(o => o.Lines)
             .ThenInclude(l => l.Allocations)
             .Where(o => o.WaveId == wave.Id)
@@ -262,8 +266,23 @@ public static class ReleaseWave
         var tasks = 0;
         var shortfall = 0m;
 
-        foreach (var order in releasable)
+        foreach (var candidate in releasable)
         {
+            await using var lease = await OrderMutationLease.AcquireAsync(dbContext, session, candidate.Id, cancellationToken);
+            var order = await dbContext.SalesOrders.Include(row => row.Lines).ThenInclude(line => line.Allocations)
+                .SingleAsync(row => row.Id == candidate.Id, cancellationToken);
+            if (await OrderRepair.HasPendingAsync(dbContext, order.Id, cancellationToken)
+                || order.Status is not (SalesOrderStatus.New or SalesOrderStatus.Released))
+            {
+                foreach (var line in order.Lines)
+                {
+                    foreach (var allocation in line.Allocations) dbContext.Entry(allocation).State = EntityState.Detached;
+                    dbContext.Entry(line).State = EntityState.Detached;
+                }
+                dbContext.Entry(order).State = EntityState.Detached;
+                continue;
+            }
+
             if (staging is { } bench)
             {
                 order.StagingLocationId = bench;
@@ -281,6 +300,8 @@ public static class ReleaseWave
                 // the one that failed is visible as still New with its reason in
                 // the log.
                 order.Notes = $"Release failed: {outcome.Error.Code}";
+                await dbContext.SaveChangesAsync(cancellationToken);
+                dbContext.Entry(order).State = EntityState.Detached;
                 continue;
             }
 
@@ -288,6 +309,9 @@ public static class ReleaseWave
             tasks += outcome.Value.Tasks;
             shortfall += outcome.Value.Shortfall;
         }
+
+        orders = await dbContext.SalesOrders.AsNoTracking().Include(row => row.Lines).ThenInclude(line => line.Allocations)
+            .Where(row => row.WaveId == wave.Id).OrderBy(row => row.Priority).ThenBy(row => row.CreatedAt).ToListAsync(cancellationToken);
 
         wave.Status = WaveStatus.Released;
         wave.ReleasedAt ??= clock.GetUtcNow();

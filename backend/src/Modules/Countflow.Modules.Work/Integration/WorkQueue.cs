@@ -19,6 +19,7 @@ namespace Countflow.Modules.Work.Integration;
 /// </summary>
 public sealed class WorkQueue(
     WorkDbContext dbContext,
+    PutawayReceipts receipts,
     TimeProvider clock,
     ILogger<WorkQueue> logger) : IWorkQueue
 {
@@ -71,8 +72,14 @@ public sealed class WorkQueue(
                 return existing;
             }
 
+            var acknowledgement = await receipts.LockAcknowledgementAsync(request, cancellationToken);
+            if (acknowledgement.IsFailure) return Result.Failure<Guid>(acknowledgement.Error);
+
             var open = await FindOpenPlateTaskAsync(request, cancellationToken);
             var task = open ?? Create(request);
+            if (task.PendingPutawayCompletionId is not null) return Result.Failure<Guid>(WorkErrors.CompletionPending);
+            if (acknowledgement.Value is not null && task.Status == WorkTaskStatus.Assigned)
+                return Result.Failure<Guid>(WorkErrors.PalletInUse);
 
             dbContext.WorkTaskSources.Add(new WorkTaskSource
             {
@@ -83,6 +90,9 @@ public sealed class WorkQueue(
             });
 
             task.Quantity += request.Quantity;
+            if (task.PutawayRevision > 0) task.PutawayAdviceStale = true;
+            if (acknowledgement.Value is { } intent)
+                await receipts.AcknowledgeAsync(intent, task, cancellationToken);
 
             await dbContext.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
@@ -153,7 +163,7 @@ public sealed class WorkQueue(
     /// The suggestion and its trace stay as they were. The rules chose a home for
     /// the first thing on the pallet, and re-deciding for a pallet whose contents
     /// are still growing would rewrite an explanation somebody may already have
-    /// been shown. Re-slotting a mixed pallet as a whole is still deferred.
+    /// been shown. Explicit re-slotting appends a whole-pallet revision instead.
     /// </para>
     /// </summary>
     private async Task<WorkTask?> FindOpenPlateTaskAsync(
@@ -165,14 +175,7 @@ public sealed class WorkQueue(
             return null;
         }
 
-        return await dbContext.WorkTasks
-            .Include(t => t.Sources)
-            .Where(t => t.LicensePlateId == plateId
-                        && t.FromLocationId == request.FromLocationId
-                        && t.Kind == request.Kind
-                        && (t.Status == WorkTaskStatus.Ready || t.Status == WorkTaskStatus.Assigned))
-            .OrderBy(t => t.CreatedAt)
-            .FirstOrDefaultAsync(cancellationToken);
+        return await PutawayReceipts.LockTaskAsync(dbContext, plateId, request.FromLocationId, cancellationToken);
     }
 
     public async Task<IReadOnlyDictionary<Guid, WorkTaskSummary>> FindManyAsync(
@@ -192,7 +195,7 @@ public sealed class WorkQueue(
             .Select(t => new Row(
                 t.Id, t.Kind, t.Status, t.Quantity,
                 t.CompletedAtLocationId, t.CompletedAt, t.CompletedByUserName, t.WasOverridden,
-                t.CountedQuantity))
+                t.CountedQuantity, t.SuggestedLocationId, t.DecisionTraceId, t.PutawayAdviceStale, t.PutawayRevision, t.PendingPutawayCompletionId != null))
             .ToListAsync(cancellationToken);
 
         return rows.ToDictionary(
@@ -206,7 +209,21 @@ public sealed class WorkQueue(
                 row.CompletedAt,
                 row.CompletedByUserName,
                 row.WasOverridden,
-                row.CountedQuantity));
+                row.CountedQuantity, row.SuggestedLocationId, row.DecisionTraceId,
+                row.PutawayAdviceStale, row.PutawayRevision, row.CompletionPending));
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, WorkTaskSummary>> FindByReservationsAsync(
+        IReadOnlyCollection<Guid> reservationIds, CancellationToken cancellationToken)
+    {
+        if (reservationIds.Count == 0) return new Dictionary<Guid, WorkTaskSummary>();
+        var ids = reservationIds.Distinct().ToArray();
+        var matches = await dbContext.WorkTasks.AsNoTracking()
+            .Where(task => task.StockReservationId != null && ids.Contains(task.StockReservationId.Value))
+            .Select(task => new { ReservationId = task.StockReservationId!.Value, task.Id })
+            .ToListAsync(cancellationToken);
+        var tasks = await FindManyAsync(matches.Select(match => match.Id).ToArray(), cancellationToken);
+        return matches.ToDictionary(match => match.ReservationId, match => tasks[match.Id]);
     }
 
     /// <summary>Atomically withdraws ready tasks, refusing the whole set if any is assigned.</summary>
@@ -221,8 +238,12 @@ public sealed class WorkQueue(
             var tasks = await dbContext.WorkTasks.FromSqlInterpolated(
                 $"SELECT * FROM work.\"WorkTasks\" WHERE \"Id\" = ANY({ids}) ORDER BY \"Id\" FOR UPDATE")
                 .ToListAsync(token);
+            if (tasks.Any(task => task.PendingPutawayCompletionId is not null))
+                return Result.Failure<int>(WorkErrors.CompletionPending);
             if (tasks.Any(task => task.Status == WorkTaskStatus.Assigned))
                 return Result.Failure<int>(WorkErrors.TaskAlreadyClaimed);
+            if (tasks.Any(task => task.PendingReceiptCount > 0))
+                return Result.Failure<int>(WorkErrors.ReceiptPending);
             var ready = tasks.Where(task => task.Status == WorkTaskStatus.Ready).ToList();
             foreach (var task in ready) { task.Status = WorkTaskStatus.Cancelled; task.CancelledReason = reason; }
             await dbContext.SaveChangesAsync(token);
@@ -241,7 +262,12 @@ public sealed class WorkQueue(
         DateTimeOffset? CompletedAt,
         string? CompletedByUserName,
         bool WasOverridden,
-        decimal? CountedQuantity);
+        decimal? CountedQuantity,
+        Guid? SuggestedLocationId,
+        Guid? DecisionTraceId,
+        bool PutawayAdviceStale,
+        long PutawayRevision,
+        bool CompletionPending);
 
     /// <summary>
     /// The internal status and the published state are separate enums with

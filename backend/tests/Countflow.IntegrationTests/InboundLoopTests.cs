@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
+using System.Text.Json;
 using Countflow.Modules.Identity.Domain;
 using Countflow.Modules.MasterData.Domain;
 using Countflow.Modules.MasterData.Persistence;
@@ -11,6 +12,11 @@ using Countflow.SharedKernel.Security;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Countflow.Modules.Rules.Putaway;
+using Countflow.SharedKernel.Contracts;
+using Countflow.SharedKernel.Results;
 
 namespace Countflow.IntegrationTests;
 
@@ -26,7 +32,7 @@ namespace Countflow.IntegrationTests;
 /// survives the retry a handheld on a flaky link will certainly send.
 /// </para>
 /// </summary>
-public sealed class InboundLoopTests(CountflowApiFixture fixture)
+public sealed partial class InboundLoopTests(CountflowApiFixture fixture)
     : IClassFixture<CountflowApiFixture>, IAsyncLifetime
 {
     private const string Secret = "Countflow#2026";
@@ -421,6 +427,432 @@ public sealed class InboundLoopTests(CountflowApiFixture fixture)
     }
 
     // ---------------------------------------------------------- whole pallets
+
+    [Theory]
+    [InlineData(TemperatureClass.Ambient, TemperatureClass.Frozen)]
+    [InlineData(TemperatureClass.Frozen, TemperatureClass.Ambient)]
+    public async Task A_merged_receipt_returns_the_tasks_effective_explanation(TemperatureClass firstTemperature, TemperatureClass secondTemperature)
+    {
+        var first = await NewItemAsync(firstTemperature, caller: $"Merged-{firstTemperature}");
+        var second = await NewItemAsync(secondTemperature, caller: $"Merged-{firstTemperature}");
+        var sscc = NewSscc();
+        var one = await Read<DockReceipt>(await PostAsync(_operator, "/api/v1/inbound/receipts",
+            new { sku = first, quantity = 10m, toLocationCode = _dock, sscc }));
+        var two = await Read<DockReceipt>(await PostAsync(_operator, "/api/v1/inbound/receipts",
+            new { sku = second, quantity = 20m, toLocationCode = _dock, sscc }));
+        Assert.Equal(one.WorkTaskId, two.WorkTaskId);
+        var task = await GetAsync<JsonElement>($"/api/v1/work/tasks/{two.WorkTaskId}");
+        Assert.Equal(task.GetProperty("task").GetProperty("decisionTraceId").GetGuid(), two.DecisionTraceId);
+        Assert.Equal(one.DecisionTraceId, two.DecisionTraceId);
+        Assert.Equal(task.GetProperty("task").GetProperty("suggestedLocationCode").GetString(), two.SuggestedLocationCode);
+        Assert.Equal(task.GetProperty("decision").GetProperty("consideredCount").GetInt32(), two.ConsideredCount);
+        Assert.Equal(task.GetProperty("decision").GetProperty("admissibleCount").GetInt32(), two.AdmissibleCount);
+    }
+
+    [Fact]
+    public async Task Receipt_replay_returns_current_revision_and_new_receipts_suppress_stale_guidance()
+    {
+        var first = await NewItemAsync();
+        var second = await NewItemAsync();
+        var sscc = NewSscc();
+        var firstBody = new { sku = first, quantity = 10m, toLocationCode = _dock, sscc };
+        var key = Guid.NewGuid().ToString();
+        var one = await Read<DockReceipt>(await PostAsync(_operator, "/api/v1/inbound/receipts", firstBody, key));
+        var revised = await Read<JsonElement>(await PostAsync(_supervisor,
+            $"/api/v1/work/tasks/{one.WorkTaskId}/reslot", new { reason = "Unloading finished" }));
+        var current = revised.GetProperty("current").GetProperty("task");
+        var retry = await Read<JsonElement>(await PostAsync(_operator, "/api/v1/inbound/receipts", firstBody, key));
+        Assert.Equal(current.GetProperty("decisionTraceId").GetGuid(), retry.GetProperty("decisionTraceId").GetGuid());
+        Assert.Equal(1, retry.GetProperty("putawayRevision").GetInt64());
+        Assert.False(retry.GetProperty("putawayAdviceStale").GetBoolean());
+        Assert.Equal(current.GetProperty("suggestedLocationCode").GetString(), retry.GetProperty("suggestedLocationCode").GetString());
+        var newReceipt = await Read<JsonElement>(await PostAsync(_operator, "/api/v1/inbound/receipts",
+            new { sku = second, quantity = 20m, toLocationCode = _dock, sscc }));
+        Assert.Equal(current.GetProperty("decisionTraceId").GetGuid(), newReceipt.GetProperty("decisionTraceId").GetGuid());
+        Assert.Equal(1, newReceipt.GetProperty("putawayRevision").GetInt64());
+        Assert.True(newReceipt.GetProperty("putawayAdviceStale").GetBoolean());
+        Assert.Equal(JsonValueKind.Null, newReceipt.GetProperty("suggestedLocationCode").ValueKind);
+    }
+
+    [Fact]
+    public async Task Re_slotting_a_mixed_pallet_preserves_the_old_trace_and_fences_old_confirmations()
+    {
+        var first = await NewItemAsync();
+        var second = await NewItemAsync();
+        var sscc = NewSscc();
+        var one = await Read<DockReceipt>(await PostAsync(_operator, "/api/v1/inbound/receipts",
+            new { sku = first, quantity = 10m, toLocationCode = _dock, sscc }));
+        await Read<DockReceipt>(await PostAsync(_operator, "/api/v1/inbound/receipts",
+            new { sku = second, quantity = 20m, toLocationCode = _dock, sscc }));
+        var before = await GetAsync<JsonElement>($"/api/v1/rules/traces/{one.DecisionTraceId}");
+        var url = $"/api/v1/work/tasks/{one.WorkTaskId}/reslot";
+        var key = Guid.NewGuid().ToString();
+        var body = new { reason = "Unloading finished; choose for the whole pallet" };
+        Assert.Equal(HttpStatusCode.Forbidden, (await PostAsync(_operator, url, body, key)).StatusCode);
+        var applied = await Read<JsonElement>(await PostAsync(_supervisor, url, body, key));
+        var current = applied.GetProperty("current");
+        var task = current.GetProperty("task");
+        var trace = task.GetProperty("decisionTraceId").GetGuid();
+        Assert.NotEqual(one.DecisionTraceId, trace);
+        Assert.Equal(1, task.GetProperty("putawayRevision").GetInt64());
+        Assert.False(task.GetProperty("putawayAdviceStale").GetBoolean());
+        var revision = applied.GetProperty("appliedRevision");
+        Assert.Equal(one.DecisionTraceId, revision.GetProperty("previousDecisionTraceId").GetGuid());
+        Assert.Equal(2, revision.GetProperty("contents").GetArrayLength());
+        Assert.Single(current.GetProperty("putawayHistory").EnumerateArray());
+        var after = await GetAsync<JsonElement>($"/api/v1/rules/traces/{one.DecisionTraceId}");
+        Assert.Equal(before.GetRawText(), after.GetRawText());
+        var stale = await PostAsync(_operator, $"/api/v1/work/tasks/{one.WorkTaskId}/complete",
+            new { toLocationCode = one.SuggestedLocationCode, expectedDecisionTraceId = one.DecisionTraceId });
+        Assert.Equal(HttpStatusCode.Conflict, stale.StatusCode);
+        Assert.Equal(30m, await BalanceAsync(first, _dock) + await BalanceAsync(second, _dock));
+        var completed = await Read<TaskCompletion>(await PostAsync(_operator, $"/api/v1/work/tasks/{one.WorkTaskId}/complete",
+            new { toLocationCode = task.GetProperty("suggestedLocationCode").GetString(), expectedDecisionTraceId = trace }));
+        Assert.Equal(2, completed.Movements.Count);
+        Assert.Equal(trace, (await MovementsAsync(first)).Single(m => m.Type == "Putaway").DecisionTraceId);
+        var replay = await Read<JsonElement>(await PostAsync(_supervisor, url, body, key));
+        Assert.True(replay.GetProperty("wasAlreadyApplied").GetBoolean());
+        Assert.Equal(trace, replay.GetProperty("appliedRevision").GetProperty("decisionTraceId").GetGuid());
+        Assert.Equal(HttpStatusCode.Conflict, (await PostAsync(_supervisor, url, new { reason = "Changed body" }, key)).StatusCode);
+    }
+
+    [Fact]
+    public async Task Revised_completion_refuses_an_inventory_change_without_a_receipt_handoff()
+    {
+        var sku = await NewItemAsync();
+        var sscc = NewSscc();
+        var receipt = await Read<DockReceipt>(await PostAsync(_operator, "/api/v1/inbound/receipts",
+            new { sku, quantity = 10m, toLocationCode = _dock, sscc }));
+        var revised = await Read<JsonElement>(await PostAsync(_supervisor,
+            $"/api/v1/work/tasks/{receipt.WorkTaskId}/reslot", new { reason = "Unload finished" }));
+        var task = revised.GetProperty("current").GetProperty("task");
+        // An Inventory writer outside Inbound does not update Work's receipt counter.
+        using (var scope = fixture.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<MasterDataDbContext>();
+            var item = await db.Items.SingleAsync(row => row.Sku == sku);
+            var dock = await db.Locations.SingleAsync(row => row.Code == _dock);
+            var added = await scope.ServiceProvider.GetRequiredService<Countflow.SharedKernel.Contracts.IStockPosting>()
+                .ReceiveAsync(new Countflow.SharedKernel.Contracts.ReceiptInstruction
+                {
+                    ItemId = item.Id, Quantity = 1m, ToLocationId = dock.Id, Sscc = sscc,
+                    IdempotencyKey = Guid.NewGuid().ToString(),
+                    Actor = new Countflow.SharedKernel.Contracts.PostingActor(Guid.NewGuid(), "external-receipt")
+                }, CancellationToken.None);
+            Assert.True(added.IsSuccess);
+        }
+        var refused = await PostAsync(_operator, $"/api/v1/work/tasks/{receipt.WorkTaskId}/complete",
+            new { toLocationCode = task.GetProperty("suggestedLocationCode").GetString(),
+                expectedDecisionTraceId = task.GetProperty("decisionTraceId").GetGuid() });
+        Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
+        Assert.Equal("inventory.pallet_contents_changed", (await refused.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("code").GetString());
+        Assert.Equal(11m, await BalanceAsync(sku, _dock));
+        Assert.DoesNotContain(await MovementsAsync(sku), movement => movement.Type == "Putaway");
+        var refreshed = await Read<JsonElement>(await PostAsync(_supervisor,
+            $"/api/v1/work/tasks/{receipt.WorkTaskId}/reslot", new { reason = "Account for external stock change" }));
+        var refreshedTask = refreshed.GetProperty("current").GetProperty("task");
+        Assert.Equal(11m, refreshedTask.GetProperty("quantity").GetDecimal());
+        var done = await Read<TaskCompletion>(await PostAsync(_operator, $"/api/v1/work/tasks/{receipt.WorkTaskId}/complete",
+            new { toLocationCode = refreshedTask.GetProperty("suggestedLocationCode").GetString(),
+                expectedDecisionTraceId = refreshedTask.GetProperty("decisionTraceId").GetGuid() }));
+        Assert.Equal(11m, Assert.Single(done.Movements).Quantity);
+    }
+
+    [Fact]
+    public async Task New_receipts_make_a_re_slotted_pallet_stale_until_another_revision_is_recorded()
+    {
+        var first = await NewItemAsync();
+        var second = await NewItemAsync();
+        var sscc = NewSscc();
+        var one = await Read<DockReceipt>(await PostAsync(_operator, "/api/v1/inbound/receipts",
+            new { sku = first, quantity = 10m, toLocationCode = _dock, sscc }));
+        var url = $"/api/v1/work/tasks/{one.WorkTaskId}/reslot";
+        var old = await Read<JsonElement>(await PostAsync(_supervisor, url, new { reason = "First load" }));
+        var oldTrace = old.GetProperty("appliedRevision").GetProperty("decisionTraceId").GetGuid();
+        await Read<DockReceipt>(await PostAsync(_operator, "/api/v1/inbound/receipts",
+            new { sku = second, quantity = 20m, toLocationCode = _dock, sscc }));
+        var stale = await GetAsync<JsonElement>($"/api/v1/work/tasks/{one.WorkTaskId}");
+        Assert.True(stale.GetProperty("task").GetProperty("putawayAdviceStale").GetBoolean());
+        Assert.Equal(HttpStatusCode.Conflict, (await PostAsync(_operator, $"/api/v1/work/tasks/{one.WorkTaskId}/claim", new { })).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await PostAsync(_operator, $"/api/v1/work/tasks/{one.WorkTaskId}/complete",
+            new { toLocationCode = one.SuggestedLocationCode, expectedDecisionTraceId = oldTrace })).StatusCode);
+        var next = await Read<JsonElement>(await PostAsync(_supervisor, url, new { reason = "Second SKU arrived" }));
+        var task = next.GetProperty("current").GetProperty("task");
+        Assert.Equal(2, task.GetProperty("putawayRevision").GetInt64());
+        Assert.Equal(2, next.GetProperty("current").GetProperty("putawayHistory").GetArrayLength());
+        Assert.False(task.GetProperty("putawayAdviceStale").GetBoolean());
+        var completed = await Read<TaskCompletion>(await PostAsync(_operator, $"/api/v1/work/tasks/{one.WorkTaskId}/complete",
+            new { toLocationCode = task.GetProperty("suggestedLocationCode").GetString(), expectedDecisionTraceId = task.GetProperty("decisionTraceId").GetGuid() }));
+        Assert.Equal(2, completed.Movements.Count);
+    }
+
+    [Fact]
+    public async Task Concurrent_re_slot_retries_apply_one_revision_and_assigned_tasks_refuse_new_decisions()
+    {
+        var sku = await NewItemAsync();
+        var one = await Read<DockReceipt>(await PostAsync(_operator, "/api/v1/inbound/receipts",
+            new { sku, quantity = 10m, toLocationCode = _dock, sscc = NewSscc() }));
+        var url = $"/api/v1/work/tasks/{one.WorkTaskId}/reslot";
+        var key = Guid.NewGuid().ToString();
+        var responses = await Task.WhenAll(Enumerable.Range(0, 3).Select(_ => PostAsync(_supervisor, url, new { reason = "Whole load" }, key)));
+        var applied = await Task.WhenAll(responses.Select(Read<JsonElement>));
+        Assert.Single(applied, value => !value.GetProperty("wasAlreadyApplied").GetBoolean());
+        Assert.All(applied, value => Assert.Single(value.GetProperty("current").GetProperty("putawayHistory").EnumerateArray()));
+        Assert.Equal(HttpStatusCode.OK, (await PostAsync(_operator, $"/api/v1/work/tasks/{one.WorkTaskId}/claim", new { })).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await PostAsync(_supervisor, url, new { reason = "Changed while held" })).StatusCode);
+    }
+
+    [Fact]
+    public async Task An_unacknowledged_pallet_receipt_blocks_claim_and_completion_until_its_source_lands()
+    {
+        var first = await NewItemAsync();
+        var second = await NewItemAsync();
+        var sscc = NewSscc();
+        var one = await Read<DockReceipt>(await PostAsync(_operator, "/api/v1/inbound/receipts",
+            new { sku = first, quantity = 10m, toLocationCode = _dock, sscc }));
+        var gate = new ReceiptAdviceGate();
+        using var pausedApp = fixture.WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
+            services.Replace(ServiceDescriptor.Scoped<IPutawayAdvisor>(provider =>
+                new PausedReceiptAdvisor(provider.GetRequiredService<PutawayAdvisor>(), gate)))));
+        using var receiving = pausedApp.CreateClient();
+        receiving.DefaultRequestHeaders.Authorization = _operator.DefaultRequestHeaders.Authorization;
+        var pending = PostAsync(receiving, "/api/v1/inbound/receipts",
+            new { sku = second, quantity = 20m, toLocationCode = _dock, sscc });
+        try
+        {
+            await gate.Entered.Task.WaitAsync(TimeSpan.FromSeconds(15));
+            // Inventory has committed the second receipt; Work has not yet seen
+            // its source acknowledgement. Moving now used to create a ghost job
+            // when that acknowledgement finally arrived.
+            var claim = await PostAsync(_operator, $"/api/v1/work/tasks/{one.WorkTaskId}/claim", new { });
+            Assert.Equal(HttpStatusCode.Conflict, claim.StatusCode);
+            var reslot = await PostAsync(_supervisor, $"/api/v1/work/tasks/{one.WorkTaskId}/reslot", new { reason = "Still receiving" });
+            Assert.Equal(HttpStatusCode.Conflict, reslot.StatusCode);
+            var complete = await PostAsync(_operator, $"/api/v1/work/tasks/{one.WorkTaskId}/complete",
+                new { toLocationCode = one.SuggestedLocationCode });
+            Assert.Equal(HttpStatusCode.Conflict, complete.StatusCode);
+            Assert.Equal(20m, await BalanceAsync(second, _dock));
+        }
+        finally
+        {
+            gate.Resume.TrySetResult();
+            await pending;
+        }
+        var two = await Read<DockReceipt>(await pending);
+        Assert.Equal(one.WorkTaskId, two.WorkTaskId);
+        var completed = await Read<TaskCompletion>(await PostAsync(_operator,
+            $"/api/v1/work/tasks/{one.WorkTaskId}/complete", new { toLocationCode = one.SuggestedLocationCode }));
+        Assert.Equal(2, completed.Movements.Count);
+        Assert.Equal(0m, await BalanceAsync(first, _dock));
+        Assert.Equal(0m, await BalanceAsync(second, _dock));
+    }
+
+    private sealed class ReceiptAdviceGate
+    {
+        public TaskCompletionSource Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource Resume { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public bool RefuseAdvice { get; init; }
+    }
+
+    [Fact]
+    public async Task Simultaneous_first_receipts_keep_the_new_task_blocked_until_both_are_acknowledged()
+    {
+        var first = await NewItemAsync();
+        var second = await NewItemAsync();
+        var sscc = NewSscc();
+        var gate = new ReceiptAdviceGate();
+        using var pausedApp = fixture.WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
+            services.Replace(ServiceDescriptor.Scoped<IPutawayAdvisor>(provider =>
+                new PausedReceiptAdvisor(provider.GetRequiredService<PutawayAdvisor>(), gate)))));
+        using var receiving = pausedApp.CreateClient();
+        receiving.DefaultRequestHeaders.Authorization = _operator.DefaultRequestHeaders.Authorization;
+        var pending = PostAsync(receiving, "/api/v1/inbound/receipts",
+            new { sku = first, quantity = 10m, toLocationCode = _dock, sscc });
+        DockReceipt two;
+        try
+        {
+            await gate.Entered.Task.WaitAsync(TimeSpan.FromSeconds(15));
+            two = await Read<DockReceipt>(await PostAsync(_operator, "/api/v1/inbound/receipts",
+                new { sku = second, quantity = 20m, toLocationCode = _dock, sscc }));
+            var claim = await PostAsync(_operator, $"/api/v1/work/tasks/{two.WorkTaskId}/claim", new { });
+            Assert.Equal(HttpStatusCode.Conflict, claim.StatusCode);
+        }
+        finally { gate.Resume.TrySetResult(); await pending; }
+        var one = await Read<DockReceipt>(await pending);
+        Assert.Equal(two.WorkTaskId, one.WorkTaskId);
+        var completed = await Read<TaskCompletion>(await PostAsync(_operator,
+            $"/api/v1/work/tasks/{one.WorkTaskId}/complete", new { toLocationCode = two.SuggestedLocationCode }));
+        Assert.Equal(2, completed.Movements.Count);
+    }
+
+    [Fact]
+    public async Task A_definite_receipt_refusal_clears_the_pending_handoff()
+    {
+        var first = await NewItemAsync();
+        var second = await NewItemAsync();
+        var sscc = NewSscc();
+        var one = await Read<DockReceipt>(await PostAsync(_operator, "/api/v1/inbound/receipts",
+            new { sku = first, quantity = 10m, toLocationCode = _dock, sscc }));
+        var refused = await PostAsync(_operator, "/api/v1/inbound/receipts",
+            new { sku = second, quantity = 20m, toLocationCode = _dock, sscc, expiryDate = "2027-01-01" });
+        Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
+        Assert.Equal(0m, await BalanceAsync(second, _dock));
+        var claim = await PostAsync(_operator, $"/api/v1/work/tasks/{one.WorkTaskId}/claim", new { });
+        Assert.Equal(HttpStatusCode.OK, claim.StatusCode);
+        var more = await PostAsync(_operator, "/api/v1/inbound/receipts",
+            new { sku = second, quantity = 20m, toLocationCode = _dock, sscc });
+        Assert.Equal(HttpStatusCode.Conflict, more.StatusCode);
+        Assert.Equal(0m, await BalanceAsync(second, _dock));
+    }
+
+    private sealed class PausedReceiptAdvisor(PutawayAdvisor inner, ReceiptAdviceGate gate) : IPutawayAdvisor
+    {
+        public async Task<Result<PutawayAdvice>> SuggestAsync(PutawayQuery query, CancellationToken cancellationToken)
+        {
+            gate.Entered.TrySetResult();
+            await gate.Resume.Task.WaitAsync(cancellationToken);
+            if (gate.RefuseAdvice)
+                return Result.Failure<PutawayAdvice>(Countflow.Modules.Rules.RulesErrors.NoActiveRuleSet("Putaway"));
+            return await inner.SuggestAsync(query, cancellationToken);
+        }
+    }
+
+    [Fact]
+    public async Task An_interrupted_posted_receipt_resumes_only_its_original_body_without_duplicate_sources()
+    {
+        var first = await NewItemAsync();
+        var second = await NewItemAsync();
+        var sscc = NewSscc();
+        var one = await Read<DockReceipt>(await PostAsync(_operator, "/api/v1/inbound/receipts",
+            new { sku = first, quantity = 10m, toLocationCode = _dock, sscc }));
+        var gate = new ReceiptAdviceGate { RefuseAdvice = true };
+        gate.Resume.TrySetResult();
+        using var failingApp = fixture.WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
+            services.Replace(ServiceDescriptor.Scoped<IPutawayAdvisor>(provider =>
+                new PausedReceiptAdvisor(provider.GetRequiredService<PutawayAdvisor>(), gate)))));
+        using var receiving = failingApp.CreateClient();
+        receiving.DefaultRequestHeaders.Authorization = _operator.DefaultRequestHeaders.Authorization;
+        var key = Guid.NewGuid().ToString();
+        var body = new { sku = second, quantity = 20m, toLocationCode = _dock, sscc };
+        var interrupted = await PostAsync(receiving, "/api/v1/inbound/receipts", body, key);
+        Assert.Equal(HttpStatusCode.InternalServerError, interrupted.StatusCode);
+        Assert.Equal(20m, await BalanceAsync(second, _dock));
+        var changed = await PostAsync(_operator, "/api/v1/inbound/receipts",
+            new { sku = second, quantity = 21m, toLocationCode = _dock, sscc }, key);
+        Assert.Equal(HttpStatusCode.Conflict, changed.StatusCode);
+        var claim = await PostAsync(_operator, $"/api/v1/work/tasks/{one.WorkTaskId}/claim", new { });
+        Assert.Equal(HttpStatusCode.Conflict, claim.StatusCode);
+        var resumed = await Read<DockReceipt>(await PostAsync(_operator, "/api/v1/inbound/receipts", body, key));
+        var replay = await Read<DockReceipt>(await PostAsync(_operator, "/api/v1/inbound/receipts", body, key));
+        Assert.Equal(one.WorkTaskId, resumed.WorkTaskId);
+        Assert.Equal(resumed.WorkTaskId, replay.WorkTaskId);
+        var detail = await GetAsync<TaskDetail>($"/api/v1/work/tasks/{one.WorkTaskId}");
+        Assert.Equal(30m, detail.Task.Quantity);
+        Assert.Equal(20m, await BalanceAsync(second, _dock));
+        Assert.Equal(HttpStatusCode.OK, (await PostAsync(_operator, $"/api/v1/work/tasks/{one.WorkTaskId}/claim", new { })).StatusCode);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Reusing_a_receipt_key_cannot_change_between_unplated_and_pallet_stock(bool startsOnPallet)
+    {
+        var sku = await NewItemAsync(caller: startsOnPallet ? "PalletKeyToUnplated" : "UnplatedKeyToPallet");
+        var sscc = NewSscc();
+        var key = Guid.NewGuid().ToString();
+        await Read<DockReceipt>(await PostAsync(_operator, "/api/v1/inbound/receipts",
+            new { sku, quantity = 10m, toLocationCode = _dock, sscc = startsOnPallet ? sscc : null }, key));
+        var changed = await PostAsync(_operator, "/api/v1/inbound/receipts",
+            new { sku, quantity = 10m, toLocationCode = _dock, sscc = startsOnPallet ? null : sscc }, key);
+        Assert.Equal(HttpStatusCode.Conflict, changed.StatusCode);
+        Assert.Equal(10m, await BalanceAsync(sku, _dock));
+        var next = await Read<DockReceipt>(await PostAsync(_operator, "/api/v1/inbound/receipts",
+            new { sku, quantity = 20m, toLocationCode = _dock, sscc }));
+        Assert.Equal(HttpStatusCode.OK, (await PostAsync(_operator, $"/api/v1/work/tasks/{next.WorkTaskId}/claim", new { })).StatusCode);
+    }
+
+    [Fact]
+    public async Task A_lost_preparation_acknowledgement_resumes_before_posting_stock()
+    {
+        var first = await NewItemAsync();
+        var second = await NewItemAsync();
+        var sscc = NewSscc();
+        var one = await Read<DockReceipt>(await PostAsync(_operator, "/api/v1/inbound/receipts",
+            new { sku = first, quantity = 10m, toLocationCode = _dock, sscc }));
+        using var failingApp = fixture.WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
+            services.Replace(ServiceDescriptor.Scoped<IPutawayReceipts>(provider =>
+                new LostPreparationAcknowledgement(provider.GetRequiredService<Countflow.Modules.Work.Integration.PutawayReceipts>())))));
+        using var receiving = failingApp.CreateClient();
+        receiving.DefaultRequestHeaders.Authorization = _operator.DefaultRequestHeaders.Authorization;
+        var key = Guid.NewGuid().ToString();
+        var body = new { sku = second, quantity = 20m, toLocationCode = _dock, sscc };
+        var response = await PostAsync(receiving, "/api/v1/inbound/receipts", body, key);
+        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+        Assert.Equal(0m, await BalanceAsync(second, _dock));
+        Assert.Equal(HttpStatusCode.Conflict, (await PostAsync(_operator, $"/api/v1/work/tasks/{one.WorkTaskId}/claim", new { })).StatusCode);
+        var resumed = await Read<DockReceipt>(await PostAsync(_operator, "/api/v1/inbound/receipts", body, key));
+        Assert.Equal(one.WorkTaskId, resumed.WorkTaskId);
+        Assert.Equal(20m, await BalanceAsync(second, _dock));
+        var completed = await Read<TaskCompletion>(await PostAsync(_operator,
+            $"/api/v1/work/tasks/{one.WorkTaskId}/complete", new { toLocationCode = one.SuggestedLocationCode }));
+        Assert.Equal(2, completed.Movements.Count);
+    }
+
+    private sealed class LostPreparationAcknowledgement(Countflow.Modules.Work.Integration.PutawayReceipts inner) : IPutawayReceipts
+    {
+        public async Task<Result> PrepareAsync(PutawayReceiptPreparation request, CancellationToken cancellationToken)
+        {
+            var result = await inner.PrepareAsync(request, cancellationToken);
+            if (result.IsSuccess) throw new IOException("Simulated lost preparation acknowledgement");
+            return result;
+        }
+        public Task AbortAsync(string key, CancellationToken cancellationToken) => inner.AbortAsync(key, cancellationToken);
+    }
+
+    [Fact]
+    public async Task An_assigned_receipt_from_before_the_intent_protocol_still_replays()
+    {
+        var sku = await NewItemAsync();
+        var sscc = NewSscc();
+        var key = Guid.NewGuid().ToString();
+        Guid taskId;
+        using (var scope = fixture.Services.CreateScope())
+        {
+            var services = scope.ServiceProvider;
+            var item = (await services.GetRequiredService<IItemDirectory>().FindBySkuAsync(sku, CancellationToken.None))!;
+            var dock = (await services.GetRequiredService<ILocationDirectory>().FindStorageLocationByCodeAsync(_dock, CancellationToken.None))!;
+            var actor = new PostingActor(Guid.NewGuid(), "legacy-receipt");
+            var receipt = await services.GetRequiredService<IStockPosting>().ReceiveAsync(new ReceiptInstruction
+            {
+                ItemId = item.Id, Quantity = 10m, ToLocationId = dock.Id, Sscc = sscc,
+                IdempotencyKey = key + ":receipt", Actor = actor
+            }, CancellationToken.None);
+            Assert.True(receipt.IsSuccess);
+            var advice = await services.GetRequiredService<IPutawayAdvisor>().SuggestAsync(new PutawayQuery
+            {
+                WarehouseId = dock.WarehouseId, FromLocationId = dock.Id, ItemId = item.Id,
+                Quantity = 10m, LicensePlateId = receipt.Value.LicensePlateId, Actor = actor
+            }, CancellationToken.None);
+            Assert.True(advice.IsSuccess);
+            var task = await services.GetRequiredService<IWorkQueue>().EnqueueAsync(new WorkTaskRequest
+            {
+                Kind = WorkTaskKind.Putaway, WarehouseId = dock.WarehouseId, ItemId = item.Id,
+                Quantity = 10m, FromLocationId = dock.Id, LicensePlateId = receipt.Value.LicensePlateId,
+                SuggestedLocationId = advice.Value.LocationId, DecisionTraceId = advice.Value.DecisionTraceId,
+                IdempotencyKey = key + ":putaway"
+            }, CancellationToken.None);
+            Assert.True(task.IsSuccess);
+            taskId = task.Value;
+        }
+        Assert.Equal(HttpStatusCode.OK, (await PostAsync(_operator, $"/api/v1/work/tasks/{taskId}/claim", new { })).StatusCode);
+        var replay = await Read<DockReceipt>(await PostAsync(_operator, "/api/v1/inbound/receipts",
+            new { sku, quantity = 10m, toLocationCode = _dock, sscc }, key));
+        Assert.Equal(taskId, replay.WorkTaskId);
+        Assert.Equal(10m, await BalanceAsync(sku, _dock));
+        var completed = await PostAsync(_operator, $"/api/v1/work/tasks/{taskId}/complete",
+            new { toLocationCode = replay.SuggestedLocationCode });
+        Assert.Equal(HttpStatusCode.OK, completed.StatusCode);
+    }
 
     [Fact]
     public async Task A_mixed_pallet_is_one_task_and_moves_in_one_transaction()

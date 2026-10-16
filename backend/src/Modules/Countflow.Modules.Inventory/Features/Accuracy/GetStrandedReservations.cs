@@ -1,5 +1,6 @@
 using Countflow.Modules.Inventory.Domain;
 using Countflow.Modules.Inventory.Persistence;
+using Countflow.Modules.Inventory.Reservations;
 using Countflow.SharedKernel.Contracts;
 using Countflow.SharedKernel.Security;
 using Microsoft.AspNetCore.Builder;
@@ -55,56 +56,25 @@ public static class GetStrandedReservations
     {
         endpoints.MapGet("/inventory/reservations/stranded", async (
                 InventoryDbContext dbContext,
+                StrandedReservations stranded,
                 IItemDirectory items,
                 ILocationDirectory locations,
                 TimeProvider clock,
                 CancellationToken cancellationToken) =>
             {
-                // Grouped in the database: the answer is a handful of rows out of
-                // however many commitments a busy warehouse is carrying, and pulling
-                // them all back to filter in memory would be the wrong shape of
-                // query on the one screen somebody opens when things are going badly.
-                var overCommitted = await dbContext.StockReservations
-                    .AsNoTracking()
-                    .Where(r => r.State == ReservationState.Open)
-                    .GroupBy(r => r.BalanceId)
-                    .Select(group => new
-                    {
-                        BalanceId = group.Key,
-                        Reserved = group.Sum(r => r.Quantity)
-                    })
-                    .Join(
-                        dbContext.StockBalances.AsNoTracking(),
-                        summary => summary.BalanceId,
-                        balance => balance.Id,
-                        (summary, balance) => new { summary.Reserved, Balance = balance })
-                    .Where(row => row.Reserved > row.Balance.Quantity)
-                    .ToListAsync(cancellationToken);
-
-                if (overCommitted.Count == 0)
-                {
+                var rows = await stranded.FindAsync(ownerId: null, cancellationToken);
+                if (rows.Count == 0)
                     return Results.Ok(Array.Empty<StrandedReservationResponse>());
-                }
 
-                var balanceIds = overCommitted.Select(row => row.Balance.Id).ToArray();
-
-                var claims = await dbContext.StockReservations
-                    .AsNoTracking()
-                    .Where(r => r.State == ReservationState.Open && balanceIds.Contains(r.BalanceId))
-                    .OrderBy(r => r.CreatedAt)
-                    .ToListAsync(cancellationToken);
-
-                var balances = overCommitted.ToDictionary(row => row.Balance.Id, row => row);
-
+                var balances = rows.Select(row => row.Reservation.Balance!).DistinctBy(balance => balance.Id).ToList();
                 var itemsById = await items.FindManyAsync(
-                    [.. overCommitted.Select(row => row.Balance.ItemId).Distinct()], cancellationToken);
-
+                    [.. balances.Select(balance => balance.ItemId).Distinct()], cancellationToken);
                 var locationsById = await locations.FindManyAsync(
-                    [.. overCommitted.Select(row => row.Balance.LocationId).Distinct()], cancellationToken);
+                    [.. balances.Select(balance => balance.LocationId).Distinct()], cancellationToken);
 
-                var lotIds = overCommitted
-                    .Where(row => row.Balance.LotId is not null)
-                    .Select(row => row.Balance.LotId!.Value)
+                var lotIds = balances
+                    .Where(balance => balance.LotId is not null)
+                    .Select(balance => balance.LotId!.Value)
                     .Distinct()
                     .ToArray();
 
@@ -117,11 +87,11 @@ public static class GetStrandedReservations
 
                 var now = clock.GetUtcNow();
 
-                return Results.Ok(claims
-                    .Select(claim =>
+                return Results.Ok(rows
+                    .Select(row =>
                     {
-                        var row = balances[claim.BalanceId];
-                        var balance = row.Balance;
+                        var claim = row.Reservation;
+                        var balance = claim.Balance!;
 
                         return new StrandedReservationResponse(
                             claim.Id,
@@ -132,8 +102,8 @@ public static class GetStrandedReservations
                             balance.Status,
                             claim.Quantity,
                             balance.Quantity,
-                            row.Reserved,
-                            row.Reserved - balance.Quantity,
+                            row.TotalReserved,
+                            row.TotalReserved - balance.Quantity,
                             claim.CreatedAt,
                             (int)(now - claim.CreatedAt).TotalDays);
                     })

@@ -15,6 +15,11 @@ public sealed class WorkDbContext(DbContextOptions<WorkDbContext> options)
     /// <summary>What asked for each task. <see cref="WorkTask.Quantity"/> is derived from these.</summary>
     public DbSet<WorkTaskSource> WorkTaskSources => Set<WorkTaskSource>();
 
+    public DbSet<PutawayReceiptLane> PutawayReceiptLanes => Set<PutawayReceiptLane>();
+    public DbSet<PutawayReceiptIntent> PutawayReceiptIntents => Set<PutawayReceiptIntent>();
+    public DbSet<PutawayDecisionRevision> PutawayDecisionRevisions => Set<PutawayDecisionRevision>();
+    public DbSet<PutawayCompletionIntent> PutawayCompletionIntents => Set<PutawayCompletionIntent>();
+
     /// <summary>Picks claimed together and walked in an order. See <see cref="PickTour"/>.</summary>
     public DbSet<PickTour> PickTours => Set<PickTour>();
 
@@ -26,12 +31,53 @@ public sealed class WorkDbContext(DbContextOptions<WorkDbContext> options)
 
         builder.HasDefaultSchema(SchemaName);
 
+        builder.Entity<PutawayCompletionIntent>(intent =>
+        {
+            intent.HasKey(row => row.Id);
+            intent.Property(row => row.IdempotencyKey).HasMaxLength(124);
+            intent.Property(row => row.Fingerprint).HasMaxLength(64);
+            intent.Property(row => row.SnapshotJson).HasColumnType("jsonb");
+            intent.Property(row => row.ErrorJson).HasColumnType("jsonb");
+            intent.HasIndex(row => new { row.WorkTaskId, row.IdempotencyKey }).IsUnique();
+            intent.HasOne<WorkTask>().WithMany().HasForeignKey(row => row.WorkTaskId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<PutawayDecisionRevision>(revision =>
+        {
+            revision.HasKey(row => row.Id);
+            revision.Property(row => row.IdempotencyKey).HasMaxLength(128);
+            revision.Property(row => row.Reason).HasMaxLength(500);
+            revision.Property(row => row.UserName).HasMaxLength(256);
+            revision.Property(row => row.ContentsJson).HasColumnType("jsonb");
+            revision.HasIndex(row => new { row.WorkTaskId, row.IdempotencyKey }).IsUnique();
+            revision.HasIndex(row => new { row.WorkTaskId, row.Revision }).IsUnique();
+            revision.HasOne<WorkTask>().WithMany().HasForeignKey(row => row.WorkTaskId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<PutawayReceiptLane>(lane =>
+        {
+            lane.HasKey(row => row.Sscc);
+            lane.Property(row => row.Sscc).HasMaxLength(18);
+        });
+        builder.Entity<PutawayReceiptIntent>(receipt =>
+        {
+            receipt.HasKey(row => row.IdempotencyKey);
+            receipt.Property(row => row.IdempotencyKey).HasMaxLength(128);
+            receipt.Property(row => row.Fingerprint).HasMaxLength(64);
+            receipt.Property(row => row.Sscc).HasMaxLength(18);
+            receipt.HasOne<PutawayReceiptLane>().WithMany().HasForeignKey(row => row.Sscc);
+            receipt.HasIndex(row => new { row.Sscc, row.FromLocationId, row.IsPending });
+        });
+
         builder.Entity<WorkTask>(task =>
         {
             task.HasKey(t => t.Id);
+            task.HasOne<PutawayCompletionIntent>().WithMany().HasForeignKey(t => t.PendingPutawayCompletionId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             task.HasIndex(t => new { t.WarehouseId, t.CompletedAt }).HasFilter($"\"Status\" = {(int)WorkTaskStatus.Completed}").IncludeProperties(t => t.Kind);
             task.Property(t => t.Quantity).HasPrecision(18, 4);
+            task.ToTable(table => table.HasCheckConstraint("CK_WorkTasks_PendingReceiptCount", "\"PendingReceiptCount\" >= 0"));
             task.Property(t => t.CountedQuantity).HasPrecision(18, 4);
             task.Property(t => t.CompletionIdempotencyKey).HasMaxLength(128);
             task.Property(t => t.SourceReference).HasMaxLength(256);

@@ -23,6 +23,12 @@ namespace Countflow.Modules.Rules.Replay;
 /// fidelity per decision rather than assuming it.
 /// </para>
 /// </summary>
+/// <param name="PalletContents">
+/// Null/absent means the original single-item question, even when a plate ID is
+/// present. A list means an explicit whole-load question: these are the exact
+/// contents the caller asked about, not a later reconstruction of a growing plate.
+/// The legacy item/lot/quantity fields retain their original line-level meanings.
+/// </param>
 public sealed record PutawayInputs(
     Guid WarehouseId,
     Guid ItemId,
@@ -31,7 +37,8 @@ public sealed record PutawayInputs(
     decimal Quantity,
     StockCondition Condition,
     Guid FromLocationId,
-    Guid? LicensePlateId);
+    Guid? LicensePlateId,
+    IReadOnlyList<PlateLine>? PalletContents = null);
 
 /// <summary>
 /// What an allocation was asked for.

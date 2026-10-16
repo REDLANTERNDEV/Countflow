@@ -260,7 +260,15 @@ function ReceiptOutcome({
             {t('inbound.receive.taskRaised')}
           </span>
 
-          {receipt.suggestedLocationCode ? (
+          {receipt.completionPending ? (
+            <p role="status" className="m-0 text-[var(--color-warning)]">
+              {t('errors.work.completion_pending')}
+            </p>
+          ) : receipt.putawayAdviceStale ? (
+            <p role="status" className="m-0 text-[var(--color-warning)]">
+              {t('errors.work.putaway_contents_changed')}
+            </p>
+          ) : receipt.suggestedLocationCode ? (
             <p className="m-0 text-[length:var(--text-xl)]">
               <Code>{receipt.suggestedLocationCode}</Code>
             </p>

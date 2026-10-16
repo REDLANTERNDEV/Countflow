@@ -98,6 +98,9 @@ public sealed record LocationOccupancy(
 /// <summary>One holding, reduced to what an occupancy fold needs of it.</summary>
 public sealed record OccupancyLine(Guid LocationId, Guid ItemId, Guid? LotId, decimal Quantity);
 
+/// <summary>The item/lot perspective of an occupancy read.</summary>
+public sealed record StockSubject(Guid ItemId, Guid? LotId);
+
 /// <summary>One item and lot sitting on a licence plate.</summary>
 public sealed record PlateLine(Guid ItemId, Guid? LotId, StockCondition Condition, decimal Quantity);
 
@@ -153,6 +156,16 @@ public interface IStockQuery
         IReadOnlyCollection<Guid> locationIds,
         Guid subjectItemId,
         Guid? subjectLotId,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Several item/lot perspectives over ONE read of physical holdings. Whole
+    /// pallet rules must not combine counts from differently timed per-SKU reads.
+    /// Every requested subject is present, with an empty map for empty locations.
+    /// </summary>
+    Task<IReadOnlyDictionary<StockSubject, IReadOnlyDictionary<Guid, LocationOccupancy>>> OccupancyAsync(
+        IReadOnlyCollection<Guid> locationIds,
+        IReadOnlyCollection<StockSubject> subjects,
         CancellationToken cancellationToken);
 
     /// <summary>
