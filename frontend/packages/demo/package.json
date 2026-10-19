@@ -1,0 +1,9 @@
+{
+  "name": "@countflow/demo",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts", "./capabilities": "./src/capabilities.ts" },
+  "scripts": { "typecheck": "tsc --noEmit" },
+  "dependencies": { "@countflow/api-client": "workspace:*" },
+  "devDependencies": { "typescript": "catalog:" }
+}

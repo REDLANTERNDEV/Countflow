@@ -104,6 +104,9 @@ importers:
       '@countflow/api-client':
         specifier: workspace:*
         version: link:../../packages/api-client
+      '@countflow/demo':
+        specifier: workspace:*
+        version: link:../../packages/demo
       '@countflow/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
@@ -156,6 +159,9 @@ importers:
       '@countflow/api-client':
         specifier: workspace:*
         version: link:../../packages/api-client
+      '@countflow/demo':
+        specifier: workspace:*
+        version: link:../../packages/demo
       '@countflow/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
@@ -206,6 +212,16 @@ importers:
       openapi-typescript:
         specifier: 'catalog:'
         version: 7.13.0(typescript@6.0.3)
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.3
+
+  packages/demo:
+    dependencies:
+      '@countflow/api-client':
+        specifier: workspace:*
+        version: link:../api-client
+    devDependencies:
       typescript:
         specifier: 'catalog:'
         version: 6.0.3

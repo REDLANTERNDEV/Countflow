@@ -1,3 +1,4 @@
+import { disabledInDemo } from '@countflow/demo/capabilities';
 import type { components } from '@countflow/api-client';
 import { currentLocale, formatDateTime, useTranslation } from '@countflow/i18n';
 import { Badge, Button, Code, Field, InfoHelp, Input, Spinner } from '@countflow/ui';
@@ -58,7 +59,7 @@ function ScheduleEditor({ schedule }: { schedule: Schedule }) {
       <Field label={t('counting.scheduleBudget')} htmlFor={`budget-${schedule.warehouseId}`} hint="1–200" hintMode="instruction">
         <Input id={`budget-${schedule.warehouseId}`} type="number" min={1} max={200} step={1} required value={budget} disabled={!editable || save.isPending} onChange={event => setBudget(event.target.value)} className="w-24" />
       </Field>
-      {editable ? <Button type="submit" disabled={save.isPending || (enabled === schedule.enabled && Number(interval) === schedule.intervalMinutes && Number(budget) === schedule.maxTasks)}>{t('common.save')}</Button> : null}
+      {editable ? <Button type="submit" disabled={save.isPending || (enabled === schedule.enabled && Number(interval) === schedule.intervalMinutes && Number(budget) === schedule.maxTasks)} {...disabledInDemo(t('demo.unavailable'))}>{t('common.save')}</Button> : null}
       <Badge tone={schedule.isPending ? 'info' : 'neutral'}>{t(schedule.isPending ? 'counting.schedulePending' : schedule.enabled ? 'counting.scheduleOn' : 'counting.scheduleOff')}</Badge>
       {schedule.nextRunAt ? <span className="text-sm">{t('counting.scheduleNext')}: {formatDateTime(schedule.nextRunAt, currentLocale())}</span> : null}
     </div>

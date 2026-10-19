@@ -1,6 +1,16 @@
 # Hosting: the demo stack, and pointing it at a domain
 
-## Dokploy
+## Lightweight interactive demo on Dokploy
+
+Use **`compose.demo-static.yaml`** and route the demo domain to service **web**,
+container port **80**, with HTTPS enabled. This serves the console and handheld
+with private browser-local data and no backend services.
+
+The consolidated [static demo hosting guide](../demo-hosting.md) covers Dokploy,
+Coolify, standalone Docker, Nginx, Caddy, Netlify, and Vercel, including the shared
+build command, routing, caching, deployment checks, and rollback.
+
+## Full demo stack on Dokploy
 
 Use **Docker Compose**, with the repository root as build context and
 `compose.dokploy.yaml` as the Compose Path. This file imports the existing demo

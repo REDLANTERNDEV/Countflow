@@ -1,3 +1,4 @@
+import { disabledInDemo } from '@countflow/demo/capabilities';
 import { currentLocale, formatDateTime, useTranslation } from '@countflow/i18n';
 import { InfoHelp,
   Badge,
@@ -193,7 +194,7 @@ export function ReplayPage() {
             <Input type="date" value={to} onChange={(event) => setTo(event.target.value)} />
           </Field>
 
-          <Button onClick={() => run.mutate()} disabled={!candidateId || run.isPending}>
+          <Button onClick={() => run.mutate()} disabled={!candidateId || run.isPending} {...disabledInDemo(t('demo.unavailable'))}>
             {run.isPending ? t('replay.running') : t('replay.run')}
           </Button>
         </div>

@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@countflow/api-client": "workspace:*",
+    "@countflow/demo": "workspace:*",
     "@countflow/i18n": "workspace:*",
     "@countflow/ui": "workspace:*",
     "react": "catalog:",

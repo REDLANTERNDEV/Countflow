@@ -140,6 +140,8 @@ export const en = {
   },
 
   demo: {
+    reset: 'Reset demo',
+    unavailable: 'Unavailable in this demo',
     badge: 'Live demo',
     headline: 'A warehouse that can explain itself',
     blurb:
@@ -1191,6 +1193,13 @@ export const en = {
   },
 
   errors: {
+    demo: {
+      unavailable: 'Unavailable in this demo.', forbidden: 'This role cannot perform this action.',
+      invalid_request: 'Check the values and try again.', not_found: 'Record not found.',
+      invalid_transition: 'Complete the previous step first.', no_candidates: 'No eligible stock to count.',
+      idempotency_required: 'Please retry the operation.', idempotency_conflict: 'Please start a new operation.',
+      storage_unavailable: 'Allow browser storage to use the demo.',
+    },
     'inventory.bin_changed': 'Stock moved. Start a fresh count.',
     'inventory.bin_count_invalid': 'Check item/condition. Quantity: 0 or more, up to 4 decimals.',
     'inventory.bin_count_duplicate': 'Combine duplicate holdings. Check quantities.',

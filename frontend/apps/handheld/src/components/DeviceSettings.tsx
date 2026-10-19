@@ -6,7 +6,8 @@ import {
   useTranslation,
   type SupportedLanguage,
 } from '@countflow/i18n';
-import { Field, Select, useTheme, type ThemePreference } from '@countflow/ui';
+import { Button, Field, Select, useTheme, type ThemePreference } from '@countflow/ui';
+import { demo } from '../api.js';
 
 /**
  * Language and theme, on the device itself.
@@ -29,6 +30,7 @@ export function DeviceSettings({ className }: { className?: string }) {
 
   return (
     <div className={className}>
+      {demo ? <Button size="sm" variant="ghost" onClick={() => void demo?.reset()}>{t('demo.reset')}</Button> : null}
       <div className="grid grid-cols-2 gap-[var(--space-3)]">
         <Field label={t('common.language')} htmlFor="hh-language">
           <Select

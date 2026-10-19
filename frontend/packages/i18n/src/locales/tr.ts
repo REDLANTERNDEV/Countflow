@@ -144,6 +144,8 @@ export const tr: Catalogue = {
   },
 
   demo: {
+    reset: 'Demoyu sıfırla',
+    unavailable: 'Bu demoda kullanılamıyor',
     badge: 'Canlı demo',
     headline: 'Kendini anlatabilen bir depo',
     blurb:
@@ -1165,6 +1167,13 @@ export const tr: Catalogue = {
   },
 
   errors: {
+    demo: {
+      unavailable: 'Bu demoda kullanılamıyor.', forbidden: 'Bu rol bu işlemi yapamaz.',
+      invalid_request: 'Değerleri kontrol edip tekrar deneyin.', not_found: 'Kayıt bulunamadı.',
+      invalid_transition: 'Önce önceki adımı tamamlayın.', no_candidates: 'Sayıma uygun stok bulunamadı.',
+      idempotency_required: 'İşlemi tekrar deneyin.', idempotency_conflict: 'Yeni bir işlem başlatın.',
+      storage_unavailable: 'Demoyu kullanmak için tarayıcı depolamasına izin verin.',
+    },
     'inventory.bin_changed': 'Stok hareket etti. Yeniden sayıma başlayın.',
     'inventory.bin_count_invalid': 'Ürün/durumu kontrol edin. Miktar: 0 veya daha fazla, en çok 4 ondalık.',
     'inventory.bin_count_duplicate': 'Aynı stokları birleştirin. Miktarları kontrol edin.',

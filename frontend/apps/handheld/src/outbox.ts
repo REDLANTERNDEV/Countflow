@@ -1,4 +1,4 @@
-import { api } from './api.js';
+import { api, storageKey } from './api.js';
 import { createDispatch, unanswered } from './lib/outbox/dispatch.js';
 import { Outbox } from './lib/outbox/outbox.js';
 import type { OutboxStore } from './lib/outbox/store.js';
@@ -14,7 +14,7 @@ import { createIndexedDbStore, createMemoryStore, openDatabase } from './lib/out
  */
 export let durable = true;
 
-const opened: Promise<OutboxStore> = openDatabase()
+const opened: Promise<OutboxStore> = openDatabase(storageKey('countflow.handheld'))
   .then(createIndexedDbStore)
   .catch((cause: unknown) => {
     // A private window, an origin whose storage was evicted, a browser with

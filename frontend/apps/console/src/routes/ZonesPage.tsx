@@ -1,3 +1,4 @@
+import { disabledInDemo } from '@countflow/demo/capabilities';
 import type { components } from '@countflow/api-client';
 import { useTranslation } from '@countflow/i18n';
 import { InfoHelp, Button, Code, Field, Select, Spinner } from '@countflow/ui';
@@ -78,7 +79,7 @@ function ZoneEditor({ zone }: { zone: Zone }) {
         {t('zones.rear')}
       </label>
       <span>{t('zones.geometry', { aisles: zone.aisles, bays: zone.bays })}</span>
-      {editable ? <Button disabled={busy || !support(strategy) || (strategy === zone.pickRouteStrategy && rear === zone.hasRearCrossAisle)} onClick={() => void save()}>{t('common.save')}</Button> : null}
+      {editable ? <Button disabled={busy || !support(strategy) || (strategy === zone.pickRouteStrategy && rear === zone.hasRearCrossAisle)} onClick={() => void save()} {...disabledInDemo(t('demo.unavailable'))}>{t('common.save')}</Button> : null}
     </div>
     {error ? <p role="alert">{t([`errors.${error}`, 'errors.unknown'])}</p> : null}
   </section>;

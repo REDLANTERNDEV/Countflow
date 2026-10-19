@@ -2,7 +2,7 @@ import { currentLocale, useTranslation } from '@countflow/i18n';
 import { Badge, Button, Code, Numeric, Spinner } from '@countflow/ui';
 import { useEffect, useState } from 'react';
 import type { components } from '@countflow/api-client';
-import { api } from '../api.js';
+import { api, storageKey as scopedStorageKey } from '../api.js';
 import { outbox } from '../outbox.js';
 import { rememberTask, type TaskDetail } from '../tasks.js';
 import { hasUnsentTourWork, tourStops } from '../lib/pick-tours.js';
@@ -68,7 +68,7 @@ export function PickTourScreen({ tourId, ownerUserId, online, onOpenTask, onBack
     try {
       // Re-check physical work immediately before releasing, not just at render.
       if (hasUnsentTourWork(ids, outbox.getSnapshot().commands.filter(c => c.ownerUserId === ownerUserId))) return;
-      const storageKey = `countflow.tour.release.${ownerUserId}.${tourId}`;
+      const storageKey = scopedStorageKey(`countflow.tour.release.${ownerUserId}.${tourId}`);
       const key = localStorage.getItem(storageKey) ?? crypto.randomUUID();
       localStorage.setItem(storageKey, key);
       const { response, error } = await api.POST('/api/v1/work/tours/{id}/release', {

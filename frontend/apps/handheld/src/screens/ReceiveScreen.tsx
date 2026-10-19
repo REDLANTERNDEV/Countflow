@@ -7,6 +7,7 @@ import { categorise, needsSupervisor } from '../lib/outbox/refusals.js';
 import type { QueuedCommand } from '../lib/outbox/types.js';
 import { outbox } from '../outbox.js';
 import { useOutbox } from '../useOutbox.js';
+import { disabledInDemo } from '@countflow/demo/capabilities';
 
 type Receipt = components['schemas']['DockReceiptResponse'];
 
@@ -166,6 +167,7 @@ export function ReceiveScreen({ onBack, onOpenTask }: ReceiveScreenProps) {
       >
         <Input
           id="receive-sscc"
+          {...disabledInDemo(t('demo.unavailable'))}
           inputMode="numeric"
           value={sscc}
           onChange={(event) => setSscc(event.target.value)}

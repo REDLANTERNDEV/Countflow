@@ -1,3 +1,5 @@
+import { storageKey } from './api.js';
+
 export interface CurrentUser {
   id: string;
   displayName: string;
@@ -5,7 +7,7 @@ export interface CurrentUser {
   roles: string[];
 }
 
-const KEY = 'countflow.handheld.operator';
+const KEY = storageKey('countflow.handheld.operator');
 
 /**
  * Who was signed in last time this device was awake.

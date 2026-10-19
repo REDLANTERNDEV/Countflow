@@ -1,3 +1,4 @@
+import { disabledInDemo } from '@countflow/demo/capabilities';
 import type { components } from '@countflow/api-client';
 import { currentLocale, useTranslation } from '@countflow/i18n';
 import { Badge, Button, Code, EmptyState, Field, Input, Numeric, Select, Spinner, Table, TableContainer, TBody, TD, TH, THead, TR } from '@countflow/ui';
@@ -78,7 +79,7 @@ export function ReplenishmentPage() {
         {expanded && expanded === (policy.pendingPlanId ?? policy.lastPlanId) ? <TR><TD colSpan={9}>
           {plan.isPending ? <Spinner label={t('common.loading')} /> : plan.error ? <p role="alert">{t('errors.unknown')}</p> : plan.data ? <>
             <div className="flex items-center gap-3"><Code>{plan.data.reference}</Code><Badge>{t(`replenishment.planState.${plan.data.status}`)}</Badge>
-              {editable && plan.data.status === 'Open' ? <Button variant="danger" disabled={cancel.isPending} onClick={() => cancel.mutate(plan.data!.id)}>{t('replenishment.withdraw')}</Button> : null}
+              {editable && plan.data.status === 'Open' ? <Button variant="danger" disabled={cancel.isPending} onClick={() => cancel.mutate(plan.data!.id)} {...disabledInDemo(t('demo.unavailable'))}>{t('replenishment.withdraw')}</Button> : null}
             </div>
             <ul>{plan.data.lines.map(line => <li key={line.id} className="flex flex-wrap items-center gap-3 py-2"><Code>{line.fromLocationCode}</Code><Numeric locale={locale} value={line.quantity} maximumFractionDigits={4} />
               <Badge>{line.refused ? t('replenishment.refused') : t(`work.status.${line.state ?? 'Ready'}`)}</Badge>
@@ -117,7 +118,7 @@ function PolicyEditor({ policy, onSaved, onCancel }: { policy: Policy | null; on
       <Field label={t('replenishment.minimum')} htmlFor="replenishment-min" hint={t('replenishment.units')} hintMode="instruction"><Input id="replenishment-min" type="number" min={0.0001} max={1_000_000_000} step={0.0001} required value={minimum} disabled={save.isPending} onChange={event => setMinimum(event.target.value)} className="w-28" /></Field>
       <Field label={t('replenishment.maximum')} htmlFor="replenishment-max" hint={t('replenishment.maxHint')} hintMode="instruction"><Input id="replenishment-max" type="number" min={Number(minimum) + 0.0001} max={1_000_000_000} step={0.0001} required value={maximum} disabled={save.isPending} onChange={event => setMaximum(event.target.value)} className="w-28" /></Field>
       <label className="flex min-h-[44px] items-center gap-2"><input type="checkbox" checked={enabled} disabled={save.isPending} onChange={event => setEnabled(event.target.checked)} />{t('replenishment.enabled')}</label>
-      <Button type="submit" disabled={save.isPending}>{t('common.save')}</Button>
+      <Button type="submit" disabled={save.isPending} {...disabledInDemo(t('demo.unavailable'))}>{t('common.save')}</Button>
       {policy ? <Button type="button" onClick={onCancel}>{t('common.cancel')}</Button> : null}
     </div>
     {errorCode ? <p role="alert">{t(`errors.${errorCode}`)}</p> : null}

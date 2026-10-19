@@ -1,3 +1,4 @@
+import { disabledInDemo } from '@countflow/demo/capabilities';
 import { currentLocale, formatDateTime, useTranslation } from '@countflow/i18n';
 import { InfoHelp,
   Badge,
@@ -292,7 +293,7 @@ export function CountingPage() {
               <Button
                 size="sm"
                 disabled={cancel.isPending}
-                onClick={() => cancel.mutate(plan.id)}
+                onClick={() => cancel.mutate(plan.id)} {...disabledInDemo(t('demo.unavailable'))}
               >
                 {cancel.isPending ? t('counting.cancelling') : t('counting.cancel')}
               </Button>

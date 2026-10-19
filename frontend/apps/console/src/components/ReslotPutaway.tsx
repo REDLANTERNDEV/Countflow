@@ -1,3 +1,4 @@
+import { disabledInDemo } from '@countflow/demo/capabilities';
 import type { components } from '@countflow/api-client';
 import { currentLocale, formatDateTime, useTranslation } from '@countflow/i18n';
 import { Badge, Button, Field, InfoHelp, Input } from '@countflow/ui';
@@ -79,7 +80,7 @@ export function ReslotPutaway({ detail }: { detail: Detail }) {
         <Input id={`reslot-reason-${task.id}`} required maxLength={500} value={intent?.reason ?? reason}
           disabled={!!intent || reslot.isPending} onChange={event => setReason(event.target.value)} />
       </Field>
-      <Button type="submit" variant="primary" disabled={reslot.isPending || !(intent?.reason ?? reason).trim()}>
+      <Button type="submit" variant="primary" disabled={reslot.isPending || !(intent?.reason ?? reason).trim()} {...disabledInDemo(t('demo.unavailable'))}>
         {reslot.isPending ? t('work.reslot.working') : intent ? t('work.reslot.retry') : t('work.reslot.apply')}
       </Button>
     </form> : task.completionPending ? <p role="status">{t('errors.work.completion_pending')}</p> : editable && task.status === 'Assigned' ? <p>{t('work.reslot.handBack')}</p> : null}

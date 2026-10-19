@@ -1,5 +1,6 @@
 import type { components } from '@countflow/api-client';
 import { completionLocationAllowed } from '../lib/completion-location.js';
+import { isStaticDemo } from '@countflow/demo/capabilities';
 import { currentLocale, formatDateTime, formatNumber, useTranslation } from '@countflow/i18n';
 import { Badge, Button, Code, Field, Input, Numeric, ScanField, Spinner } from '@countflow/ui';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -165,7 +166,7 @@ export function TaskScreen({ taskId, ownerUserId, onDone }: TaskScreenProps) {
     if (!detail) return;
 
     const task = detail.task;
-    if (!completionLocationAllowed(task.kind, confirmed, task.fromLocationCode, task.suggestedLocationCode)) {
+    if (!completionLocationAllowed(task.kind, confirmed, task.fromLocationCode, task.suggestedLocationCode, !isStaticDemo)) {
       setErrorCode(task.kind === 'Replenishment' ? 'work.replenishment_destination_mismatch' : task.kind === 'CycleCount' ? 'work.count_location_mismatch' : 'work.location_not_found');
       return;
     }
@@ -240,7 +241,7 @@ export function TaskScreen({ taskId, ownerUserId, onDone }: TaskScreenProps) {
   const isPick = task.kind === 'Pick';
   const isCount = task.kind === 'CycleCount';
   const isReplenishment = task.kind === 'Replenishment';
-  const locationMatches = completionLocationAllowed(task.kind, scanned, task.fromLocationCode, suggestion);
+  const locationMatches = completionLocationAllowed(task.kind, scanned, task.fromLocationCode, suggestion, !isStaticDemo);
 
   // A count has nothing to override — the operator is not choosing a destination,
   // and the bay is fixed. Their disagreement with the system is the variance.
@@ -434,10 +435,10 @@ export function TaskScreen({ taskId, ownerUserId, onDone }: TaskScreenProps) {
       ) : null}
 
       {scanned && !locationMatches ? <p role="alert" className="text-[var(--color-danger-text)]">
-        {t(`errors.${isReplenishment ? 'work.replenishment_destination_mismatch' : 'work.count_location_mismatch'}`)}
+        {isStaticDemo && !isCount && !isReplenishment ? t('demo.unavailable') : t(`errors.${isReplenishment ? 'work.replenishment_destination_mismatch' : 'work.count_location_mismatch'}`)}
       </p> : null}
 
-      {overriding ? (
+      {overriding && !isStaticDemo ? (
         <div className="flex flex-col gap-[var(--space-2)]">
           <Badge tone="warning" className="self-start">
             {t('work.overriding')}
@@ -482,6 +483,7 @@ export function TaskScreen({ taskId, ownerUserId, onDone }: TaskScreenProps) {
 
       <Button
         variant="primary"
+        title={isStaticDemo && overriding ? t('demo.unavailable') : undefined}
         disabled={!canConfirm || submitting || task.completionPending || (task.pendingReceiptCount ?? 0) > 0 || task.putawayAdviceStale}
         onClick={() => void complete()}
       >

@@ -7,6 +7,8 @@ export interface CountflowClientOptions {
   tokenStore: TokenStore;
   /** Called when the session is gone for good and the user must sign in again. */
   onSessionExpired?: () => void;
+  /** Optional transport for an isolated, browser-only demo. */
+  fetch?: typeof globalThis.fetch;
 }
 
 export type CountflowClient = ReturnType<typeof createClient<paths>>;
@@ -22,6 +24,7 @@ const AUTH_FREE_PATHS = ['/api/v1/auth/login', '/api/v1/auth/refresh', '/api/v1/
  */
 export function createCountflowClient(options: CountflowClientOptions) {
   const { baseUrl, tokenStore, onSessionExpired } = options;
+  const transport = options.fetch ?? globalThis.fetch;
 
   // Concurrent 401s must trigger exactly one refresh, not one per in-flight
   // request — otherwise the first rotation invalidates the rest and the reuse
@@ -39,7 +42,7 @@ export function createCountflowClient(options: CountflowClientOptions) {
     // instead of being refreshed. On the handheld that means a reload after a
     // battery swap ends the shift's session with the operator's unsent work
     // still on the device.
-    const response = await fetch(`${baseUrl}/api/v1/auth/refresh`, {
+    const response = await transport(`${baseUrl}/api/v1/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refreshToken: current.refreshToken }),
@@ -106,11 +109,11 @@ export function createCountflowClient(options: CountflowClientOptions) {
       });
       retried.headers.set('Authorization', `Bearer ${session.accessToken}`);
 
-      return fetch(retried);
+      return transport(retried);
     },
   };
 
-  const client = createClient<paths>({ baseUrl });
+  const client = createClient<paths>({ baseUrl, fetch: transport });
   client.use(authMiddleware);
 
   return client;

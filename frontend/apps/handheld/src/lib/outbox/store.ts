@@ -63,9 +63,9 @@ function commit(tx: IDBTransaction): Promise<void> {
   });
 }
 
-export function openDatabase(): Promise<IDBDatabase> {
+export function openDatabase(name = DB_NAME): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const open = indexedDB.open(DB_NAME, DB_VERSION);
+    const open = indexedDB.open(name, DB_VERSION);
 
     open.onupgradeneeded = () => {
       const db = open.result;
@@ -83,7 +83,10 @@ export function openDatabase(): Promise<IDBDatabase> {
       }
     };
 
-    open.onsuccess = () => resolve(open.result);
+    open.onsuccess = () => {
+      open.result.onversionchange = () => open.result.close();
+      resolve(open.result);
+    };
     open.onerror = () => reject(open.error ?? new Error('IndexedDB could not be opened'));
   });
 }

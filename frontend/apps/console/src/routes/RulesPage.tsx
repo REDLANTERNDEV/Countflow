@@ -1,3 +1,4 @@
+import { disabledInDemo } from '@countflow/demo/capabilities';
 import { currentLocale, formatDateTime, translateRuleName, useTranslation } from '@countflow/i18n';
 import { InfoHelp,
   Badge,
@@ -123,7 +124,7 @@ export function RulesPage() {
             value={from}
             onChange={(event) => setFrom(event.target.value.toUpperCase())}
           />
-          <Button variant="primary" disabled={!ready || running} onClick={() => void run()}>
+          <Button variant="primary" disabled={!ready || running} onClick={() => void run()} {...disabledInDemo(t('demo.unavailable'))}>
             {running ? t('rules.preview.running') : t('rules.preview.run')}
           </Button>
         </div>

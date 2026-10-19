@@ -15,6 +15,7 @@ import { ScanScreen } from './screens/ScanScreen.js';
 import { forgetOperator, recallOperator, rememberOperator, type CurrentUser } from './session.js';
 import { useConnectivity } from './useConnectivity.js';
 import { useOutbox } from './useOutbox.js';
+import { isStaticDemo } from '@countflow/demo/capabilities';
 
 /**
  * Where the operator is.
@@ -232,6 +233,10 @@ export function App() {
             lands on the password rather than submitting a half-filled form. So
             scanning and keying arrive at the same place, and neither asks the
             operator to know which one the screen was expecting. */}
+        {isStaticDemo ? <div className="flex flex-wrap gap-[var(--space-2)]">
+          {['admin', 'supervisor', 'operator'].map(role => <Button key={role} size="sm" disabled={submitting}
+            onClick={() => void signIn(role, 'Countflow#2026')}>{role}</Button>)}
+        </div> : null}
         <form
           className="flex flex-col gap-[var(--space-3)]"
           onSubmit={(event) => {
