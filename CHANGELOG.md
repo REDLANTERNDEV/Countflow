@@ -8,6 +8,19 @@ features is in [docs/history.md](docs/history.md).
 
 ## [Unreleased]
 
+### Changed
+
+- Backend dependencies on their latest patch and minor versions: ASP.NET Core
+  and EF Core 10.0.13, OpenTelemetry 1.20, Scalar 2.18, FluentValidation 12.2,
+  Testcontainers 4.16. The Microsoft.OpenApi pin moves to 2.12.2, the floor
+  ASP.NET Core 10.0.13 now requires. No change to the OpenAPI document.
+
+- Frontend dependencies refreshed within their ranges (Vite 8.3, React 19.3),
+  with pnpm overrides flooring `brace-expansion` and `fast-uri` under
+  `vite-plugin-pwa`. `pnpm audit` reports no known vulnerabilities.
+
+- Dependabot opens security-update PRs only; routine version bumps are off.
+
 ### Fixed
 
 - An unknown console address shows a translated "Page not found" inside the
