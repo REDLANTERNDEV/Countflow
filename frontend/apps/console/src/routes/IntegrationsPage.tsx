@@ -1,3 +1,4 @@
+import { disabledInDemo } from '@countflow/demo/capabilities';
 import { currentLocale, formatDateTime, useTranslation } from '@countflow/i18n';
 import { InfoHelp,
   Badge,
@@ -176,7 +177,7 @@ export function IntegrationsPage() {
           <Button
             variant="primary"
             disabled={busy || name.trim() === '' || displayName.trim() === ''}
-            onClick={() => void create()}
+            onClick={() => void create()} {...disabledInDemo(t('demo.unavailable'))}
           >
             {t('integrations.create.submit')}
           </Button>
@@ -272,7 +273,7 @@ function ServiceAccount({
             onIssue(keyName.trim());
             setKeyName('');
             void refetch();
-          }}
+          }} {...disabledInDemo(t('demo.unavailable'))}
         >
           {t('integrations.keys.issue')}
         </Button>
@@ -314,7 +315,7 @@ function ServiceAccount({
                       onClick={() => {
                         onRevoke(key.id);
                         void refetch();
-                      }}
+                      }} {...disabledInDemo(t('demo.unavailable'))}
                     >
                       {t('integrations.keys.revoke')}
                     </Button>

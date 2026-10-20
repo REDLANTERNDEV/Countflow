@@ -2,6 +2,7 @@ import { useTranslation } from '@countflow/i18n';
 import { InfoHelp,  Badge, Button, Field, Input, LogoSymbol, PasswordInput } from '@countflow/ui';
 import { useState, type FormEvent } from 'react';
 import { useAuth } from '../auth.js';
+import { isStaticDemo } from '@countflow/demo/capabilities';
 import { LanguageSwitcher } from '../components/LanguageSwitcher.js';
 import { ThemeSwitcher } from '../components/ThemeSwitcher.js';
 
@@ -15,7 +16,9 @@ import { ThemeSwitcher } from '../components/ThemeSwitcher.js';
  * values are inlined by Vite at build time, so the demo image carries them and the
  * real one does not.
  */
-const demoAccounts = (import.meta.env.VITE_DEMO_ACCOUNTS ?? '')
+const demoAccounts = (isStaticDemo
+  ? 'admin:Countflow#2026,supervisor:Countflow#2026,operator:Countflow#2026'
+  : import.meta.env.VITE_DEMO_ACCOUNTS ?? '')
   .split(',')
   .map((entry: string) => entry.trim())
   .filter(Boolean)
@@ -142,9 +145,9 @@ export function LoginPage() {
                   </Button>
                 ))}
               </div>
-              <p className="m-0 text-[length:var(--text-xs)] text-[var(--color-text-tertiary)]">
+              {!isStaticDemo ? <p className="m-0 text-[length:var(--text-xs)] text-[var(--color-text-tertiary)]">
                 {t('demo.resetWarning')}
-              </p>
+              </p> : null}
             </div>
           ) : null}
         </div>
@@ -152,7 +155,7 @@ export function LoginPage() {
 
       {/* Only on a demo build. On a real deployment the login screen is a door,
           and a door does not need to explain the building. */}
-      {demoAccounts.length > 0 ? (
+      {!isStaticDemo && demoAccounts.length > 0 ? (
         <aside
           className="w-[min(420px,100%)] rounded-[var(--radius-surface)]
                      border border-[var(--color-border-subtle)]

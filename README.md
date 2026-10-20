@@ -197,6 +197,14 @@ pagination, error codes, and worked warehouse flows.
 
 ## Public demo
 
+For a lightweight public demo, use **`compose.demo-static.yaml`** on Dokploy or
+Coolify, or publish the static build on your preferred host.
+It serves the existing UI with private browser-local sample data; no API or
+database runs on the server. The [static demo hosting guide](docs/demo-hosting.md)
+covers Docker, Nginx, Caddy, Dokploy, Coolify, Netlify, and Vercel in one place.
+
+To run the full backend demo locally:
+
 ```bash
 ./scripts/demo.sh
 ```

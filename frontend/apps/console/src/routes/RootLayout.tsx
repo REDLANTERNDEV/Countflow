@@ -1,13 +1,14 @@
 import { useTranslation } from '@countflow/i18n';
 import { Button, Logo, LogoSymbol, Sheet, TooltipProvider } from '@countflow/ui';
 import { Outlet, useRouterState } from '@tanstack/react-router';
-import { Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { Menu, PanelLeftClose, PanelLeftOpen, UserRound } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useAuth } from '../auth.js';
 import { LanguageSwitcher } from '../components/LanguageSwitcher.js';
 import { SideNav } from '../components/SideNav.js';
 import { ThemeSwitcher } from '../components/ThemeSwitcher.js';
 import { RAIL_BREAKPOINT, useSidebarCollapsed } from '../sidebar.js';
+import { demo } from '../api.js';
 
 export function RootLayout() {
   const { user, signOut } = useAuth();
@@ -134,9 +135,17 @@ export function RootLayout() {
             <div className="ml-auto flex min-w-0 items-center gap-[var(--space-3)]">
               <LanguageSwitcher />
               <ThemeSwitcher />
-              <span className="hidden text-[length:var(--text-xs)] text-[var(--color-text-tertiary)] sm:inline">
+              {demo ? <details className="relative text-[length:var(--text-xs)] text-[var(--color-text-secondary)]">
+                <summary aria-label={user?.displayName} className="flex cursor-pointer items-center rounded-[var(--radius-control)] p-2">
+                  <span className="hidden sm:inline">{user?.displayName}</span>
+                  <UserRound size={16} className="sm:hidden" aria-hidden="true" />
+                </summary>
+                <div className="absolute right-0 mt-2 whitespace-nowrap rounded-[var(--radius-surface)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-raised)] p-2">
+                  <Button size="sm" variant="ghost" onClick={() => void demo?.reset()}>{t('demo.reset')}</Button>
+                </div>
+              </details> : <span className="hidden text-[length:var(--text-xs)] text-[var(--color-text-tertiary)] sm:inline">
                 {user?.displayName}
-              </span>
+              </span>}
               <Button size="sm" onClick={() => void signOut()}>
                 {t('common.signOut')}
               </Button>

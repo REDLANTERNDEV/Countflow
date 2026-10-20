@@ -1,3 +1,4 @@
+import { disabledInDemo } from '@countflow/demo/capabilities';
 import type { components } from '@countflow/api-client';
 import { currentLocale, formatDateTime, useTranslation } from '@countflow/i18n';
 import { Badge, Button, Code, Field, InfoHelp, Input, Numeric } from '@countflow/ui';
@@ -67,13 +68,13 @@ export function RepairCommitment({ orderId, status, line }: { orderId: string; s
       <Code>{line.sku}</Code><span>{t('outbound.repair.title')}</span>
       <InfoHelp label={t('common.about', { topic: t('outbound.repair.title') })}>{t('outbound.repair.help')}</InfoHelp>
       {pending ? <Badge tone="warning">{t('outbound.repair.pending')}</Badge> : null}
-      {editable && (canStart || retry) && !expanded ? <Button size="sm" onClick={() => setExpanded(true)}>{retry ? t('outbound.repair.resume') : t('outbound.repair.start')}</Button> : null}
+      {editable && (canStart || retry) && !expanded ? <Button size="sm" onClick={() => setExpanded(true)} {...disabledInDemo(t('demo.unavailable'))}>{retry ? t('outbound.repair.resume') : t('outbound.repair.start')}</Button> : null}
     </div>
     {editable && expanded ? <form className="mt-[var(--space-3)] flex flex-wrap items-end gap-[var(--space-3)]" aria-label={`${t('outbound.repair.title')} ${line.sku}`} onSubmit={event => { event.preventDefault(); repair.mutate(); }}>
       <Field label={t('outbound.repair.reason')} htmlFor={`repair-reason-${line.id}`}>
         <Input id={`repair-reason-${line.id}`} required maxLength={500} value={retry?.reason ?? reason} disabled={!!retry || repair.isPending} onChange={event => setReason(event.target.value)} />
       </Field>
-      <Button type="submit" variant="primary" disabled={repair.isPending || !(retry?.reason ?? reason).trim()}>{repair.isPending ? t('outbound.repair.working') : retry ? t('outbound.repair.resume') : t('outbound.repair.start')}</Button>
+      <Button type="submit" variant="primary" disabled={repair.isPending || !(retry?.reason ?? reason).trim()} {...disabledInDemo(t('demo.unavailable'))}>{repair.isPending ? t('outbound.repair.working') : retry ? t('outbound.repair.resume') : t('outbound.repair.start')}</Button>
       {!retry ? <Button type="button" onClick={() => setExpanded(false)}>{t('outbound.hideWhy')}</Button> : null}
     </form> : null}
     {errorCode ? <p role="alert" className="text-[var(--color-danger)]">{t([`errors.${errorCode}`, 'errors.unknown'])}</p> : null}

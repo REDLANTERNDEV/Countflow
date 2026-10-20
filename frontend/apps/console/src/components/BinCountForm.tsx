@@ -1,3 +1,4 @@
+import { disabledInDemo } from '@countflow/demo/capabilities';
 import { useTranslation } from '@countflow/i18n';
 import { Badge, Button, Field, InfoHelp, Input } from '@countflow/ui';
 import { useRef, useState } from 'react';
@@ -21,7 +22,7 @@ export function BinCountForm() {
     <div className="flex flex-wrap items-end gap-3">
       <Field label={t('work.bin.location')} htmlFor="raise-bin"><Input id="raise-bin" value={location} onChange={event => { setLocation(event.target.value); setRaised(false); }} /></Field>
       <Field label={t('work.bin.reason')} htmlFor="raise-bin-reason"><Input id="raise-bin-reason" maxLength={120} required value={reason} onChange={event => setReason(event.target.value)} /></Field>
-      <Button disabled={busy || !location.trim() || !reason.trim()} onClick={() => void raise()}>{t('work.bin.raise')}</Button>
+      <Button disabled={busy || !location.trim() || !reason.trim()} onClick={() => void raise()} {...disabledInDemo(t('demo.unavailable'))}>{t('work.bin.raise')}</Button>
     </div>
     {raised ? <Badge tone="success">{t('work.bin.raised')}</Badge> : null}
     {error ? <p role="alert" className="m-0 text-[var(--color-danger)]">{t([`errors.${error}`, 'errors.unknown'])}</p> : null}

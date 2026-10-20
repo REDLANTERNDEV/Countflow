@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
+  define: { __COUNTFLOW_STATIC_DEMO__: JSON.stringify(process.env.VITE_DEMO_MODE === 'true') },
   plugins: [react(), tailwindcss()],
   server: {
     port: 5173,
@@ -17,6 +18,6 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    sourcemap: true,
+    sourcemap: process.env.VITE_DEMO_MODE !== 'true',
   },
 });

@@ -1,0 +1,37 @@
+:80 {
+	encode zstd gzip
+
+	# No backend, passthrough, or outbound integration exists in this image.
+	handle /api/* {
+		header Content-Type application/problem+json
+		respond `{"status":404,"code":"demo.unavailable"}` 404
+	}
+	handle /health/ready {
+		header Content-Type application/json
+		respond `{"status":"Healthy"}` 200
+	}
+	redir /handheld /handheld/ 308
+	handle /handheld/* {
+		uri strip_prefix /handheld
+		root * /srv/handheld
+		try_files {path} /index.html
+		file_server
+		@sw path /sw.js /service-worker.js /manifest.webmanifest
+		header @sw Cache-Control "no-cache, no-store, must-revalidate"
+		@assets path /assets/*
+		header @assets Cache-Control "public, max-age=31536000, immutable"
+	}
+	handle {
+		root * /srv/console
+		try_files {path} /index.html
+		file_server
+		@assets path /assets/*
+		header @assets Cache-Control "public, max-age=31536000, immutable"
+	}
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+}

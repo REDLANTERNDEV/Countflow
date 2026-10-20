@@ -2,7 +2,7 @@ import type { components } from '@countflow/api-client';
 import { currentLocale, formatDateTime, useTranslation } from '@countflow/i18n';
 import { Badge, Button, Code, Field, InfoHelp, Input, Numeric, ScanField, Select } from '@countflow/ui';
 import { useEffect, useRef, useState } from 'react';
-import { api } from '../api.js';
+import { api, storageKey } from '../api.js';
 import { addBinObservation, binCountReady, validBinQuantity, type ObservedHolding } from '../lib/bin-count.js';
 import { newIdempotencyKey } from '../lib/idempotency.js';
 import { outbox } from '../outbox.js';
@@ -14,7 +14,7 @@ export function BlindBinCount({ detail, ownerUserId, staleSince, onClaim, onChan
   onChanged: (value: TaskDetail) => void; onDone: () => void;
 }) {
   const { t } = useTranslation(); const locale = currentLocale(); const task = detail.task;
-  const draftKey = `countflow.bin-count.${ownerUserId}.${task.id}.${task.binCountClaimId ?? 'unclaimed'}`;
+  const draftKey = storageKey(`countflow.bin-count.${ownerUserId}.${task.id}.${task.binCountClaimId ?? 'unclaimed'}`);
   const [lines, setLines] = useState<ObservedHolding[]>(() => {
     try { const value: unknown = JSON.parse(localStorage.getItem(draftKey) ?? '[]');
       return Array.isArray(value) ? value.filter(line => typeof line?.sku === 'string' && typeof line?.quantity === 'number' && CONDITIONS.includes(line.condition)) : [];

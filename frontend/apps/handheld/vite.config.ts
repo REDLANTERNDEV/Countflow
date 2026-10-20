@@ -4,6 +4,7 @@ import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
+  define: { __COUNTFLOW_STATIC_DEMO__: JSON.stringify(process.env.VITE_DEMO_MODE === 'true') },
   // Served under /handheld by Caddy so both SPAs share one origin.
   base: '/handheld/',
   plugins: [
@@ -67,6 +68,6 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    sourcemap: true,
+    sourcemap: process.env.VITE_DEMO_MODE !== 'true',
   },
 });

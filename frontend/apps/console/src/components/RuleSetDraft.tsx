@@ -1,3 +1,4 @@
+import { disabledInDemo } from '@countflow/demo/capabilities';
 import { translateRuleName, useTranslation } from '@countflow/i18n';
 import { InfoHelp,  Badge, Button, Code, Input, Select } from '@countflow/ui';
 import { useState } from 'react';
@@ -131,13 +132,13 @@ export function RuleSetDraft({
             {/* Offered on every set, including archived ones. Reviving what the
                 warehouse ran last quarter as a draft to compare against is
                 exactly what replay is for. */}
-            <Button size="sm" disabled={busy} onClick={() => void clone()}>
+            <Button size="sm" disabled={busy} onClick={() => void clone()} {...disabledInDemo(t('demo.unavailable'))}>
               {t('rules.draft.clone')}
             </Button>
 
             {isDraft ? (
               <>
-                <Button size="sm" variant="primary" disabled={busy} onClick={begin}>
+                <Button size="sm" variant="primary" disabled={busy} onClick={begin} {...disabledInDemo(t('demo.unavailable'))}>
                   {t('rules.draft.edit')}
                 </Button>
                 <Button
@@ -150,7 +151,7 @@ export function RuleSetDraft({
                         params: { path: { id: set.id } },
                       }),
                     )
-                  }
+                  } {...disabledInDemo(t('demo.unavailable'))}
                 >
                   {t('rules.draft.promote')}
                 </Button>
@@ -167,7 +168,7 @@ export function RuleSetDraft({
                       params: { path: { id: set.id } },
                     }),
                   )
-                }
+                } {...disabledInDemo(t('demo.unavailable'))}
               >
                 {t('rules.draft.archive')}
               </Button>
@@ -181,10 +182,10 @@ export function RuleSetDraft({
               onChange={(event) => setName(event.target.value)}
               aria-label={t('rules.draft.name')}
             />
-            <Button size="sm" variant="primary" disabled={busy} onClick={() => void save()}>
+            <Button size="sm" variant="primary" disabled={busy} onClick={() => void save()} {...disabledInDemo(t('demo.unavailable'))}>
               {busy ? t('rules.draft.saving') : t('rules.draft.save')}
             </Button>
-            <Button size="sm" disabled={busy} onClick={() => setEditing(false)}>
+            <Button size="sm" disabled={busy} onClick={() => setEditing(false)} {...disabledInDemo(t('demo.unavailable'))}>
               {t('common.cancel')}
             </Button>
           </>
@@ -272,7 +273,7 @@ export function RuleSetDraft({
 
                 <Button
                   size="sm"
-                  onClick={() => setRules(rules.filter((row) => row.code !== rule.code))}
+                  onClick={() => setRules(rules.filter((row) => row.code !== rule.code))} {...disabledInDemo(t('demo.unavailable'))}
                 >
                   {t('rules.draft.remove')}
                 </Button>
@@ -317,7 +318,7 @@ export function RuleSetDraft({
                   ]);
 
                   setAdding('');
-                }}
+                }} {...disabledInDemo(t('demo.unavailable'))}
               >
                 {t('rules.draft.addRule')}
               </Button>

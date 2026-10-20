@@ -15,3 +15,9 @@ test('a count stays at its holding while ordinary moves retain destination overr
   assert.equal(completionLocationAllowed('Putaway', 'OTHER', 'DOCK', 'SHELF'), true);
   assert.equal(completionLocationAllowed('Pick', '', 'SHELF', 'BENCH'), false);
 });
+
+test('restricted demo moves cannot enqueue destination overrides', () => {
+  assert.equal(completionLocationAllowed('Putaway', 'OTHER', 'DOCK', 'SHELF', false), false);
+  assert.equal(completionLocationAllowed('Pick', 'OTHER', 'SHELF', 'BENCH', false), false);
+  assert.equal(completionLocationAllowed('Putaway', ' shelf ', 'DOCK', 'SHELF', false), true);
+});

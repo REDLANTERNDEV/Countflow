@@ -1,3 +1,4 @@
+import { disabledInDemo } from '@countflow/demo/capabilities';
 import { translateCount, currentLocale, formatDate, formatDateTime, useTranslation } from '@countflow/i18n';
 import { InfoHelp,
   Badge,
@@ -251,7 +252,7 @@ export function OutboundPage() {
                           size="sm"
                           variant="primary"
                           disabled={releaseWave.isPending}
-                          onClick={() => releaseWave.mutate(wave.id)}
+                          onClick={() => releaseWave.mutate(wave.id)} {...disabledInDemo(t('demo.unavailable'))}
                         >
                           {releaseWave.isPending
                             ? t('outbound.releasing')
@@ -340,7 +341,7 @@ export function OutboundPage() {
                 <Button
                   size="sm"
                   disabled={act.isPending}
-                  onClick={() => act.mutate({ id: order.id, action: 'cancel' })}
+                  onClick={() => act.mutate({ id: order.id, action: 'cancel' })} {...disabledInDemo(t('demo.unavailable'))}
                 >
                   {t('outbound.cancel')}
                 </Button>

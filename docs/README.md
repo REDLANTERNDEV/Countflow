@@ -3,6 +3,11 @@
 The [README](../README.md) covers what Countflow is and how to run it. This is
 for people changing it or building against it.
 
+## Hosting the public demo
+
+[Static demo hosting](demo-hosting.md) contains the shared build command and
+setup for Dokploy, Coolify, Docker, Nginx, Caddy, Netlify, and Vercel.
+
 ## Changing the code
 
 These two first, in this order:

@@ -13,7 +13,7 @@ import { registerServiceWorker } from './serviceWorker.js';
 // are still in the build. Splitting them out would save roughly 1% of the
 // bundle, which is not worth the indirection. The real cost of localisation
 // here is i18next itself (~34 kB gzipped), not the strings.
-initI18n(['common', 'auth', 'scan', 'stock', 'work', 'pickTours', 'replenishment', 'queue', 'rules', 'inbound', 'errors']);
+initI18n(['common', 'auth', 'demo', 'scan', 'stock', 'work', 'pickTours', 'replenishment', 'queue', 'rules', 'inbound', 'errors']);
 
 const container = document.getElementById('root');
 if (!container) {

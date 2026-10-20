@@ -1,7 +1,7 @@
 import { translateCount, currentLocale, useTranslation } from '@countflow/i18n';
 import { Badge, Button, Code, Numeric, Spinner } from '@countflow/ui';
 import { useEffect, useState } from 'react';
-import { api } from '../api.js';
+import { api, storageKey as scopedStorageKey } from '../api.js';
 import { DeviceSettings } from '../components/DeviceSettings.js';
 import { unanswered } from '../lib/outbox/dispatch.js';
 import { needsAttention } from '../lib/outbox/outbox.js';
@@ -130,7 +130,7 @@ export function HomeScreen(props: HomeScreenProps) {
 
   async function takeTour() {
     setFinding(true); setErrorCode(null);
-    const storageKey = `countflow.tour.claim.${user.id}`;
+    const storageKey = scopedStorageKey(`countflow.tour.claim.${user.id}`);
     try {
       const key = localStorage.getItem(storageKey) ?? crypto.randomUUID();
       localStorage.setItem(storageKey, key);
