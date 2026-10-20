@@ -139,6 +139,12 @@ export const en = {
     },
   },
 
+  notFound: {
+    title: 'Page not found',
+    hint: 'There is nothing at this address. Check the link, or pick a section from the menu.',
+    home: 'Back to warehouses',
+  },
+
   demo: {
     reset: 'Reset demo',
     unavailable: 'Unavailable in this demo',

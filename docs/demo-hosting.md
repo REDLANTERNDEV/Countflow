@@ -73,9 +73,13 @@ the backend-connected build; use `pnpm build:demo` for this public demo.
 1. Create a **Docker Compose** application from this repository.
 2. Set Compose Path to `compose.demo-static.yaml`, with the repository root as
    build context. The file already selects `static-demo` and enables demo mode.
-3. Enable Isolated Deployments. Add the demo domain, choose service `web`,
-   container port `80`, path `/`, and enable HTTPS. Point DNS at the server.
+3. Add the demo domain, choose service `web`, container port `80`, path `/`,
+   and enable HTTPS. Point DNS at the server.
 4. Deploy. Check `/health/ready` and `/handheld/` on the public hostname.
+
+Leave Isolated Deployments off (Dokploy now marks it deprecated) and leave the
+Networks section at its default. `web` is the only service, so it needs no
+internal network; the domain attaches it to `dokploy-network` for Traefik.
 
 No host port or environment settings are needed. The included Caddy listener uses
 HTTP internally because Dokploy terminates TLS. Do not choose

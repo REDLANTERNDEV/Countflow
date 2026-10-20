@@ -143,6 +143,12 @@ export const tr: Catalogue = {
     },
   },
 
+  notFound: {
+    title: 'Sayfa bulunamadı',
+    hint: 'Bu adreste bir şey yok. Bağlantıyı kontrol edin ya da menüden bir bölüm seçin.',
+    home: 'Depolara dön',
+  },
+
   demo: {
     reset: 'Demoyu sıfırla',
     unavailable: 'Bu demoda kullanılamıyor',

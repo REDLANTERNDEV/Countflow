@@ -10,6 +10,10 @@ features is in [docs/history.md](docs/history.md).
 
 ### Fixed
 
+- An unknown console address shows a translated "Page not found" inside the
+  shell, with a link back to Warehouses, instead of the router's bare English
+  fallback. The gateway still answers such paths with 200 so deep links load.
+
 - Pallet confirmations survive process and database-session loss. Work retains
   the original instruction before Inventory posting, blocks competing mutations
   while pending, and settles retries with the original actor and override reason.
