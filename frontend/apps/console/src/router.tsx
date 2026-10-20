@@ -18,11 +18,12 @@ import { ScanPage } from './routes/ScanPage.js';
 import { StockPage } from './routes/StockPage.js';
 import { ZonesPage } from './routes/ZonesPage.js';
 import { WorkPage } from './routes/WorkPage.js';
+import { NotFoundPage } from './routes/NotFoundPage.js';
 import { WarehousesPage } from './pages/WarehousesPage.js';
 
 // Code-based routes rather than file-based: no codegen step to keep in sync,
 // and at this size the whole route table fits on one screen.
-const rootRoute = createRootRoute({ component: RootLayout });
+const rootRoute = createRootRoute({ component: RootLayout, notFoundComponent: NotFoundPage });
 
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
